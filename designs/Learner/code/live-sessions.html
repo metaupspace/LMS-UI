@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Live Sessions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Live Sessions (LSN-002 calendar/list, LSN-003 join,
+     LSN-004-FR-08 own attendance, LSN-005 recordings).
+     Only sessions for the learner's enrolled classes/groups (FR-05).
+     Status (derived from schedule, same function as the detail page):
+       Upcoming → Starting soon (join window, 15 min before — LSN-003-FR-02)
+       → Live now (spec "In progress") → Completed. Also Cancelled (LSN-001-FR-08)
+       and Not started (instructor didn't start within 30 min — LSN-003-FR-06).
+     Views: List (default) · Calendar — Day / Week / Month time grid (LSN-002-FR-01);
+     mobile defaults to Day (LSN-002 edge case).
+     Library: Buttons, Badge (dot), Select, Input. Hand-built (approved,
+     MISSING_COMPONENTS.md): Tabs, Skeleton, Empty state, Date tile,
+     Day/Week/Month calendar (instructor calendar pattern). Bottom-left "Preview" = design-only state switch.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:32px clamp(20px, 2.6vw, 48px) 72px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-lg{ height:44px; padding:0 18px; font-size:14.5px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn:disabled{ background:var(--surface-overlay); color:var(--text-secondary); border-color:transparent; cursor:not-allowed; transform:none; }
+  .link{ display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:var(--action-primary); padding:6px 8px; margin:0 -8px; border-radius:var(--radius-md); white-space:nowrap; }
+  .link:hover{ background:var(--action-primary-subtle); }
+  .link.quiet{ color:var(--text-secondary); }
+  .link.quiet:hover{ background:var(--surface-raised); }
+  .link svg{ width:16px; height:16px; }
+
+  /* Head */
+  .page-head{ margin-bottom:22px; }
+  .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; }
+  .page-head .sub{ font-size:15px; color:var(--text-secondary); }
+
+  /* Toolbar */
+  .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:20px; }
+  .toolbar .spacer{ flex:1; }
+  .tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); }
+  .tab{ height:34px; padding:0 14px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .tab:hover{ color:var(--text-primary); }
+  .tab[aria-selected="true"], .tab[aria-pressed="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .tab .n{ color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  .tab svg{ width:16px; height:16px; }
+  .search{ position:relative; width:240px; }
+  .search svg{ position:absolute; left:11px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
+  .search input, .select{ height:42px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .search input{ width:100%; padding:0 12px 0 36px; }
+  .search input::placeholder{ color:var(--text-tertiary); }
+  .search input:focus, .select:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .select{ padding:0 32px 0 12px; appearance:none; font-weight:500; color:var(--text-strong); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center; cursor:pointer; }
+
+  /* Status — Badge (dot), restrained */
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:600; color:var(--text-secondary); white-space:nowrap; }
+  .status i{ width:7px; height:7px; border-radius:50%; background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
+  .status.soon{ color:var(--action-primary); } .status.soon i{ background:var(--action-primary); box-shadow:none; }
+  .status.live{ color:var(--success); } .status.live i{ background:var(--success); animation:pulse 1.6s infinite; }
+  .status.completed i{ background:var(--text-tertiary); box-shadow:none; }
+  .status.cancelled, .status.not-started{ color:var(--error); } .status.cancelled i, .status.not-started i{ background:var(--error); box-shadow:none; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(21,128,61,.45); } 70%{ box-shadow:0 0 0 6px rgba(21,128,61,0); } 100%{ box-shadow:0 0 0 0 rgba(21,128,61,0); } }
+
+  /* Type meta */
+  .meta{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; color:var(--text-secondary); min-width:0; max-width:100%; }
+  .meta svg{ width:15px; height:15px; color:var(--text-tertiary); }
+  .meta span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Date tile (hand-built, approved) */
+  .tile{ width:56px; height:60px; border-radius:var(--radius-lg); background:var(--surface-raised); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; flex-shrink:0; }
+  .tile .m{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-tertiary); }
+  .tile .d{ font-size:22px; font-weight:700; margin-top:5px; font-variant-numeric:tabular-nums; }
+  .tile.today{ background:var(--action-primary-subtle); }
+  .tile.today .m, .tile.today .d{ color:var(--action-primary); }
+
+  /* Next session — the one emphasised block */
+  .next{ display:grid; grid-template-columns:auto minmax(0,1fr) auto; gap:18px 22px; align-items:center; padding:22px 24px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); margin-bottom:28px; }
+  .next.is-live{ border-color:#bbf7d0; }
+  .next .label{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary); margin-bottom:6px; }
+  .next .label .status{ letter-spacing:.04em; font-size:12px; }
+  .next h2{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.3px; line-height:1.3; }
+  .next h2 a:hover{ color:var(--action-primary); }
+  .next .course{ font-size:14px; color:var(--text-secondary); margin-top:3px; }
+  .next .facts{ display:flex; flex-wrap:wrap; gap:6px 18px; margin-top:12px; }
+  .next .when{ font-size:14px; font-weight:600; color:var(--text-primary); }
+  .next .cta{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .next .cta small{ font-size:13px; color:var(--text-tertiary); }
+
+  /* Grouped rows */
+  .group{ margin-bottom:24px; }
+  .group h3{ margin:0 0 10px; font-size:13px; font-weight:700; color:var(--text-secondary); }
+  .rows{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
+  .row{ display:grid; grid-template-columns:96px minmax(0,1.6fr) minmax(0,1fr) 150px 170px; gap:16px; align-items:center; padding:16px 20px; cursor:pointer; transition:background-color .15s ease; }
+  .row + .row, .th + .row{ border-top:1px solid var(--border-default); }
+  .row:hover{ background:var(--surface-canvas); }
+  .row .time b{ display:block; font-size:15px; font-weight:600; font-variant-numeric:tabular-nums; }
+  .row .time span{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+  .row .title{ display:block; font-size:15px; font-weight:600; line-height:1.35; }
+  .row:hover .title{ color:var(--action-primary); }
+  .row .course{ display:block; font-size:13.5px; color:var(--text-tertiary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .act{ text-align:right; }
+  .row .act .btn{ height:36px; padding:0 14px; }
+  .row.is-cancelled .title{ color:var(--text-tertiary); text-decoration:line-through; }
+  .row.is-cancelled .time b{ color:var(--text-tertiary); }
+  /* Past rows */
+  .row.past, .th{ grid-template-columns:minmax(0,1.6fr) 150px minmax(0,1fr) 130px 250px; }
+  .row.past .date b{ display:block; font-size:14.5px; font-weight:600; }
+  .row.past .date span{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+  .row .who{ font-size:14px; color:var(--text-secondary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .att{ font-size:14px; font-weight:600; color:var(--text-strong); }
+  .att.absent{ color:var(--error); }
+  .att.none{ color:var(--text-disabled); font-weight:500; }
+  .row .acts{ display:flex; justify-content:flex-end; gap:4px 18px; flex-wrap:wrap; }
+  .th{ display:grid; gap:16px; padding:11px 20px; background:var(--surface-raised); font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+
+  /* Calendar — same pattern as designs/instructor/code/live-sessions-overview.html (user request) */
+  .cal-toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:16px; flex-wrap:wrap; }
+  .cal-toolbar .sp{ flex:1; }
+  .today-btn{ height:34px; padding:0 12px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .today-btn:hover{ background:var(--surface-raised); }
+  .nav-cluster{ display:flex; align-items:center; gap:6px; }
+  .nav-cluster button{ width:34px; height:34px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; }
+  .nav-cluster button:hover{ background:var(--surface-raised); }
+  .nav-cluster button svg{ width:15px; height:15px; }
+  .range-label{ font-size:16px; font-weight:600; color:var(--text-primary); white-space:nowrap; }
+  .view-switch{ display:inline-flex; background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:2px; gap:2px; }
+  .view-switch-btn{ border:none; background:transparent; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:6px 14px; border-radius:6px; line-height:1; }
+  .view-switch-btn:hover{ color:var(--text-primary); }
+  .view-switch-btn[aria-pressed="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 2px rgba(23,23,23,.08); }
+  .cal-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
+  .cal-grid-wrap{ display:flex; flex-direction:column; max-height:calc(100vh - 260px); min-height:420px; }
+  .cal-grid-header{ display:grid; grid-template-columns:56px repeat(var(--cal-cols,7), minmax(0,1fr)); border-bottom:1px solid var(--border-default); flex-shrink:0; background:#fff; }
+  .cal-corner{ border-right:1px solid var(--border-default); }
+  .cal-day-head{ padding:10px 6px; text-align:center; border-right:1px solid var(--border-default); cursor:pointer; }
+  .cal-day-head:last-child{ border-right:none; }
+  .cal-day-head .dow{ font-size:11px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.03em; }
+  .cal-day-head .dom{ font-size:15px; font-weight:500; margin-top:2px; width:32px; height:32px; line-height:32px; border-radius:50%; display:inline-block; }
+  .cal-day-head.is-today .dow{ color:var(--action-primary); }
+  .cal-day-head.is-today .dom{ background:var(--action-primary); color:#fff; }
+  .cal-grid-scroll{ overflow-y:auto; flex:1; }
+  .cal-grid-body{ display:grid; grid-template-columns:56px repeat(var(--cal-cols,7), minmax(0,1fr)); position:relative; padding-top:8px; }
+  .cal-time-col{ position:relative; border-right:1px solid var(--border-default); }
+  .cal-time-label{ position:absolute; right:8px; transform:translateY(-50%); font-size:11px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .cal-day-col{ position:relative; border-right:1px solid var(--border-default); background-image:repeating-linear-gradient(to bottom, var(--border-subtle) 0, var(--border-subtle) 1px, transparent 1px, transparent 48px); }
+  .cal-day-col:last-child{ border-right:none; }
+  .cal-now-line{ position:absolute; left:0; right:0; height:0; border-top:2px solid var(--error); z-index:3; pointer-events:none; }
+  .cal-now-line:before{ content:""; position:absolute; left:-4px; top:-5px; width:8px; height:8px; border-radius:50%; background:var(--error); }
+  .cal-event{ position:absolute; z-index:2; display:block; border-radius:6px; padding:3px 7px; font-size:11.5px; line-height:1.3; overflow:hidden; box-shadow:0 0 0 1px rgba(255,255,255,.6) inset; }
+  .cal-event:hover{ filter:brightness(.95); z-index:4; }
+  .cal-event .t{ font-weight:700; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-event .n{ display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .cal-event.status-upcoming{ background:#eff6ff; color:#1e3a8a; }
+  .cal-event.status-in-progress{ background:var(--success); color:#fff; }
+  .cal-event.status-completed{ background:var(--surface-overlay); color:var(--text-secondary); }
+  .cal-event.status-cancelled{ background:var(--error-subtle); color:var(--error); text-decoration:line-through; }
+  .month-grid{ display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); }
+  .month-dow{ padding:8px; text-align:center; font-size:11px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.03em; background:var(--surface-canvas); border-right:1px solid var(--border-default); border-bottom:1px solid var(--border-default); }
+  .month-dow:nth-child(7n){ border-right:none; }
+  .month-cell{ min-height:96px; min-width:0; overflow:hidden; padding:6px; border-right:1px solid var(--border-default); border-bottom:1px solid var(--border-default); cursor:pointer; display:flex; flex-direction:column; gap:3px; }
+  .month-cell:nth-child(7n){ border-right:none; }
+  .month-cell:hover{ background:var(--surface-canvas); }
+  .month-cell.outside{ background:var(--surface-canvas); color:var(--text-disabled); }
+  .month-cell .date-num{ font-size:12.5px; font-weight:700; align-self:flex-end; }
+  .month-cell.is-today .date-num{ display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:50%; background:var(--action-primary); color:#fff; }
+  .month-chip{ display:block; width:100%; font-size:10.5px; font-weight:600; padding:2px 5px; border-radius:5px; background:#eff6ff; color:#2563eb; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .month-chip.status-in-progress{ background:var(--success-subtle); color:var(--success); }
+  .month-chip.status-completed{ background:var(--surface-raised); color:var(--text-secondary); }
+  .month-chip.status-cancelled{ background:var(--error-subtle); color:var(--error); text-decoration:line-through; }
+  .month-more{ font-size:10.5px; color:var(--text-tertiary); font-weight:600; }
+
+  /* Empty / skeleton (hand-built, approved) */
+  .empty{ padding:56px 20px; text-align:center; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .empty b{ display:block; font-size:15px; margin-bottom:4px; }
+  .empty span{ font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:16px; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:9px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* Design-only state switch — deliberately utilitarian, not product UI */
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:50; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .inline-st{ display:none !important; }
+  @media (max-width:1180px){
+    .row{ grid-template-columns:88px minmax(0,1.5fr) minmax(0,1fr) 150px; }
+    .row > .st{ display:none; }
+    .row .inline-st{ display:inline-flex !important; margin-top:6px; }
+    .row.past, .th{ grid-template-columns:minmax(0,1.6fr) 140px 110px 220px; }
+    .row.past .who, .th .h-who{ display:none; }
+  }
+  @media (max-width:760px){
+    .page-head h1{ font-size:24px; }
+    .toolbar .spacer{ display:none; }
+    .search{ width:100%; order:5; }
+    .next{ grid-template-columns:auto minmax(0,1fr); padding:18px; }
+    .next .cta{ grid-column:1 / -1; align-items:stretch; }
+    .next .cta .btn{ width:100%; }
+    .next .cta small{ text-align:center; }
+    .th{ display:none; }
+    .rows{ background:transparent; border:0; border-radius:0; overflow:visible; }
+    .row, .row.past{ grid-template-columns:minmax(0,1fr) auto; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); margin-bottom:10px; padding:14px 16px; gap:8px 12px; }
+    .row + .row, .th + .row{ border-top:1px solid var(--border-default); }
+    .row > .main-col{ grid-column:1 / -1; order:-1; }
+    .row .time{ grid-column:1 / -1; }
+    .row .time b, .row .time span{ display:inline; }
+    .row .time span::before{ content:" · "; color:var(--text-disabled); }
+    .row .typecol{ grid-column:1 / -1; }
+    .row .act, .row .acts{ grid-column:1 / -1; text-align:left; justify-content:flex-start; border-top:1px solid var(--border-subtle); padding-top:10px; }
+    .row .act .btn{ width:100%; height:40px; }
+    .row .acts .link{ margin:0 0 0 -8px; }
+    .row.past .date{ grid-column:1; }
+    .row.past .attcol{ grid-column:2; text-align:right; }
+    .cal-toolbar .range-label{ order:5; width:100%; }
+    .cal-toolbar .sp{ display:none; }
+    .view-switch{ margin-left:auto; }
+    .month-cell{ min-height:64px; padding:4px; }
+    .month-chip{ font-size:0; padding:0; width:6px; height:6px; border-radius:50%; background:#2563eb; }
+    .month-chip.status-in-progress{ background:var(--success); } .month-chip.status-completed{ background:var(--text-tertiary); } .month-chip.status-cancelled{ background:var(--error); }
+    .month-cell{ flex-wrap:wrap; flex-direction:row; align-content:flex-start; }
+    .month-cell .date-num{ width:100%; text-align:right; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 56px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Live+Sessions" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <div class="page-head">
+      <h1>Live Sessions</h1>
+      <div class="sub">Join upcoming sessions and revisit sessions you’ve attended.</div>
+    </div>
+
+    <div class="toolbar">
+      <div class="tabs" role="tablist" aria-label="Sessions" id="when">
+        <button class="tab" role="tab" type="button" data-when="upcoming" aria-selected="true">Upcoming <span class="n" id="n-up"></span></button>
+        <button class="tab" role="tab" type="button" data-when="past" aria-selected="false">Past <span class="n" id="n-past"></span></button>
+      </div>
+      <span class="spacer"></span>
+      <label class="search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input type="search" id="q" placeholder="Search sessions" aria-label="Search sessions" autocomplete="off"></label>
+      <select class="select" id="type" aria-label="Session type"><option value="">All types</option><option value="online">Online</option><option value="in-person">In-person</option></select>
+      <div class="tabs" role="group" aria-label="View" id="view">
+        <button class="tab" type="button" data-view="list" aria-pressed="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>List</button>
+        <button class="tab" type="button" data-view="calendar" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Calendar</button>
+      </div>
+    </div>
+
+    <div id="content" aria-live="polite"></div>
+  </div></main>
+</div>
+
+<label class="preview" title="Design-only: preview UI states">Preview
+  <select id="previewState"><option value="normal">Normal</option><option value="loading">Loading</option><option value="empty">Empty</option><option value="error">Error</option></select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data — only sessions for this learner's classes (LSN-002-FR-05); mirrors live-session-detail.html ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same convention as the other learner pages
+  var SESSIONS = [
+    { id:'s1', title:'Graph Algorithms Q&A', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-23T13:30', dur:60, type:'online', platform:'Zoom' },
+    { id:'s2', title:'Design Critique Studio', course:'Interaction Design', instructor:'Prof. Vance', start:'2026-09-23T13:45', dur:75, type:'in-person', location:'Room 4B · North Building' },
+    { id:'s3', title:'Dashboards Office Hours', course:'Data Visualization Techniques', instructor:'Dr. Aris', start:'2026-09-23T14:10', dur:30, type:'online', platform:'Microsoft Teams' },
+    { id:'s4', title:'Data Structures Lab', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-23T17:05', dur:90, type:'online', platform:'Google Meet' },
+    { id:'s5', title:'Heaps Review', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-24T11:00', dur:45, type:'online', platform:'Zoom', cancelled:true },
+    { id:'s6', title:'Edge Rendering Workshop', course:'Modern Web Architecture', instructor:'Dr. Aris', start:'2026-09-25T10:00', dur:120, type:'online', platform:'Zoom' },
+    { id:'s7', title:'Supervised Learning Clinic', course:'Intro to Machine Learning', instructor:'Dr. Aris', start:'2026-09-26T15:30', dur:60, type:'in-person', location:'Lab 2 · Science Wing' },
+    { id:'s8', title:'iOS Pairing Session', course:'iOS App Development Basics', instructor:'Prof. Vance', start:'2026-09-30T16:00', dur:90, type:'online', platform:'Google Meet' },
+    { id:'p1', title:'Dashboard Teardown', course:'Data Visualization Techniques', instructor:'Dr. Aris', start:'2026-09-22T16:00', dur:60, type:'online', platform:'Microsoft Teams', attendance:'present', recording:'processing' },
+    { id:'p2', title:'Binary Trees Walkthrough', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-21T17:00', dur:60, type:'online', platform:'Zoom', attendance:'present', recording:'available', materials:2 },
+    { id:'p3', title:'Cloud Office Hours', course:'Cloud Fundamentals', instructor:'Prof. Vance', start:'2026-09-20T12:00', dur:30, type:'online', platform:'Zoom', notStarted:true },
+    { id:'p4', title:'Prototyping Lab', course:'Interaction Design', instructor:'Prof. Vance', start:'2026-09-19T10:00', dur:90, type:'in-person', location:'Room 4B · North Building', attendance:'late', materials:1 },
+    { id:'p5', title:'Hashing Deep Dive', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-17T17:00', dur:60, type:'online', platform:'Zoom', attendance:'absent', recording:'attendees-only', materials:1 },
+    { id:'p6', title:'Kickoff: Modern Web Architecture', course:'Modern Web Architecture', instructor:'Dr. Aris', start:'2026-09-10T09:00', dur:45, type:'online', platform:'Google Meet', attendance:'present' }
+  ];
+
+  /* ---------------- Helpers ---------------- */
+  var JOIN_WINDOW = 15, NOT_STARTED_AFTER = 30; // minutes — LSN-003-FR-02 default, LSN-003-FR-06
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var LONG_MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  var DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function d(s){ return new Date(s); }
+  function end(s){ return new Date(d(s.start).getTime() + s.dur * 60000); }
+  function t12(x){ return x.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
+  function sameDay(a, b){ return a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate(); }
+  function dayDiff(x){ var a = new Date(x); a.setHours(0,0,0,0); var b = new Date(NOW); b.setHours(0,0,0,0); return Math.round((a - b) / 86400000); }
+  function dayLabel(x){ var n = dayDiff(x); return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n === -1 ? 'Yesterday' : DOW[x.getDay()] + ', ' + MONTHS[x.getMonth()] + ' ' + x.getDate(); }
+  function mins(m){ return m >= 60 ? Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+  // Same derivation as live-session-detail.html
+  function statusOf(s){
+    var st = d(s.start), en = end(s);
+    if (s.cancelled) return 'cancelled';
+    if (s.notStarted && NOW >= new Date(st.getTime() + NOT_STARTED_AFTER * 60000)) return 'not-started';
+    if (NOW >= en) return 'completed';
+    if (NOW >= st) return 'live';
+    if ((st - NOW) / 60000 <= JOIN_WINDOW) return 'soon';
+    return 'upcoming';
+  }
+  var LABEL = { upcoming:'Upcoming', soon:'Starting soon', live:'Live now', completed:'Completed', cancelled:'Cancelled', 'not-started':'Not started' };
+  function isPast(s){ var x = statusOf(s); return x === 'completed' || x === 'not-started' || (x === 'cancelled' && NOW >= end(s)); }
+
+  var I = {
+    video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+    file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+    qr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></svg>',
+    left:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    right:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>'
+  };
+  function href(s, extra){ return 'live-session-detail.html?id=' + s.id + (extra || ''); }
+  function where(s){ return s.type === 'online' ? '<span class="meta">' + I.video + '<span>Online · ' + esc(s.platform) + '</span></span>' : '<span class="meta">' + I.pin + '<span>' + esc(s.location) + '</span></span>'; }
+  function statusHtml(s, cls){ var x = statusOf(s); return '<span class="status ' + x + (cls ? ' ' + cls : '') + '"><i></i>' + LABEL[x] + '</span>'; }
+  function joinable(s){ var x = statusOf(s); return s.type === 'online' && (x === 'live' || x === 'soon'); }
+  function primaryAction(s){
+    var x = statusOf(s);
+    if (joinable(s)) return '<a class="btn btn-primary" href="' + href(s, '&join=1') + '">' + I.video + 'Join session</a>';
+    if (s.type === 'in-person' && x === 'live') return '<a class="btn btn-secondary" href="' + href(s, '&checkin=1') + '">' + I.qr + 'Check in</a>';
+    return '<a class="link quiet" href="' + href(s) + '" tabindex="-1">View details' + I.arrow + '</a>';
+  }
+
+  /* ---------------- State ---------------- */
+  var state = { when:'upcoming', view:'list', q:'', type:'', calView:'week', calDate:new Date(NOW), scrollTo:0 };
+  var data = [];
+
+  function filtered(){
+    return data.filter(function(s){
+      return (!state.type || s.type === state.type) && (!state.q || (s.title + ' ' + s.course + ' ' + s.instructor).toLowerCase().indexOf(state.q) !== -1);
+    });
+  }
+
+  function render(){
+    var all = filtered();
+    var up = all.filter(function(s){ return !isPast(s); }).sort(function(a, b){ return d(a.start) - d(b.start); });
+    var past = all.filter(isPast).sort(function(a, b){ return d(b.start) - d(a.start); });
+    document.getElementById('n-up').textContent = data.filter(function(s){ return !isPast(s) && !s.cancelled; }).length;
+    document.getElementById('n-past').textContent = data.filter(isPast).length;
+    document.getElementById('when').hidden = state.view === 'calendar';
+    var c = document.getElementById('content');
+    if (!data.length && state.view === 'list'){ c.innerHTML = empty(state.when === 'upcoming' ? ['No upcoming sessions.', 'Scheduled live sessions will appear here.'] : ['No past sessions yet.', 'Sessions you’ve been part of will appear here after they end.']); return; }
+    if (state.view === 'calendar'){ c.innerHTML = calendar(all); var gb = document.getElementById('gcBody'); if (gb) gb.scrollTop = state.scrollTo; return; }
+    var filtering = state.q || state.type;
+    var list = state.when === 'upcoming' ? up : past;
+    if (!list.length){ c.innerHTML = empty(filtering ? ['No sessions match your filters.', 'Try another type or clear the search.'] : state.when === 'upcoming' ? ['No upcoming sessions.', 'Scheduled live sessions will appear here.'] : ['No past sessions yet.', 'Sessions you’ve been part of will appear here after they end.']); return; }
+    c.innerHTML = state.when === 'upcoming' ? upcoming(up) : pastList(past);
+  }
+  function empty(t){ return '<div class="empty" role="status"><b>' + t[0] + '</b><span>' + t[1] + '</span></div>'; }
+
+  function upcoming(list){
+    // "What session is next?" — the first non-cancelled session gets the one emphasised block
+    var next = list.find(function(s){ return !s.cancelled; });
+    var html = next ? nextBlock(next) : '';
+    var rest = list.filter(function(s){ return s !== next; });
+    var groups = {}, order = [];
+    rest.forEach(function(s){ var k = d(s.start).toDateString(); if (!groups[k]){ groups[k] = []; order.push(k); } groups[k].push(s); });
+    order.forEach(function(k){
+      html += '<section class="group" aria-label="' + dayLabel(new Date(k)) + '"><h3>' + dayLabel(new Date(k)) + '</h3><div class="rows">' + groups[k].map(upRow).join('') + '</div></section>';
+    });
+    return html;
+  }
+  function nextBlock(s){
+    var x = statusOf(s), st = d(s.start), n = dayDiff(st), minsTo = Math.round((st - NOW) / 60000), since = Math.round((NOW - st) / 60000);
+    var small = x === 'live' ? 'Started ' + since + ' min ago' : x === 'soon' ? 'Starts in ' + minsTo + ' min' : s.type === 'online' ? 'Join opens at ' + t12(new Date(st - JOIN_WINDOW * 60000)) : '';
+    var cta = joinable(s) ? '<a class="btn btn-primary btn-lg" href="' + href(s, '&join=1') + '">' + I.video + 'Join session</a>'
+      : s.type === 'in-person' && x === 'live' ? '<a class="btn btn-primary btn-lg" href="' + href(s, '&checkin=1') + '">' + I.qr + 'Check in</a>'
+      : s.type === 'online' ? '<button class="btn btn-lg" type="button" disabled>Session starts at ' + t12(st) + '</button>'
+      : '<a class="btn btn-secondary btn-lg" href="' + href(s) + '">' + I.pin + 'View location</a>';
+    return '<section class="next' + (x === 'live' ? ' is-live' : '') + '" aria-label="Next session">' +
+      '<div class="tile' + (n === 0 ? ' today' : '') + '"><span class="m">' + MONTHS[st.getMonth()] + '</span><span class="d">' + st.getDate() + '</span></div>' +
+      '<div style="min-width:0"><div class="label">' + (x === 'live' || x === 'soon' ? statusHtml(s) : 'Next session') + '</div><h2><a href="' + href(s) + '">' + esc(s.title) + '</a></h2><div class="course">' + esc(s.course) + ' · ' + esc(s.instructor) + '</div>' +
+        '<div class="facts"><span class="when">' + dayLabel(st) + ' · ' + t12(st) + '–' + t12(end(s)) + '</span><span class="meta">' + I.clock + '<span>' + mins(s.dur) + '</span></span>' + where(s) + '</div></div>' +
+      '<div class="cta">' + cta + (small ? '<small>' + small + '</small>' : '') + '</div></section>';
+  }
+  function upRow(s){
+    var st = d(s.start);
+    return '<div class="row' + (s.cancelled ? ' is-cancelled' : '') + '" data-href="' + href(s) + '">' +
+      '<div class="time"><b>' + t12(st) + '</b><span>' + mins(s.dur) + '</span></div>' +
+      '<div class="main-col"><a class="title" href="' + href(s) + '">' + esc(s.title) + '</a><span class="course">' + esc(s.course) + '</span>' + statusHtml(s, 'inline-st') + '</div>' +
+      '<div class="typecol">' + where(s) + '</div>' +
+      '<div class="st">' + statusHtml(s) + '</div>' +
+      '<div class="act">' + primaryAction(s) + '</div></div>';
+  }
+  function pastList(list){
+    var groups = {}, order = [];
+    list.forEach(function(s){ var x = d(s.start), k = LONG_MONTHS[x.getMonth()] + ' ' + x.getFullYear(); if (!groups[k]){ groups[k] = []; order.push(k); } groups[k].push(s); });
+    return order.map(function(k){
+      return '<section class="group" aria-label="' + k + '"><h3>' + k + '</h3><div class="rows"><div class="th" aria-hidden="true"><span>Session</span><span>Date</span><span class="h-who">Instructor</span><span>Attendance</span><span></span></div>' + groups[k].map(pastRow).join('') + '</div></section>';
+    }).join('');
+  }
+  function pastRow(s){
+    var st = d(s.start), x = statusOf(s);
+    var att = x === 'cancelled' || x === 'not-started' ? statusHtml(s)
+      : s.attendance ? '<span class="att ' + s.attendance + '">' + { present:'Present', late:'Late', absent:'Absent' }[s.attendance] + '</span>' : '<span class="att none">—</span>';
+    // Only actions that exist — never empty buttons (recording must be playable for this learner)
+    var acts = [];
+    if (s.recording === 'available') acts.push('<a class="link" href="' + href(s, '&watch=1') + '">' + I.play + 'Watch recording</a>');
+    if (s.materials) acts.push('<a class="link quiet" href="' + href(s) + '#materials">' + I.file + 'View materials</a>');
+    return '<div class="row past' + (x === 'cancelled' ? ' is-cancelled' : '') + '" data-href="' + href(s) + '">' +
+      '<div class="main-col"><a class="title" href="' + href(s) + '">' + esc(s.title) + '</a><span class="course">' + esc(s.course) + '</span></div>' +
+      '<div class="date"><b>' + dayLabel(st) + '</b><span>' + t12(st) + ' · ' + mins(s.dur) + '</span></div>' +
+      '<div class="who">' + esc(s.instructor) + '</div>' +
+      '<div class="attcol">' + att + '</div>' +
+      '<div class="acts">' + acts.join('') + '</div></div>';
+  }
+
+  /* ---------------- Calendar — same pattern as the instructor Live Sessions calendar (LSN-002-FR-01) ---------------- */
+  var GRID_START_HOUR = 7, GRID_END_HOUR = 21, ROW_H = 48;
+  var DOW3 = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+  function startOfWeek(x){ var a = new Date(x); a.setHours(0,0,0,0); a.setDate(a.getDate() - a.getDay()); return a; }
+  function addDays(x, n){ var a = new Date(x); a.setDate(a.getDate() + n); return a; }
+  function fmtDateLong(x){ return x.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }); }
+  // Map learner status onto the instructor calendar's four colours
+  function calStatus(s){ var x = statusOf(s); return x === 'cancelled' ? 'cancelled' : x === 'live' ? 'in-progress' : isPast(s) ? 'completed' : 'upcoming'; }
+  function hLabel(h){ return (h % 12 || 12) + ' ' + (h >= 12 ? 'PM' : 'AM'); }
+  function rangeLabel(){
+    var a = state.calDate;
+    if (state.calView === 'day') return fmtDateLong(a) + (sameDay(a, NOW) ? ' (Today)' : '');
+    if (state.calView === 'month') return LONG_MONTHS[a.getMonth()] + ' ' + a.getFullYear();
+    var s = startOfWeek(a); return fmtDateLong(s) + ' – ' + fmtDateLong(addDays(s, 6));
+  }
+  function calendar(all){
+    var mobile = matchMedia('(max-width:760px)').matches;
+    if (mobile && state.calView === 'week') state.calView = 'day'; // spec: day/list by default on small screens
+    var views = mobile ? ['day', 'month'] : ['day', 'week', 'month'];
+    var bar = '<div class="cal-toolbar"><button class="today-btn" type="button" data-cal="today">Today</button>' +
+      '<div class="nav-cluster"><button type="button" data-cal="-1" aria-label="Previous">' + I.left + '</button><button type="button" data-cal="1" aria-label="Next">' + I.right + '</button></div>' +
+      '<span class="range-label" aria-live="polite">' + rangeLabel() + '</span><span class="sp"></span>' +
+      '<div class="view-switch" role="group" aria-label="Calendar view">' + views.map(function(v){ return '<button class="view-switch-btn" type="button" data-calview="' + v + '" aria-pressed="' + (state.calView === v) + '">' + v.charAt(0).toUpperCase() + v.slice(1) + '</button>'; }).join('') + '</div></div>';
+    return bar + '<div class="cal-card">' + (state.calView === 'month' ? monthView(all) : timeGrid(all)) + '</div>';
+  }
+  function layoutDay(list){
+    // Lanes so overlapping sessions sit side by side (same as instructor calendar)
+    var laneEnds = [];
+    var placed = list.slice().sort(function(a, b){ return d(a.start) - d(b.start); }).map(function(s){
+      var st = d(s.start), lane = laneEnds.findIndex(function(e){ return e <= st; });
+      if (lane === -1){ lane = laneEnds.length; laneEnds.push(end(s)); } else laneEnds[lane] = end(s);
+      return { s:s, lane:lane };
+    });
+    return placed.map(function(p){
+      // width is shared only with sessions that actually overlap this one
+      var n = placed.filter(function(q){ return d(q.s.start) < end(p.s) && end(q.s) > d(p.s.start); }).reduce(function(m, q){ return Math.max(m, q.lane + 1); }, 1);
+      var st = d(p.s.start), mins = st.getHours() * 60 + st.getMinutes() - GRID_START_HOUR * 60;
+      return { s:p.s, top:mins / 60 * ROW_H, height:Math.max(20, p.s.dur / 60 * ROW_H - 2), left:p.lane / n * 100, width:100 / n };
+    });
+  }
+  function timeGrid(all){
+    var days = state.calView === 'day' ? [new Date(state.calDate)] : [0,1,2,3,4,5,6].map(function(i){ return addDays(startOfWeek(state.calDate), i); });
+    var hours = GRID_END_HOUR - GRID_START_HOUR, h = hours * ROW_H, cols = '--cal-cols:' + days.length;
+    var head = '<div class="cal-corner"></div>' + days.map(function(x){
+      return '<div class="cal-day-head' + (sameDay(x, NOW) ? ' is-today' : '') + '" data-goday="' + x.toISOString() + '" role="button" tabindex="0" aria-label="' + dayLabel(x) + '"><div class="dow">' + DOW3[x.getDay()] + '</div><div class="dom">' + x.getDate() + '</div></div>';
+    }).join('');
+    var times = '<div class="cal-time-col" style="height:' + h + 'px">';
+    for (var i = 0; i < hours; i++) times += '<span class="cal-time-label" style="top:' + (i * ROW_H) + 'px">' + hLabel(GRID_START_HOUR + i) + '</span>';
+    times += '</div>';
+    var body = days.map(function(x){
+      var evs = layoutDay(all.filter(function(s){ return sameDay(d(s.start), x); })).map(function(p){
+        var s = p.s;
+        return '<a class="cal-event status-' + calStatus(s) + '" href="' + href(s) + '" style="top:' + p.top + 'px;height:' + p.height + 'px;left:' + p.left + '%;width:calc(' + p.width + '% - 3px)" title="' + esc(s.title) + ' · ' + t12(d(s.start)) + '–' + t12(end(s)) + '">' +
+          '<span class="t">' + t12(d(s.start)) + '</span><span class="n">' + esc(s.title) + '</span></a>';
+      }).join('');
+      var now = '';
+      if (sameDay(x, NOW)){ var nm = NOW.getHours() * 60 + NOW.getMinutes() - GRID_START_HOUR * 60; if (nm >= 0 && nm <= hours * 60) now = '<div class="cal-now-line" style="top:' + (nm / 60 * ROW_H) + 'px"></div>'; }
+      return '<div class="cal-day-col" style="height:' + h + 'px">' + evs + now + '</div>';
+    }).join('');
+    state.scrollTo = 0;
+    return '<div class="cal-grid-wrap" style="' + cols + '"><div class="cal-grid-header">' + head + '</div><div class="cal-grid-scroll" id="gcBody"><div class="cal-grid-body">' + times + body + '</div></div></div>';
+  }
+  function monthView(all){
+    var a = state.calDate, first = new Date(a.getFullYear(), a.getMonth(), 1), start = startOfWeek(first);
+    var weeks = Math.round((startOfWeek(new Date(a.getFullYear(), a.getMonth() + 1, 0)) - start) / (7 * 86400000)) + 1;
+    var html = '<div class="month-grid">' + DOW3.map(function(x){ return '<div class="month-dow">' + x + '</div>'; }).join('');
+    for (var i = 0; i < weeks * 7; i++){
+      var day = addDays(start, i);
+      var list = all.filter(function(s){ return sameDay(d(s.start), day); }).sort(function(p, q){ return d(p.start) - d(q.start); });
+      html += '<div class="month-cell' + (day.getMonth() !== a.getMonth() ? ' outside' : '') + (sameDay(day, NOW) ? ' is-today' : '') + '" data-goday="' + day.toISOString() + '" role="button" tabindex="0" aria-label="' + dayLabel(day) + (list.length ? ', ' + list.length + (list.length === 1 ? ' session' : ' sessions') : '') + '">' +
+        '<span class="date-num">' + day.getDate() + '</span>' +
+        list.slice(0, 2).map(function(s){ return '<span class="month-chip status-' + calStatus(s) + '">' + t12(d(s.start)) + ' ' + esc(s.title) + '</span>'; }).join('') +
+        (list.length > 2 ? '<span class="month-more">+' + (list.length - 2) + ' more</span>' : '') + '</div>';
+    }
+    return html + '</div>';
+  }
+
+  /* ---------------- Events ---------------- */
+  document.getElementById('content').addEventListener('click', function(e){
+    var c = e.target.closest('[data-cal]');
+    if (c){
+      var v = c.dataset.cal, a = new Date(state.calDate);
+      if (v === 'today') a = new Date(NOW);
+      else if (state.calView === 'day') a.setDate(a.getDate() + (+v));
+      else if (state.calView === 'week') a.setDate(a.getDate() + 7 * (+v));
+      else a = new Date(a.getFullYear(), a.getMonth() + (+v), 1);
+      state.calDate = a; render(); return;
+    }
+    var cv = e.target.closest('[data-calview]');
+    if (cv){ state.calView = cv.dataset.calview; render(); return; }
+    var g = e.target.closest('[data-goday]');
+    if (g){ state.calDate = new Date(g.dataset.goday); state.calView = 'day'; render(); return; }
+    var row = e.target.closest('[data-href]');
+    if (row && !e.target.closest('a, button')) location.href = row.dataset.href;
+  });
+  document.getElementById('content').addEventListener('keydown', function(e){
+    var g = e.target.closest('[data-goday]'); if (g && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); g.click(); }
+  });
+  document.getElementById('when').addEventListener('click', function(e){
+    var t = e.target.closest('[data-when]'); if (!t) return;
+    document.querySelectorAll('#when .tab').forEach(function(x){ x.setAttribute('aria-selected', x === t); });
+    state.when = t.dataset.when; render();
+  });
+  document.getElementById('view').addEventListener('click', function(e){
+    var t = e.target.closest('[data-view]'); if (!t) return;
+    document.querySelectorAll('#view .tab').forEach(function(x){ x.setAttribute('aria-pressed', x === t); });
+    state.view = t.dataset.view; render();
+  });
+  document.getElementById('q').addEventListener('input', function(){ state.q = this.value.trim().toLowerCase(); render(); });
+  document.getElementById('type').addEventListener('change', function(){ state.type = this.value; render(); });
+
+  /* ---------------- Load — skeleton in place, never a full-page spinner ---------------- */
+  function skeleton(){
+    var row = '<div class="row" style="cursor:default" aria-hidden="true"><div><span class="sk" style="width:70%"></span><span class="sk" style="width:45%"></span></div><div><span class="sk" style="width:60%;height:14px"></span><span class="sk" style="width:40%"></span></div><div><span class="sk" style="width:70%"></span></div><div><span class="sk" style="width:60%"></span></div><div><span class="sk" style="width:80%;margin-left:auto"></span></div></div>';
+    document.getElementById('content').innerHTML = '<div class="next" aria-busy="true" aria-label="Loading sessions"><div class="tile"></div><div><span class="sk" style="width:30%"></span><span class="sk" style="width:55%;height:18px"></span><span class="sk" style="width:40%"></span></div><div><span class="sk" style="width:150px;height:40px"></span></div></div><div class="rows">' + row + row + row + '</div>';
+  }
+  function load(mode){
+    skeleton();
+    setTimeout(function(){
+      if (mode === 'loading') return;
+      if (mode === 'error'){
+        document.getElementById('content').innerHTML = '<div class="empty" role="alert"><b>Couldn’t load your sessions.</b><span>Check your connection and try again.</span><br><button class="btn btn-secondary" type="button" id="retry">Try again</button></div>';
+        document.getElementById('retry').onclick = function(){ ps.value = 'normal'; load('normal'); };
+        return;
+      }
+      data = mode === 'empty' ? [] : SESSIONS.slice();
+      render();
+    }, 450);
+  }
+  var rz; window.addEventListener('resize', function(){ clearTimeout(rz); rz = setTimeout(function(){ if (state.view === 'calendar' && data.length) render(); }, 150); });
+  var ps = document.getElementById('previewState');
+  ps.value = new URLSearchParams(location.search).get('state') || 'normal';
+  ps.addEventListener('change', function(){ load(this.value); });
+  load(ps.value);
+</script>
+</body>
+</html>

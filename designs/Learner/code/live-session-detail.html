@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Live Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Live Session detail (LSN-002/003/004/005, learner side).
+     Opened from live-sessions.html (?id=…). ?join=1 joins straight away
+     (one click from the list), ?checkin=1 opens the QR scanner, ?watch=1
+     opens the recording.
+     - Online: Join hands off to the connected video platform (LSN-003-FR-02)
+       — no conferencing inside the LMS. Join opens 15 min before start.
+       If the platform API fails, the meeting URL is shown as a fallback
+       (LSN-003-NFR-02).
+     - In-person: location; "Check in" opens the in-app QR scanner while the
+       session is live and QR attendance is set up (user decision).
+     - Reminders: read-only — system sends them 1 hour and 15 min before
+       (NOTIF-002-FR-05). No notification settings here.
+     - Recording: plays inline (Video player pattern), stream only
+       (LSN-005-NFR-02); processing / attendees-only states from LSN-005.
+     Library: Breadcrumbs, Badge (dot), Buttons, Video player, Modal, Toast,
+     Alerts. Hand-built (approved): Date tile, QR check-in scanner, Skeleton.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 72px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-lg{ height:48px; padding:0 20px; font-size:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn:disabled{ background:var(--surface-overlay); color:var(--text-secondary); border-color:transparent; cursor:not-allowed; transform:none; }
+  .btn-primary.busy{ opacity:.85; cursor:progress; }
+  .btn-block{ width:100%; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .ib{ height:32px; min-width:32px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); font-size:13px; font-weight:600; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:16px; height:16px; }
+
+  /* Breadcrumbs — library */
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:18px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs > span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .head{ margin-bottom:24px; }
+  .head .status{ margin-bottom:8px; }
+  .head h1{ margin:0; font-size:clamp(26px, 2.2vw, 32px); font-weight:700; letter-spacing:-.6px; line-height:1.2; text-wrap:balance; }
+  .head h1.struck{ color:var(--text-tertiary); text-decoration:line-through; text-decoration-thickness:2px; }
+  .head .course{ margin-top:6px; font-size:15px; color:var(--text-secondary); }
+  .head .course a{ font-weight:600; color:var(--text-primary); }
+  .head .course a:hover{ color:var(--action-primary); }
+
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:clamp(24px, 2.4vw, 36px); align-items:start; }
+  .side{ position:sticky; top:0; }
+  .stack{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .section{ padding:22px 24px; }
+  .section h2{ margin:0 0 14px; font-size:17px; font-weight:700; letter-spacing:-.2px; }
+  .prose{ max-width:72ch; font-size:15px; line-height:1.65; color:var(--text-strong); }
+  .prose p{ margin:0 0 12px; } .prose ul{ margin:0 0 12px; padding-left:22px; } .prose li{ margin:4px 0; } .prose > :last-child{ margin-bottom:0; }
+
+  /* Status — Badge (dot) */
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--text-secondary); }
+  .status i{ width:8px; height:8px; border-radius:50%; background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
+  .status.soon{ color:var(--action-primary); } .status.soon i{ background:var(--action-primary); box-shadow:none; }
+  .status.live{ color:var(--success); } .status.live i{ background:var(--success); animation:pulse 1.6s infinite; }
+  .status.completed i{ background:var(--text-tertiary); box-shadow:none; }
+  .status.cancelled, .status.not-started{ color:var(--error); } .status.cancelled i, .status.not-started i{ background:var(--error); box-shadow:none; }
+  @keyframes pulse{ 0%{ box-shadow:0 0 0 0 rgba(21,128,61,.45); } 70%{ box-shadow:0 0 0 6px rgba(21,128,61,0); } 100%{ box-shadow:0 0 0 0 rgba(21,128,61,0); } }
+
+  /* Side "when & where" card */
+  .when{ padding:20px; }
+  .when-top{ display:flex; gap:14px; align-items:center; }
+  .tile{ width:56px; height:60px; border-radius:var(--radius-lg); background:var(--surface-raised); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; flex-shrink:0; }
+  .tile .m{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--text-tertiary); }
+  .tile .d{ font-size:22px; font-weight:700; margin-top:5px; font-variant-numeric:tabular-nums; }
+  .tile.today{ background:var(--action-primary-subtle); } .tile.today .m, .tile.today .d{ color:var(--action-primary); }
+  .when-top b{ display:block; font-size:16px; font-weight:700; }
+  .when-top span{ display:block; font-size:14px; color:var(--text-secondary); margin-top:2px; font-variant-numeric:tabular-nums; }
+  .facts{ list-style:none; margin:18px 0 0; padding:0; display:grid; gap:12px; }
+  .facts li{ display:flex; gap:10px; font-size:14px; color:var(--text-strong); line-height:1.45; min-width:0; }
+  .facts li svg{ width:18px; height:18px; color:var(--text-tertiary); margin-top:1px; }
+  .facts small{ display:block; font-size:12.5px; color:var(--text-tertiary); }
+  .cta{ margin-top:20px; padding-top:18px; border-top:1px solid var(--border-subtle); display:grid; grid-template-columns:minmax(0,1fr); gap:10px; }
+  .cta .alert > div{ min-width:0; flex-basis:0; }
+  .cta .hint{ font-size:13.5px; color:var(--text-secondary); text-align:center; line-height:1.5; }
+  .cta .hint b{ color:var(--text-primary); }
+  .cta .hint.live{ color:var(--success); font-weight:600; }
+  .joined{ display:flex; align-items:center; justify-content:center; gap:6px; font-size:13.5px; color:var(--success); font-weight:600; }
+  .joined svg{ width:16px; height:16px; }
+  .reminder{ display:flex; gap:10px; margin-top:16px; padding:12px 14px; border-radius:var(--radius-lg); background:var(--surface-canvas); font-size:13.5px; line-height:1.45; color:var(--text-secondary); }
+  .reminder svg{ width:17px; height:17px; color:var(--text-tertiary); margin-top:1px; }
+  .reminder b{ display:block; color:var(--text-strong); font-weight:600; }
+  .attend{ display:flex; align-items:center; justify-content:space-between; margin-top:16px; padding-top:16px; border-top:1px solid var(--border-subtle); font-size:14px; }
+  .attend span{ color:var(--text-tertiary); }
+  .attend b{ font-weight:600; }
+  .attend b.absent{ color:var(--error); }
+
+  /* Alerts — library */
+  .alert{ display:flex; gap:12px; padding:14px 16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); flex-wrap:wrap; text-align:left; }
+  .alert > svg{ width:20px; height:20px; margin-top:1px; color:var(--text-secondary); }
+  .alert > div{ flex:1; min-width:160px; }
+  .alert b{ display:block; font-weight:600; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); } .alert.error > svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning > svg{ color:var(--warning); }
+  .fallback{ margin-top:8px; display:flex; align-items:center; gap:6px; padding:5px 5px 5px 10px; border:1px solid var(--error-border); border-radius:var(--radius-md); background:#fff; min-width:0; }
+  .fallback code{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:500 12.5px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; color:var(--text-strong); }
+
+  /* Recording — library Video player pattern */
+  .rec-head{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+  .rec-head h2{ margin:0; }
+  .rec-head span{ font-size:13.5px; color:var(--text-tertiary); }
+  .stage{ position:relative; aspect-ratio:16/9; border-radius:var(--radius-lg); overflow:hidden; background:#0b0b12 center/cover no-repeat; user-select:none; }
+  .stage .shade{ position:absolute; inset:auto 0 0 0; height:60%; background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.7)); pointer-events:none; }
+  .stage .hit{ position:absolute; inset:0; border:0; background:transparent; }
+  .big-play{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:72px; height:72px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; background:rgba(255,255,255,.2); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.35); pointer-events:none; transition:opacity .2s ease; }
+  .big-play svg{ width:28px; height:28px; margin-left:4px; }
+  .stage.playing .big-play{ opacity:0; }
+  .ctrls{ position:absolute; left:0; right:0; bottom:0; padding:0 14px 10px; color:#fff; }
+  .seek{ height:16px; display:flex; align-items:center; cursor:pointer; touch-action:none; }
+  .track{ position:relative; width:100%; height:6px; border-radius:4px; background:rgba(255,255,255,.28); overflow:hidden; }
+  .track i{ position:absolute; inset:0 auto 0 0; background:#fff; border-radius:4px; }
+  .ctrl-row{ display:flex; align-items:center; gap:4px; margin-top:4px; }
+  .ctrl{ height:34px; min-width:34px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:#fff; font-size:13px; font-weight:600; }
+  .ctrl:hover{ background:rgba(255,255,255,.14); }
+  .ctrl svg{ width:19px; height:19px; }
+  .ctrl-row .time{ font-size:13px; font-variant-numeric:tabular-nums; margin-left:4px; }
+  .ctrl-row .sp{ flex:1; }
+  .rec-state{ display:flex; gap:14px; align-items:flex-start; }
+  .rec-state .ic{ width:40px; height:40px; border-radius:50%; background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rec-state .ic svg{ width:20px; height:20px; }
+  .rec-state b{ display:block; font-size:15px; }
+  .rec-state span{ display:block; font-size:14px; color:var(--text-secondary); margin-top:3px; line-height:1.5; }
+  .rec-offer{ display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .rec-offer .thumb{ width:160px; aspect-ratio:16/9; border-radius:var(--radius-md); background:#0b0b12 center/cover no-repeat; flex-shrink:0; }
+  .rec-offer .txt{ flex:1; min-width:160px; }
+  .rec-offer b{ display:block; font-size:15px; }
+  .rec-offer span{ display:block; font-size:13.5px; color:var(--text-secondary); margin-top:3px; }
+
+  /* Files */
+  .files{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+  .file{ display:flex; align-items:center; gap:12px; padding:10px 12px 10px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; min-width:0; }
+  .file .fic{ width:34px; height:34px; border-radius:var(--radius-md); background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .file .fic svg{ width:18px; height:18px; }
+  .file .body{ flex:1; min-width:0; }
+  .file .nm{ display:block; font-size:14.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file .mt{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* Location */
+  .loc{ display:flex; gap:14px; align-items:flex-start; }
+  .loc .ic{ width:40px; height:40px; border-radius:var(--radius-lg); background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .loc .ic svg{ width:20px; height:20px; }
+  .loc b{ display:block; font-size:16px; }
+  .loc span{ display:block; font-size:14px; color:var(--text-secondary); margin-top:3px; line-height:1.5; }
+
+  /* Modal — library (overlay #0a0a0a/50%, white r12, 24px) + QR scanner (hand-built, approved) */
+  .overlay{ position:fixed; inset:0; z-index:80; background:rgba(10,10,10,.5); display:flex; align-items:center; justify-content:center; padding:16px; animation:fade .15s ease both; }
+  @keyframes fade{ from{ opacity:0; } to{ opacity:1; } }
+  .modal{ width:min(420px, 100%); background:#fff; border-radius:var(--radius-xl); padding:24px; box-shadow:0 24px 48px rgba(10,10,10,.18); animation:rise .2s ease both; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(8px); } to{ opacity:1; transform:none; } }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .viewfinder{ position:relative; margin:18px 0 0; aspect-ratio:1; max-height:52vh; border-radius:var(--radius-lg); background:radial-gradient(circle at 50% 45%, #2a2a33, #0b0b12); overflow:hidden; }
+  .viewfinder .frame{ position:absolute; inset:18%; }
+  .viewfinder .frame i{ position:absolute; width:28px; height:28px; border:3px solid #fff; }
+  .viewfinder .frame i:nth-child(1){ top:0; left:0; border-right:0; border-bottom:0; border-radius:8px 0 0 0; }
+  .viewfinder .frame i:nth-child(2){ top:0; right:0; border-left:0; border-bottom:0; border-radius:0 8px 0 0; }
+  .viewfinder .frame i:nth-child(3){ bottom:0; left:0; border-right:0; border-top:0; border-radius:0 0 0 8px; }
+  .viewfinder .frame i:nth-child(4){ bottom:0; right:0; border-left:0; border-top:0; border-radius:0 0 8px 0; }
+  .viewfinder .line{ position:absolute; left:20%; right:20%; height:2px; background:rgba(99,102,241,.9); box-shadow:0 0 12px rgba(99,102,241,.8); animation:scan 1.8s ease-in-out infinite; }
+  @keyframes scan{ 0%,100%{ top:22%; } 50%{ top:76%; } }
+  .viewfinder small{ position:absolute; left:0; right:0; bottom:12px; text-align:center; font-size:12.5px; color:rgba(255,255,255,.75); }
+  .modal .row{ display:flex; justify-content:flex-end; gap:8px; margin-top:20px; }
+  .modal .row .btn{ height:44px; }
+  .featured{ width:48px; height:48px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:8px 0 18px 8px; }
+  .featured svg{ width:24px; height:24px; }
+  .featured.ok{ background:var(--success-soft); color:var(--success); box-shadow:0 0 0 8px var(--success-subtle); }
+  .featured.bad{ background:#fee2e2; color:var(--error); box-shadow:0 0 0 8px var(--error-subtle); }
+
+  /* Toast — library */
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:90; display:flex; align-items:center; gap:12px; padding:10px 10px 10px 14px; min-width:260px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); animation:rise .2s ease both; }
+  .toast .ic{ width:32px; height:32px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:15px; height:15px; }
+  .toast .ib{ margin-left:auto; }
+
+  /* Skeleton / empty (hand-built, approved) */
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:10px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  .empty{ padding:48px 20px; text-align:center; }
+  .empty b{ display:block; font-size:15px; }
+  .empty span{ display:block; margin-top:4px; font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:16px; }
+
+  /* Design-only state switch */
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:50; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+    .side{ position:static; order:-1; }
+  }
+  @media (max-width:640px){
+    .section{ padding:18px 16px; }
+    .when{ padding:18px 16px; }
+    .rec-offer .thumb{ width:100%; }
+    .rec-offer .btn{ width:100%; }
+    .toast{ left:16px; right:16px; bottom:56px; }
+    .ctrl.hide-sm{ display:none; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 56px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Live+Sessions" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="live-sessions.html">Live Sessions</a>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span id="crumb" aria-current="page"></span>
+    </nav>
+    <div id="root" aria-live="polite"></div>
+  </div></main>
+</div>
+
+<div id="modal" hidden></div>
+<div id="toast" class="toast" role="status" hidden></div>
+<label class="preview" title="Design-only: preview UI states">Preview
+  <select id="previewState"><option value="normal">Normal</option><option value="loading">Loading</option><option value="error">Error</option><option value="joinfail">Join fails</option><option value="checkinfail">Check-in rejected</option></select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (list fields mirror live-sessions.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same as live-sessions.html
+  var COURSE_IDS = { 'Advanced Data Structures':'CS-301', 'Interaction Design':'UX-204', 'Data Visualization Techniques':'DS-210', 'Modern Web Architecture':'WEB-303', 'Intro to Machine Learning':'AI-101', 'iOS App Development Basics':'MOB-201', 'Cloud Fundamentals':'CLOUD-FUND' };
+  var POSTER = 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=1200&h=675&q=70';
+  var SESSIONS = {
+    s1:{ title:'Graph Algorithms Q&A', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-23T13:30', dur:60, type:'online', platform:'Zoom', url:'https://zoom.us/j/84213377120',
+      desc:'<p>Open Q&A on BFS, DFS and shortest paths ahead of Module 6. Bring questions from the traversal practice.</p>' },
+    s2:{ title:'Design Critique Studio', course:'Interaction Design', instructor:'Prof. Vance', start:'2026-09-23T13:45', dur:75, type:'in-person', location:'Room 4B · North Building', address:'North Building, 2nd floor — take the east stairs', qr:true,
+      desc:'<p>Bring a printed or on-screen version of your checkout prototype. We’ll critique in groups of three.</p>', materials:[['Critique rubric.pdf', 184320]] },
+    s3:{ title:'Dashboards Office Hours', course:'Data Visualization Techniques', instructor:'Dr. Aris', start:'2026-09-23T14:10', dur:30, type:'online', platform:'Microsoft Teams', url:'https://teams.microsoft.com/l/meetup-join/19%3ameeting_dash',
+      desc:'<p>Drop in with questions about the Dashboard Critique assignment.</p>' },
+    s4:{ title:'Data Structures Lab', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-23T17:05', dur:90, type:'online', platform:'Google Meet', url:'https://meet.google.com/xqd-kpfa-mzr',
+      desc:'<p>Hands-on lab: implement iterative in-order and level-order traversal, then compare them against the recursive versions.</p><ul><li>Have the starter code from Module 4 open.</li><li>Cameras optional; we’ll use breakout rooms.</li></ul>', materials:[['Lab 4 handout.pdf', 356352]] },
+    s5:{ title:'Heaps Review', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-24T11:00', dur:45, type:'online', platform:'Zoom', cancelled:true },
+    s6:{ title:'Edge Rendering Workshop', course:'Modern Web Architecture', instructor:'Dr. Aris', start:'2026-09-25T10:00', dur:120, type:'online', platform:'Zoom', url:'https://zoom.us/j/99018327741',
+      desc:'<p>We’ll move one page of a sample app to the edge and measure the difference.</p>' },
+    s7:{ title:'Supervised Learning Clinic', course:'Intro to Machine Learning', instructor:'Dr. Aris', start:'2026-09-26T15:30', dur:60, type:'in-person', location:'Lab 2 · Science Wing', address:'Science Wing, ground floor', qr:true },
+    s8:{ title:'iOS Pairing Session', course:'iOS App Development Basics', instructor:'Prof. Vance', start:'2026-09-30T16:00', dur:90, type:'online', platform:'Google Meet', url:'https://meet.google.com/abc-defg-hij', desc:'<p>Pair up to build the list screen from Module 2.</p>' },
+    p1:{ title:'Dashboard Teardown', course:'Data Visualization Techniques', instructor:'Dr. Aris', start:'2026-09-22T16:00', dur:60, type:'online', platform:'Microsoft Teams', attendance:'present', recording:'processing', desc:'<p>A live teardown of three public dashboards.</p>' },
+    p2:{ title:'Binary Trees Walkthrough', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-21T17:00', dur:60, type:'online', platform:'Zoom', attendance:'present', recording:'available', recMins:58,
+      desc:'<p>Walkthrough of building a binary tree and the three depth-first traversals, with live Q&A.</p>', materials:[['Binary trees slides.pdf', 2202010], ['Traversal cheat sheet.pdf', 148480]] },
+    p3:{ title:'Cloud Office Hours', course:'Cloud Fundamentals', instructor:'Prof. Vance', start:'2026-09-20T12:00', dur:30, type:'online', platform:'Zoom', notStarted:true },
+    p4:{ title:'Prototyping Lab', course:'Interaction Design', instructor:'Prof. Vance', start:'2026-09-19T10:00', dur:90, type:'in-person', location:'Room 4B · North Building', address:'North Building, 2nd floor', attendance:'late', desc:'<p>Paper prototyping and first click-through prototypes.</p>', materials:[['Prototyping checklist.pdf', 98304]] },
+    p5:{ title:'Hashing Deep Dive', course:'Advanced Data Structures', instructor:'Prof. Vance', start:'2026-09-17T17:00', dur:60, type:'online', platform:'Zoom', attendance:'absent', recording:'attendees-only', desc:'<p>Collision strategies compared, with benchmarks.</p>', materials:[['Hashing slides.pdf', 1572864]] },
+    p6:{ title:'Kickoff: Modern Web Architecture', course:'Modern Web Architecture', instructor:'Dr. Aris', start:'2026-09-10T09:00', dur:45, type:'online', platform:'Google Meet', attendance:'present', desc:'<p>Course kickoff and project overview.</p>' }
+  };
+
+  /* ---------------- Helpers ---------------- */
+  var JOIN_WINDOW = 15, NOT_STARTED_AFTER = 30;
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var DOW = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+  function d(s){ return new Date(s); }
+  function end(s){ return new Date(d(s.start).getTime() + s.dur * 60000); }
+  function t12(x){ return x.toLocaleTimeString('en-US', { hour:'numeric', minute:'2-digit' }); }
+  function dayDiff(x){ var a = new Date(x); a.setHours(0,0,0,0); var b = new Date(NOW); b.setHours(0,0,0,0); return Math.round((a - b) / 86400000); }
+  function dayLabel(x){ var n = dayDiff(x); return n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : n === -1 ? 'Yesterday' : DOW[x.getDay()] + ', ' + MONTHS[x.getMonth()] + ' ' + x.getDate(); }
+  function mins(m){ return m >= 60 ? Math.floor(m / 60) + ' hr' + (m % 60 ? ' ' + (m % 60) + ' min' : '') : m + ' min'; }
+  function size(b){ return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB'; }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  var $ = function(i){ return document.getElementById(i); };
+
+  // Same derivation as live-sessions.html
+  function statusOf(s){
+    var st = d(s.start), en = end(s);
+    if (s.cancelled) return 'cancelled';
+    if (s.notStarted && NOW >= new Date(st.getTime() + NOT_STARTED_AFTER * 60000)) return 'not-started';
+    if (NOW >= en) return 'completed';
+    if (NOW >= st) return 'live';
+    if ((st - NOW) / 60000 <= JOIN_WINDOW) return 'soon';
+    return 'upcoming';
+  }
+  var LABEL = { upcoming:'Upcoming', soon:'Starting soon', live:'Live now', completed:'Completed', cancelled:'Cancelled', 'not-started':'Not started' };
+
+  var I = {
+    video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    pin:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 5-5.5 10.2-7.4 11.8a1 1 0 0 1-1.2 0C9.5 20.2 4 15 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    user:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>',
+    bell:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><path d="M3.3 15.3A1 1 0 0 0 4 17h16a1 1 0 0 0 .7-1.7C19.4 14 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.4 6-2.7 7.3"/></svg>',
+    qr:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="5" height="5" x="3" y="3" rx="1"/><rect width="5" height="5" x="16" y="3" rx="1"/><rect width="5" height="5" x="3" y="16" rx="1"/><path d="M21 16h-3a2 2 0 0 0-2 2v3M21 21v.01M12 7v3a2 2 0 0 1-2 2H7M3 12h.01M12 3h.01M12 16v.01M16 12h1M21 12v.01M12 21v-1"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+    pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>',
+    full:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/></svg>',
+    hourglass:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 22h14M5 2h14M17 22v-4.17a2 2 0 0 0-.59-1.42L12 12l-4.41 4.41A2 2 0 0 0 7 17.83V22M7 2v4.17a2 2 0 0 0 .59 1.42L12 12l4.41-4.41A2 2 0 0 0 17 6.17V2"/></svg>'
+  };
+
+  /* ---------------- Resolve ---------------- */
+  var params = new URLSearchParams(location.search);
+  var id = params.get('id') || 's4', S = SESSIONS[id], KEY = 'upspace-lsn-' + id;
+  var mode = params.get('state') || 'normal', local = {}, joinState = 'idle', recOpen = !!params.get('watch');
+
+  /* ---------------- Render ---------------- */
+  function render(){
+    var x = statusOf(S), st = d(S.start), cid = COURSE_IDS[S.course];
+    document.title = S.title + ' — Live Sessions';
+    $('crumb').textContent = S.title;
+    $('root').innerHTML =
+      '<header class="head"><span class="status ' + x + '"><i></i>' + LABEL[x] + '</span><h1 class="' + (x === 'cancelled' ? 'struck' : '') + '">' + esc(S.title) + '</h1>' +
+        '<div class="course">' + (cid ? '<a href="course-overview.html?id=' + cid + '">' + esc(S.course) + '</a>' : esc(S.course)) + ' · with ' + esc(S.instructor) + '</div></header>' +
+      '<div class="layout"><div class="stack">' + alerts(x) + recording(x) + locationBlock(x) + about() + materials() + '</div>' +
+      '<aside class="side" aria-label="When and where">' + whenCard(x, st) + '</aside></div>';
+    if (recOpen && S.recording === 'available' && x === 'completed') mountPlayer();
+  }
+
+  function alerts(x){
+    if (x === 'cancelled') return '<div class="alert error">' + I.alert + '<div><b>This session was cancelled.</b>It won’t take place on ' + MONTHS[d(S.start).getMonth()] + ' ' + d(S.start).getDate() + '.</div></div>';
+    if (x === 'not-started') return '<div class="alert warning">' + I.alert + '<div><b>This session didn’t start.</b>The instructor didn’t start it within 30 minutes of the scheduled time.</div></div>';
+    return '';
+  }
+
+  function whenCard(x, st){
+    var en = end(S), past = x === 'completed' || x === 'not-started';
+    var facts = '<li>' + I.clock + '<div>' + mins(S.dur) + '</div></li>' +
+      (S.type === 'online' ? '<li>' + I.video + '<div>Online · ' + esc(S.platform) + (past ? '' : '<small>Opens in ' + esc(S.platform) + ' when you join</small>') + '</div></li>'
+                           : '<li>' + I.pin + '<div>In-person · ' + esc(S.location) + (S.address ? '<small>' + esc(S.address) + '</small>' : '') + '</div></li>') +
+      '<li>' + I.user + '<div>' + esc(S.instructor) + '<small>Instructor</small></div></li>';
+    var html = '<div class="card when"><div class="when-top"><div class="tile' + (dayDiff(st) === 0 ? ' today' : '') + '"><span class="m">' + MONTHS[st.getMonth()] + '</span><span class="d">' + st.getDate() + '</span></div>' +
+      '<div><b>' + dayLabel(st) + '</b><span>' + t12(st) + ' – ' + t12(en) + '</span></div></div>' +
+      '<ul class="facts">' + facts + '</ul>' + cta(x, st);
+    if (!past && x !== 'cancelled') html += '<div class="reminder">' + I.bell + '<div><b>Reminder set</b>1 hour and 15 minutes before</div></div>';
+    if (past && S.attendance) html += '<div class="attend"><span>Your attendance</span><b class="' + S.attendance + '">' + { present:'Present', late:'Late', absent:'Absent' }[S.attendance] + '</b></div>';
+    return html + '</div>';
+  }
+
+  function cta(x, st){
+    var out = '';
+    if (S.type === 'online' && (x === 'live' || x === 'soon')){
+      out = '<button class="btn btn-primary btn-lg btn-block' + (joinState === 'joining' ? ' busy' : '') + '" type="button" id="joinBtn"' + (joinState === 'joining' ? ' aria-busy="true"' : '') + '>' +
+          (joinState === 'joining' ? '<span class="spin"></span>Joining…' : I.video + (local.joinedAt ? 'Rejoin session' : 'Join session')) + '</button>' +
+        (local.joinedAt ? '<div class="joined">' + I.check + 'You joined at ' + t12(d(local.joinedAt)) + '</div>'
+          : '<div class="hint' + (x === 'live' ? ' live' : '') + '">' + (x === 'live' ? 'Live now · started ' + Math.round((NOW - st) / 60000) + ' min ago' : 'Starts in ' + Math.round((st - NOW) / 60000) + ' min · you can join now') + '</div>') +
+        (joinState === 'failed' ? joinError() : '');
+    } else if (S.type === 'online' && x === 'upcoming'){
+      out = '<button class="btn btn-lg btn-block" type="button" disabled>' + I.video + 'Join session</button>' +
+        '<div class="hint">Session starts at <b>' + t12(st) + '</b>' + (dayDiff(st) === 0 ? '' : ' on ' + MONTHS[st.getMonth()] + ' ' + st.getDate()) + '.<br>Join opens 15 minutes before.</div>';
+    } else if (S.type === 'in-person' && x === 'live'){
+      out = S.qr
+        ? (local.checkedInAt ? '<div class="joined">' + I.check + 'Checked in at ' + t12(d(local.checkedInAt)) + '</div>'
+                              : '<button class="btn btn-primary btn-lg btn-block" type="button" id="checkinBtn">' + I.qr + 'Check in</button><div class="hint live">Live now · scan the code shown in the room</div>')
+        : '<div class="hint live">Live now in ' + esc(S.location) + '</div>';
+    } else if (S.type === 'in-person' && (x === 'upcoming' || x === 'soon')){
+      out = '<div class="hint">Starts at <b>' + t12(st) + '</b> in ' + esc(S.location) + '.' + (S.qr ? '<br>You’ll check in with the QR code shown in the room.' : '') + '</div>';
+    } else if (x === 'completed' && S.recording === 'available' && !recOpen){
+      out = '<button class="btn btn-primary btn-lg btn-block" type="button" id="watchBtn">' + I.play + 'Watch recording</button>';
+    }
+    return out ? '<div class="cta">' + out + '</div>' : '';
+  }
+  // LSN-003-NFR-02: platform API down → show the meeting URL as a fallback
+  function joinError(){
+    return '<div class="alert error" role="alert">' + I.alert + '<div><b>Unable to join this session.</b>' + esc(S.platform) + ' didn’t respond. Try again, or open the meeting link directly.' +
+      '<div class="fallback"><code>' + esc(S.url) + '</code><button class="ib" type="button" id="copyLink" aria-label="Copy meeting link">' + I.copy + 'Copy</button></div></div>' +
+      '<button class="btn btn-secondary" type="button" id="retryJoin" style="width:100%">Try again</button></div>';
+  }
+
+  function recording(x){
+    if (x !== 'completed' || !S.recording) return ''; // no recording → no section, no empty action
+    var head = '<div class="rec-head"><h2 id="recTitle">Session recording</h2>' + (S.recording === 'available' ? '<span>' + mins(S.recMins) + ' · Stream only</span>' : '') + '</div>';
+    if (S.recording === 'processing') return '<section class="card section" aria-labelledby="recTitle">' + head + '<div class="rec-state"><span class="ic">' + I.hourglass + '</span><div><b>Recording is being processed — available soon.</b><span>It usually appears within 30 minutes of the session ending.</span></div></div></section>';
+    if (S.recording === 'attendees-only') return '<section class="card section" aria-labelledby="recTitle">' + head + '<div class="rec-state"><span class="ic">' + I.lock + '</span><div><b>Available to attendees only</b><span>Your instructor shared this recording with learners who attended. If you were there, ask them to update your attendance.</span></div></div></section>';
+    if (recOpen) return '<section class="card section" id="recording" aria-labelledby="recTitle">' + head + '<div class="stage" id="stage" style="background-image:url(' + POSTER + ')"><div class="shade"></div><button class="hit" id="stageHit" type="button" aria-label="Play or pause recording"></button><span class="big-play" aria-hidden="true">' + I.play + '</span>' +
+      '<div class="ctrls"><div class="seek" id="seek" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><div class="track"><i id="fill" style="width:0"></i></div></div>' +
+      '<div class="ctrl-row"><button class="ctrl" id="pp" type="button" aria-label="Play">' + I.play + '</button><span class="time" id="time"></span><span class="sp"></span>' +
+      '<button class="ctrl" id="speed" type="button" aria-label="Playback speed">1×</button><button class="ctrl hide-sm" id="fs" type="button" aria-label="Fullscreen">' + I.full + '</button></div></div></div></section>';
+    return '<section class="card section" id="recording" aria-labelledby="recTitle">' + head + '<div class="rec-offer"><div class="thumb" style="background-image:url(' + POSTER + ')"></div><div class="txt"><b>Available to watch</b><span>Recorded ' + MONTHS[d(S.start).getMonth()] + ' ' + d(S.start).getDate() + ' · ' + mins(S.recMins) + '</span></div><button class="btn btn-secondary" type="button" id="watchInline">' + I.play + 'Watch recording</button></div></section>';
+  }
+
+  function locationBlock(x){
+    if (S.type !== 'in-person' || x === 'cancelled') return '';
+    return '<section class="card section" aria-labelledby="locTitle"><h2 id="locTitle">Location</h2><div class="loc"><span class="ic">' + I.pin + '</span><div><b>' + esc(S.location) + '</b>' + (S.address ? '<span>' + esc(S.address) + '</span>' : '') + (S.qr ? '<span>Attendance is taken with a QR code shown in the room.</span>' : '') + '</div></div></section>';
+  }
+  function about(){
+    return S.desc ? '<section class="card section" aria-labelledby="aboutTitle"><h2 id="aboutTitle">About this session</h2><div class="prose">' + S.desc + '</div></section>' : '';
+  }
+  function materials(){
+    if (!S.materials || !S.materials.length) return ''; // never invent materials
+    return '<section class="card section" id="materials" aria-labelledby="matTitle"><h2 id="matTitle">Session materials</h2><ul class="files">' + S.materials.map(function(f){
+      return '<li class="file"><span class="fic">' + I.file + '</span><span class="body"><span class="nm">' + esc(f[0]) + '</span><span class="mt">' + f[0].split('.').pop().toUpperCase() + ' · ' + size(f[1]) + '</span></span><a class="ib" href="#" aria-label="Download ' + esc(f[0]) + '">' + I.down + '<span>Download</span></a></li>';
+    }).join('') + '</ul></section>';
+  }
+
+  /* ---------------- Join — hand off to the connected platform (LSN-003-FR-02) ---------------- */
+  function join(){
+    if (joinState === 'joining') return;
+    joinState = 'joining'; render();
+    setTimeout(function(){
+      if (mode === 'joinfail'){ joinState = 'failed'; mode = 'normal'; render(); return; } // fails once, retry succeeds
+      joinState = 'idle';
+      local.joinedAt = NOW.toISOString(); save(KEY, local);
+      // ponytail: mock doesn't open a real meeting tab; build does window.open(S.url, '_blank', 'noopener')
+      render(); toast('Opening ' + S.platform + ' in a new tab…');
+    }, 1100);
+  }
+
+  /* ---------------- QR check-in (in-app scanner, user decision) ---------------- */
+  var scanTimer = null;
+  function openScanner(){
+    var m = $('modal');
+    m.hidden = false;
+    m.innerHTML = '<div class="overlay" id="ov"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="scanTitle"><h3 id="scanTitle">Check in</h3><p>Point your camera at the QR code on the screen at the front of the room.</p>' +
+      '<div class="viewfinder" aria-hidden="true"><div class="frame"><i></i><i></i><i></i><i></i></div><div class="line"></div><small>Looking for a code…</small></div>' +
+      '<div class="row"><button class="btn btn-secondary" type="button" id="scanCancel">Cancel</button></div></div></div>';
+    $('scanCancel').focus();
+    $('scanCancel').onclick = closeModal;
+    $('ov').addEventListener('click', function(e){ if (e.target.id === 'ov') closeModal(); });
+    scanTimer = setTimeout(function(){
+      var bad = mode === 'checkinfail';
+      if (!bad){ local.checkedInAt = new Date(NOW.getTime() + 60000).toISOString(); save(KEY, local); }
+      m.querySelector('.modal').innerHTML = bad
+        ? '<div class="featured bad">' + I.x + '</div><h3>Couldn’t check you in</h3><p>You’re not enrolled in this session’s class.</p><div class="row"><button class="btn btn-secondary" type="button" id="scanDone">Close</button></div>'
+        : '<div class="featured ok">' + I.check + '</div><h3>You’re checked in</h3><p>Recorded at ' + t12(d(local.checkedInAt)) + ' for ' + esc(S.title) + '.</p><div class="row"><button class="btn btn-primary" type="button" id="scanDone">Done</button></div>';
+      $('scanDone').focus();
+      $('scanDone').onclick = function(){ closeModal(); render(); };
+    }, 2200);
+  }
+  function closeModal(){ clearTimeout(scanTimer); var m = $('modal'); m.hidden = true; m.innerHTML = ''; if ($('checkinBtn')) $('checkinBtn').focus(); }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('modal').hidden) closeModal(); });
+
+  /* ---------------- Recording player (Video player pattern; simulated clock) ---------------- */
+  var tSec = 0, playing = false, speed = 1, timer = null;
+  function mountPlayer(){
+    var dur = S.recMins * 60;
+    function fmt(s){ s = Math.floor(s); return Math.floor(s / 60) + ':' + String(s % 60).padStart(2, '0'); }
+    function paint(){ var p = tSec / dur * 100; $('fill').style.width = p + '%'; $('seek').setAttribute('aria-valuenow', Math.round(p)); $('time').textContent = fmt(tSec) + ' / ' + fmt(dur); }
+    function set(p){
+      playing = p; $('stage').classList.toggle('playing', p);
+      $('pp').innerHTML = p ? I.pause : I.play; $('pp').setAttribute('aria-label', p ? 'Pause' : 'Play');
+      clearInterval(timer);
+      if (p) timer = setInterval(function(){ tSec = Math.min(dur, tSec + 0.25 * speed); paint(); if (tSec >= dur) set(false); }, 250);
+    }
+    $('pp').onclick = $('stageHit').onclick = function(){ set(!playing); };
+    $('speed').onclick = function(){ var SP = [1, 1.25, 1.5, 2, 0.75]; speed = SP[(SP.indexOf(speed) + 1) % SP.length]; this.textContent = speed + '×'; };
+    $('fs').onclick = function(){ if (document.fullscreenElement) document.exitFullscreen(); else if ($('stage').requestFullscreen) $('stage').requestFullscreen(); };
+    var seek = $('seek');
+    function at(e){ var r = seek.getBoundingClientRect(); tSec = Math.max(0, Math.min(dur, (e.clientX - r.left) / r.width * dur)); paint(); }
+    seek.addEventListener('pointerdown', function(e){ at(e); seek.setPointerCapture(e.pointerId); seek.onpointermove = at; seek.onpointerup = function(){ seek.onpointermove = null; }; });
+    seek.addEventListener('keydown', function(e){ if (e.key === 'ArrowRight'){ tSec = Math.min(dur, tSec + 10); paint(); } if (e.key === 'ArrowLeft'){ tSec = Math.max(0, tSec - 10); paint(); } });
+    paint();
+  }
+  function openRecording(){ recOpen = true; clearInterval(timer); render(); $('recording').scrollIntoView({ behavior:'smooth', block:'start' }); }
+
+  /* Delegated actions */
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'joinBtn' || t.id === 'retryJoin') join();
+    if (t.id === 'checkinBtn') openScanner();
+    if (t.id === 'watchBtn' || t.id === 'watchInline') openRecording();
+    if (t.id === 'copyLink'){ try{ navigator.clipboard.writeText(S.url); }catch(err){} toast('Meeting link copied'); }
+  });
+
+  /* Toast — library pattern */
+  var toastTimer;
+  function toast(msg){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic">' + I.check + '</span><span>' + esc(msg) + '</span><button class="ib" type="button" aria-label="Dismiss">' + I.x + '</button>';
+    t.hidden = false; t.querySelector('.ib').onclick = function(){ t.hidden = true; };
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 3200);
+  }
+
+  /* ---------------- Load — skeleton in the layout, never a full-page spinner ---------------- */
+  function skeleton(){
+    $('crumb').innerHTML = '<span class="sk" style="width:160px;display:inline-block"></span>';
+    var block = function(w){ return '<div class="card section">' + w.map(function(x){ return '<span class="sk" style="width:' + x + '%"></span>'; }).join('') + '</div>'; };
+    $('root').innerHTML = '<header class="head" aria-busy="true" aria-label="Loading session details"><span class="sk" style="width:90px"></span><span class="sk" style="width:46%;height:26px;margin-top:12px"></span><span class="sk" style="width:28%"></span></header>' +
+      '<div class="layout"><div class="stack">' + block([24, 94, 88, 60]) + block([30, 100]) + '</div><aside class="side">' + block([50, 80, 80, 80, 100]) + '</aside></div>';
+  }
+  function fetchDetail(){
+    skeleton();
+    setTimeout(function(){
+      if (mode === 'loading') return;
+      if (mode === 'error' || !S){
+        $('crumb').textContent = 'Session unavailable';
+        $('root').innerHTML = '<div class="card"><div class="empty" role="alert"><b>' + (S ? 'Couldn’t load this session.' : 'Session unavailable.') + '</b><span>' + (S ? 'Check your connection and try again.' : 'It may have been removed, or you’re no longer part of this class.') + '</span>' +
+          (S ? '<button class="btn btn-secondary" type="button" id="retryLoad">Try again</button> ' : '') + '<a class="btn btn-secondary" href="live-sessions.html">Back to Live Sessions</a></div></div>';
+        if ($('retryLoad')) $('retryLoad').onclick = function(){ mode = 'normal'; ps.value = 'normal'; fetchDetail(); };
+        return;
+      }
+      local = load(KEY) || {};
+      render();
+      var x = statusOf(S);
+      if (params.get('join') && S.type === 'online' && (x === 'live' || x === 'soon')) join();
+      if (params.get('checkin') && S.type === 'in-person' && x === 'live' && S.qr && !local.checkedInAt) openScanner();
+      if (recOpen && $('recording')) $('recording').scrollIntoView({ block:'start' });
+      if (location.hash === '#materials' && $('materials')) $('materials').scrollIntoView({ block:'start' });
+    }, 450);
+  }
+  var ps = $('previewState');
+  ps.value = mode;
+  ps.addEventListener('change', function(){ mode = this.value; joinState = 'idle'; local = {}; try{ localStorage.removeItem(KEY); }catch(e){} fetchDetail(); });
+  fetchDetail();
+</script>
+</body>
+</html>

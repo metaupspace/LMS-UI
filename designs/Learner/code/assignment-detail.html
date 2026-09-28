@@ -1,0 +1,817 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Assignment</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Assignment detail (ASM-005 submit assignment, ASM-006
+     results & feedback). Opened from assignments.html (?id=a1…a8).
+     One page, state driven by the assignment's config + submissions:
+       To do / In progress → instructions + submission editor (draft auto-save,
+         ASM-005-FR-04 / NFR-01) → "Ready to submit?" popover → Submitted
+       Grading in progress → no grade shown (ASM-006-FR-04)
+       Graded → score, instructor feedback, rubric breakdown only when result
+         visibility includes feedback (user decision), submitted work
+       Hidden until released → "Results will be available once released…"
+       Resubmit → only when attempts remain and the window is open (FR-08)
+       Overdue → submittable while availability window is open, else
+         "Submission closed" (user decision on a spec conflict)
+     File rules: PDF, DOCX, images, ZIP (FR-06); 25 MB/file from the library
+     File Dropper spec; size error copy from ASM-005 edge case.
+     Library: Breadcrumbs, Badge (dot), Buttons, File Dropper, Progress bar,
+     Popover, Toast, Alerts, Table. Hand-built (approved,
+     MISSING_COMPONENTS.md): Rich text editor, Skeleton loader, Empty state.
+     Demo: ?state=loading | error | savefail | submitfail ; a file whose name
+     contains "fail" fails mid-upload.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-popover:#d4d4d4;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 64px; }
+
+  /* Buttons — library sizes (md 40 / lg 44) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-lg{ height:44px; padding:0 18px; font-size:14.5px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+  .btn-primary:disabled{ background:var(--action-primary); color:#fff; opacity:.75; }
+  .btn-block{ width:100%; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Breadcrumbs — library */
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:18px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs > span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Head */
+  .head{ margin-bottom:24px; }
+  .eyebrow{ font-size:14px; color:var(--text-secondary); }
+  .eyebrow a{ font-weight:600; color:var(--text-primary); }
+  .eyebrow a:hover{ color:var(--action-primary); }
+  .head h1{ margin:6px 0 0; font-size:clamp(26px, 2.2vw, 32px); font-weight:700; letter-spacing:-.6px; line-height:1.2; text-wrap:balance; }
+
+  /* Layout */
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:clamp(24px, 2.4vw, 36px); align-items:start; }
+  .side{ position:sticky; top:0; }
+  .stack{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+
+  /* Status — Badge (dot), same vocabulary as assignments.html */
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--text-strong); }
+  .status i{ width:8px; height:8px; border-radius:50%; background:var(--text-disabled); }
+  .status.todo i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
+  .status.in-progress i{ background:var(--action-primary); }
+  .status.submitted i, .status.grading i{ background:var(--text-tertiary); }
+  .status.graded i{ background:var(--success); }
+  .status.overdue, .status.closed{ color:var(--error); }
+  .status.overdue i, .status.closed i{ background:var(--error); }
+
+  /* Side summary card */
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .summary{ padding:20px; }
+  .summary .status{ font-size:15px; }
+  .summary dl{ margin:16px 0 18px; display:grid; grid-template-columns:auto 1fr; gap:10px 16px; font-size:14px; }
+  .summary dt{ color:var(--text-tertiary); }
+  .summary dd{ margin:0; text-align:right; font-weight:600; color:var(--text-strong); font-variant-numeric:tabular-nums; }
+  .summary dd small{ display:block; font-weight:500; font-size:12.5px; color:var(--text-tertiary); }
+  .summary dd.late small{ color:var(--error); }
+  .summary .note{ margin:12px 0 0; font-size:13px; line-height:1.5; color:var(--text-secondary); }
+  .summary .actions{ display:grid; gap:8px; }
+
+  /* Sections */
+  .section{ padding:22px 24px; }
+  .section h2{ margin:0 0 14px; font-size:17px; font-weight:700; letter-spacing:-.2px; }
+  .section h3{ margin:22px 0 10px; font-size:14px; font-weight:700; color:var(--text-strong); }
+  .prose{ max-width:72ch; font-size:15px; line-height:1.65; color:var(--text-strong); overflow-wrap:anywhere; }
+  .prose p{ margin:0 0 12px; }
+  .prose ul, .prose ol{ margin:0 0 12px; padding-left:22px; }
+  .prose li{ margin:4px 0; }
+  .prose a{ color:var(--action-primary); text-decoration:underline; text-underline-offset:2px; }
+  .prose > :last-child{ margin-bottom:0; }
+  .muted{ font-size:13.5px; color:var(--text-tertiary); }
+
+  /* File rows (library File Dropper · uploaded file item) */
+  .files{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+  .file{ display:flex; align-items:center; gap:12px; padding:10px 12px 10px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; min-width:0; }
+  .file.up{ border-color:var(--action-primary-soft); }
+  .file.err{ border-color:var(--error-border); background:var(--error-subtle); }
+  .file .ic{ width:34px; height:34px; border-radius:var(--radius-md); background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .file .ic svg{ width:18px; height:18px; }
+  .file.err .ic{ background:#fff; color:var(--error); }
+  .file .body{ flex:1; min-width:0; }
+  .file .nm{ display:block; font-size:14.5px; font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file .mt{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+  .file.err .mt{ color:var(--error); font-weight:500; }
+  .file .bar{ height:4px; background:var(--surface-overlay); border-radius:var(--radius-full); overflow:hidden; margin-top:7px; }
+  .file .bar i{ display:block; height:100%; background:var(--action-primary); border-radius:var(--radius-full); transition:width .2s linear; }
+  .file .acts{ display:flex; gap:2px; flex-shrink:0; }
+  .ib{ height:32px; min-width:32px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); font-size:13px; font-weight:600; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib.danger:hover{ background:var(--error-subtle); color:var(--error); }
+  .ib svg{ width:16px; height:16px; }
+
+  /* Submission editor */
+  .field + .field{ margin-top:22px; }
+  .label{ display:flex; align-items:baseline; justify-content:space-between; gap:4px 12px; flex-wrap:wrap; margin-bottom:8px; font-size:14px; font-weight:600; color:var(--text-strong); }
+  .label small{ font-weight:500; font-size:12.5px; color:var(--text-tertiary); }
+  /* Rich text editor (hand-built, approved) */
+  .rte{ border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; transition:border-color .15s ease, box-shadow .15s ease; }
+  .rte:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .rte-bar{ display:flex; align-items:center; gap:2px; padding:6px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .rte-bar .sep{ width:1px; height:20px; background:var(--border-default); margin:0 4px; }
+  .rte-bar button{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); }
+  .rte-bar button:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .rte-bar button[aria-pressed="true"]{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .rte-bar button svg{ width:16px; height:16px; }
+  .rte-link{ display:flex; gap:6px; padding:8px; border-bottom:1px solid var(--border-subtle); }
+  .rte-link input{ flex:1; height:34px; border:1px solid var(--border-default); border-radius:var(--radius-md); padding:0 10px; font-size:14px; outline:none; min-width:0; }
+  .rte-link input:focus{ border-color:var(--focus-ring); }
+  .rte-link .btn{ height:34px; padding:0 12px; font-size:13px; }
+  .rte-area{ min-height:180px; max-height:460px; overflow-y:auto; padding:14px 16px; font-size:15px; line-height:1.65; color:var(--text-primary); outline:none; overflow-wrap:anywhere; }
+  .rte-area:empty::before{ content:attr(data-placeholder); color:var(--text-tertiary); pointer-events:none; }
+  .rte-area p, .rte-area div{ margin:0 0 8px; }
+  .rte-area ul, .rte-area ol{ margin:0 0 8px; padding-left:22px; }
+  .rte-area a{ color:var(--action-primary); text-decoration:underline; }
+  .rte-foot{ display:flex; justify-content:flex-end; padding:6px 12px 8px; font-size:12.5px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+
+  /* File Dropper — library (dashed #4f46e5 on #eef2ff, r8) */
+  .drop{ display:flex; align-items:center; gap:14px; padding:16px 18px; border:1.5px dashed var(--action-primary); border-radius:var(--radius-lg); background:var(--action-primary-subtle); cursor:pointer; transition:background-color .15s ease; }
+  .drop:hover, .drop.over{ background:var(--action-primary-soft); }
+  .drop .ic{ width:40px; height:40px; border-radius:50%; background:#fff; color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .drop .ic svg{ width:20px; height:20px; }
+  .drop b{ display:block; font-size:15px; font-weight:500; color:var(--text-primary); }
+  .drop b u{ color:var(--action-primary); text-underline-offset:2px; }
+  .drop span{ display:block; font-size:13.5px; color:var(--text-secondary); margin-top:2px; }
+  .drop + .files{ margin-top:10px; }
+
+  .sub-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px 16px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid var(--border-subtle); position:relative; }
+  .saved{ display:flex; align-items:center; gap:8px; font-size:13.5px; color:var(--text-secondary); min-width:0; }
+  .saved svg{ width:16px; height:16px; color:var(--success); }
+  .saved.saving svg{ color:var(--text-tertiary); }
+  .saved.fail{ color:#854d0e; }
+  .saved.fail svg{ color:var(--warning); }
+  .sub-actions{ display:flex; gap:8px; margin-left:auto; }
+  #submitError:not(:empty){ margin-bottom:16px; }
+
+  /* Popover — library (white, #d4d4d4 border, r12, heading 16 bold) */
+  .pop{ position:absolute; right:0; bottom:calc(100% + 10px); z-index:20; width:min(360px, 100%); background:#fff; border:1px solid var(--border-popover); border-radius:var(--radius-xl); padding:18px 18px 16px; box-shadow:0 12px 32px rgba(23,23,17,.10); animation:popIn .18s ease both; }
+  .pop::after{ content:""; position:absolute; right:52px; bottom:-7px; width:12px; height:12px; background:#fff; border-right:1px solid var(--border-popover); border-bottom:1px solid var(--border-popover); transform:rotate(45deg); }
+  @keyframes popIn{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+  .pop h4{ margin:0; font-size:16px; font-weight:700; }
+  .pop p{ margin:4px 0 0; font-size:13.5px; line-height:1.5; color:var(--text-secondary); }
+  .pop .sum{ margin:12px 0 0; padding:10px 12px; border-radius:var(--radius-lg); background:var(--surface-canvas); font-size:13px; color:var(--text-strong); line-height:1.55; overflow-wrap:anywhere; }
+  .pop .sum b{ font-weight:600; }
+  .pop .late{ color:var(--error); }
+  .pop .row{ display:flex; justify-content:flex-end; gap:8px; margin-top:14px; }
+
+  /* Alerts — library, tinted by feedback family */
+  .alert{ display:flex; gap:12px; padding:14px 16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); flex-wrap:wrap; }
+  .alert > svg{ width:20px; height:20px; margin-top:1px; color:var(--text-secondary); }
+  .alert > div{ flex:1; min-width:200px; }
+  .alert b{ display:block; font-weight:600; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); }
+  .alert.error > svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); }
+  .alert.warning > svg{ color:var(--warning); }
+  .alert .act{ align-self:center; }
+
+  /* Result */
+  .grade{ display:flex; align-items:flex-end; gap:12px 28px; flex-wrap:wrap; }
+  .score{ font-size:44px; font-weight:700; letter-spacing:-1.2px; line-height:1; font-variant-numeric:tabular-nums; }
+  .score small{ font-size:20px; font-weight:600; color:var(--text-tertiary); letter-spacing:-.3px; }
+  .grade-meta{ font-size:14px; color:var(--text-secondary); line-height:1.6; padding-bottom:2px; }
+  .grade-meta b{ color:var(--success); font-weight:600; }
+  .grade-meta b.fail{ color:var(--error); }
+  .feedback{ padding:16px 18px; border-left:3px solid var(--action-primary-soft); background:var(--surface-canvas); border-radius:0 var(--radius-lg) var(--radius-lg) 0; max-width:none; }
+  .feedback .by{ margin-top:10px; font-size:13px; color:var(--text-tertiary); }
+  /* Table — library (rubric breakdown) */
+  .rubric-wrap{ border:1px solid var(--border-default); border-radius:var(--radius-lg); overflow:hidden; }
+  .rubric{ width:100%; border-collapse:collapse; font-size:14px; }
+  .rubric th{ background:var(--surface-raised); text-align:left; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:9px 14px; }
+  .rubric td{ padding:11px 14px; border-top:1px solid var(--border-default); vertical-align:top; }
+  .rubric td:last-child, .rubric th:last-child{ text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .rubric td small{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+  .rubric tfoot td{ font-weight:700; background:var(--surface-canvas); }
+  .waiting{ display:flex; gap:14px; align-items:flex-start; }
+  .waiting .ic{ width:40px; height:40px; border-radius:50%; background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .waiting .ic svg{ width:20px; height:20px; }
+  .waiting b{ display:block; font-size:15px; }
+  .waiting span{ display:block; font-size:14px; color:var(--text-secondary); margin-top:3px; line-height:1.5; }
+
+  .sub-meta{ display:flex; flex-wrap:wrap; gap:6px 14px; margin:-6px 0 14px; font-size:13.5px; color:var(--text-secondary); }
+  .sub-meta .late{ color:var(--error); font-weight:500; }
+  .response{ padding:14px 16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); max-width:none; }
+  .attempts{ list-style:none; margin:0; padding:0; border:1px solid var(--border-default); border-radius:var(--radius-lg); }
+  .attempts li + li{ border-top:1px solid var(--border-default); }
+  .attempts summary{ display:flex; align-items:center; gap:12px; padding:12px 14px; cursor:pointer; list-style:none; font-size:14px; }
+  .attempts summary::-webkit-details-marker{ display:none; }
+  .attempts summary b{ font-weight:600; }
+  .attempts summary span{ color:var(--text-tertiary); }
+  .attempts summary em{ margin-left:auto; font-style:normal; font-weight:600; font-variant-numeric:tabular-nums; }
+  .attempts .chev{ width:16px; height:16px; color:var(--text-tertiary); transition:transform .2s ease; }
+  .attempts details[open] .chev{ transform:rotate(90deg); }
+  .attempts .inner{ padding:4px 14px 14px; }
+
+  /* Empty state (hand-built, approved) */
+  .empty{ padding:24px 16px; text-align:center; border:1px dashed var(--border-default); border-radius:var(--radius-lg); }
+  .empty b{ display:block; font-size:15px; }
+  .empty span{ display:block; margin-top:3px; font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:14px; }
+  .empty.plain{ border:0; padding:40px 16px; }
+
+  /* Skeleton loader (hand-built, approved) */
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:10px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* Toast — library (Success: #f5f5f5, r8, round check #dcfce7) */
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:70; display:flex; align-items:center; gap:12px; padding:10px 10px 10px 14px; min-width:260px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; font-weight:500; color:var(--text-primary); box-shadow:0 8px 24px rgba(23,23,17,.08); animation:popIn .2s ease both; }
+  .toast .ic{ width:32px; height:32px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:15px; height:15px; }
+  .toast .ib{ margin-left:auto; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+    .side{ position:static; order:-1; }
+    .summary{ display:grid; grid-template-columns:minmax(0,1fr) minmax(220px, 300px); gap:0 28px; align-items:center; }
+    .summary > .status{ grid-column:1; }
+    .summary dl{ grid-column:1; margin:12px 0 0; grid-template-columns:repeat(auto-fit, minmax(120px, auto)); }
+    .summary dt{ grid-row:1; }
+    .summary dd{ grid-row:2; text-align:left; }
+    .summary .actions{ grid-column:2; grid-row:1 / span 2; }
+    .summary .note{ grid-column:1 / -1; }
+  }
+  @media (max-width:640px){
+    .summary{ display:block; }
+    .summary dl{ display:grid; grid-template-columns:auto 1fr; margin:14px 0 16px; }
+    .summary dt, .summary dd{ grid-row:auto; }
+    .summary dd{ text-align:right; }
+    .section{ padding:18px 16px; }
+    .score{ font-size:38px; }
+    .sub-actions{ width:100%; }
+    .sub-actions .btn{ flex:1; padding:0 10px; }
+    .pop{ width:100%; }
+    .pop::after{ right:22%; }
+    .drop{ padding:14px; }
+    .toast{ left:16px; right:16px; bottom:16px; }
+    .file .ib span{ display:none; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 40px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Assignments" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="assignments.html">Assignments</a>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span id="crumb" aria-current="page"></span>
+    </nav>
+    <div id="root"></div>
+  </div></main>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<input type="file" id="fileInput" multiple hidden accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.zip">
+<input type="file" id="replaceInput" hidden accept=".pdf,.docx,.doc,.png,.jpg,.jpeg,.gif,.webp,.zip">
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (list fields mirror assignments.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same as assignments.html
+  var MAX_MB = 25, ACCEPT = /\.(pdf|docx?|png|jpe?g|gif|webp|zip)$/i, FMT = 'PDF, DOCX, images or ZIP';
+
+  var ASSIGNMENTS = {
+    a1:{ title:'Trees & Graphs Assignment', course:'Advanced Data Structures', courseId:'CS-301', module:'Module 4 · Binary Trees', due:'2026-09-24T23:59', closes:'2026-09-24T23:59', points:100, passMark:70, maxAttempts:1, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Put the traversal techniques from Module 4 to work on two small problems.</p><ol><li><b>Traversals.</b> Implement in-order, pre-order and post-order traversal for the binary tree in <i>starter-code.zip</i>. Include one recursive and one iterative version of in-order.</li><li><b>Graph search.</b> Using the adjacency list provided, implement breadth-first search from node <i>A</i> and return the visit order.</li><li><b>Explain.</b> In 200–400 words, compare the time and space cost of your recursive and iterative in-order traversals.</li></ol><p>Write your explanation below and upload your code as a ZIP. Code must run with the provided test file.</p>',
+      materials:[['Assignment brief.pdf', 421888], ['Reference material.pdf', 1887436], ['starter-code.zip', 24576]], submissions:[] },
+    a2:{ title:'Dashboard Critique', course:'Data Visualization Techniques', courseId:'DS-210', module:'Module 3 · Dashboards', due:'2026-09-28T23:59', closes:'2026-09-28T23:59', points:50, passMark:60, maxAttempts:1, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Pick a public dashboard you use at work or find online and critique it using the five principles from Lesson 3.2.</p><ul><li>Include a screenshot of the dashboard.</li><li>For each principle, say what works and what you would change.</li><li>End with one redesign sketch (photo or image).</li></ul>',
+      materials:[['Critique template.docx', 58368]], submissions:[],
+      seedDraft:{ text:'<p>I chose the regional sales dashboard our ops team uses every Monday.</p><p><b>1. Clarity of purpose</b> — the title says “Sales overview” but the first chart is inventory, which makes the main question unclear.</p>', files:[['dashboard-screenshot.png', 1258291]], savedAt:'2026-09-22T19:12' } },
+    a3:{ title:'Interaction Prototype', course:'Interaction Design', courseId:'UX-204', module:'Module 2 · Prototyping', due:'2026-09-20T23:59', closes:'2026-09-27T23:59', points:100, passMark:70, maxAttempts:1, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Prototype the checkout flow from the case study with at least three states per step (default, loading, error).</p><p>Export your prototype as a PDF walkthrough and add a short note on the one interaction you tested with a user.</p>',
+      materials:[['Case study — checkout.pdf', 2411724]], submissions:[] },
+    a4:{ title:'Hash Table Implementation', course:'Advanced Data Structures', courseId:'CS-301', module:'Module 2 · Arrays, Lists & Hashing', due:'2026-09-15T23:59', closes:'2026-09-18T23:59', points:100, passMark:70, maxAttempts:1, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Implement a hash table with separate chaining that resizes at a load factor of 0.75. Report the average probe count for 10,000 inserts.</p>',
+      materials:[['Hash table brief.pdf', 318464]], submissions:[] },
+    a5:{ title:'Edge Rendering Write-up', course:'Modern Web Architecture', courseId:'WEB-303', module:'Module 3 · Edge Rendering', due:'2026-09-22T23:59', closes:'2026-09-22T23:59', points:40, passMark:60, maxAttempts:1, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Describe one page in a product you know that would benefit from edge rendering. Explain what you would cache, for how long, and how you would invalidate it.</p>',
+      materials:[], submissions:[{ at:'2026-09-21T18:42', text:'<p>Our pricing page is a good candidate: every visitor reads it, it changes only when marketing updates plans, and it is slow today because the origin renders it on every request.</p><p>I would cache the full HTML at the edge for 10 minutes and purge on publish from the CMS webhook.</p>', files:[['edge-caching-diagram.png', 845210]] }] },
+    a6:{ title:'Heap Sort Analysis', course:'Advanced Data Structures', courseId:'CS-301', module:'Module 3 · Stacks, Queues & Heaps', due:'2026-09-18T23:59', closes:'2026-09-30T23:59', points:100, passMark:70, maxAttempts:2, scoring:'latest', visibility:'feedback',
+      instructions:'<p>Implement heap sort in the language of your choice and analyse it.</p><ol><li>Show the heap after each sift-down for the input <i>[5, 12, 3, 9, 1, 7]</i>.</li><li>Prove the O(n log n) bound.</li><li>Compare against quicksort on already-sorted input.</li></ol>',
+      materials:[['Heap sort brief.pdf', 296960]],
+      submissions:[{ at:'2026-09-17T21:05', text:'<p>I implemented heap sort in Python using an array-backed max-heap. Build-heap runs bottom-up from index n/2 − 1.</p><p>Each extraction costs O(log n), so n extractions give O(n log n). On sorted input, quicksort with a first-element pivot degrades to O(n²), while heap sort stays O(n log n).</p>', files:[['heapsort.zip', 12288], ['sift-down-trace.pdf', 204800]],
+        grade:{ score:84, released:true, grader:'Prof. Vance', gradedAt:'2026-09-19T10:30',
+          feedback:'Solid implementation and a clear trace — the sift-down steps are easy to follow. Your complexity proof skips why build-heap is O(n) rather than O(n log n); add the summation over tree levels. The quicksort comparison is correct but would be stronger with one measured timing.',
+          rubric:[['Correctness', 'Sorts all test inputs; handles duplicates', 36, 40], ['Complexity analysis', 'Proof of O(n log n) and build-heap cost', 22, 25], ['Code quality', 'Readable, commented, idiomatic', 16, 20], ['Written comparison', 'Quicksort vs heap sort on sorted input', 10, 15]] } }] },
+    a7:{ title:'Supervised Learning Report', course:'Intro to Machine Learning', courseId:'AI-101', module:'Module 2 · Supervised Learning', due:'2026-09-19T23:59', closes:'2026-09-19T23:59', points:60, passMark:60, maxAttempts:1, scoring:'latest', visibility:'hidden',
+      instructions:'<p>Train a logistic regression model on the provided dataset and report precision, recall and one thing you would try next.</p>',
+      materials:[['churn-dataset.zip', 3145728]], submissions:[{ at:'2026-09-19T16:20', text:'<p>Precision 0.81, recall 0.67 on the held-out set. Next I would try class weighting, since churners are only 14% of the data.</p>', files:[['report.pdf', 512000]], grade:{ score:51, released:false } }] },
+    a8:{ title:'Component Library Audit', course:'Modern Frontend Frameworks', courseId:'WEB-202', module:'Module 5 · Design Systems', due:'2026-09-05T23:59', closes:'2026-09-05T23:59', points:50, passMark:60, maxAttempts:1, scoring:'latest', visibility:'score',
+      instructions:'<p>Audit five components from a design system of your choice for accessibility and consistency.</p>',
+      materials:[], submissions:[{ at:'2026-09-04T11:10', text:'<p>I audited Button, Input, Modal, Tabs and Toast in our internal library.</p>', files:[['audit.pdf', 689152]], grade:{ score:46, released:true, grader:'Dr. Aris', gradedAt:'2026-09-08T09:00' } }] }
+  };
+
+  /* ---------------- Helpers ---------------- */
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function d(s){ return new Date(s); }
+  function md(s){ var x = d(s); return MONTHS[x.getMonth()] + ' ' + x.getDate(); }
+  function time(s){ return d(s).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
+  function full(s){ return md(s) + ', ' + d(s).getFullYear() + ' at ' + time(s); }
+  function days(s){ var a = d(s); a.setHours(0,0,0,0); var b = new Date(NOW); b.setHours(0,0,0,0); return Math.round((a - b) / 86400000); }
+  function size(b){ return b < 1048576 ? Math.max(1, Math.round(b / 1024)) + ' KB' : (b / 1048576).toFixed(1).replace(/\.0$/, '') + ' MB'; }
+  function ext(n){ return (n.split('.').pop() || '').toUpperCase(); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  function words(html){ var t = document.createElement('div'); t.innerHTML = html || ''; var s = (t.textContent || '').trim(); return s ? s.split(/\s+/).length : 0; }
+  // Learner-authored HTML is re-rendered, so keep only basic formatting tags and http(s) links
+  function clean(html){
+    var doc = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html');
+    var OK = { B:1, STRONG:1, I:1, EM:1, U:1, UL:1, OL:1, LI:1, P:1, BR:1, A:1, DIV:1 };
+    (function walk(n){
+      Array.prototype.slice.call(n.childNodes).forEach(function(c){
+        if (c.nodeType === 1){
+          if (!OK[c.tagName]){ c.replaceWith(document.createTextNode(c.textContent)); return; }
+          Array.prototype.slice.call(c.attributes).forEach(function(at){ if (!(c.tagName === 'A' && at.name === 'href' && /^https?:\/\//i.test(at.value))) c.removeAttribute(at.name); });
+          if (c.tagName === 'A'){ c.setAttribute('target', '_blank'); c.setAttribute('rel', 'noopener noreferrer'); }
+          walk(c);
+        } else if (c.nodeType !== 3) c.remove();
+      });
+    })(doc.body.firstChild);
+    return doc.body.firstChild.innerHTML;
+  }
+  var $ = function(i){ return document.getElementById(i); };
+
+  var I = {
+    file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></svg>',
+    zip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M10 6h1M10 10h1M10 14h1M13 8h1M13 12h1"/></svg>',
+    img:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m17 8-5-5-5 5"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    swap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 15-6.7L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-15 6.7L3 16"/><path d="M8 16H3v5"/></svg>',
+    retry:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    cloud:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 14 2 2 4-4"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+    bold:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 12h9a4 4 0 0 1 0 8H7a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7a4 4 0 0 1 0 8"/></svg>',
+    italic:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 4h-9M14 20H5M15 4 9 20"/></svg>',
+    ul:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    ol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 6h11M10 12h11M10 18h11M4 6h1v4M4 10h2M6 18H4c0-1 2-2 2-3s-1-1.5-2-1"/></svg>',
+    link:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>'
+  };
+  function fileIcon(n){ return /\.zip$/i.test(n) ? I.zip : /\.(png|jpe?g|gif|webp)$/i.test(n) ? I.img : I.file; }
+  function fileList(files){
+    return '<ul class="files">' + files.map(function(f){
+      return '<li class="file"><span class="ic">' + fileIcon(f[0]) + '</span><span class="body"><span class="nm">' + esc(f[0]) + '</span><span class="mt">' + ext(f[0]) + ' · ' + size(f[1]) + '</span></span>' +
+        '<a class="ib" href="#" aria-label="Download ' + esc(f[0]) + '">' + I.down + '<span>Download</span></a></li>';
+    }).join('') + '</ul>';
+  }
+
+  /* ---------------- Resolve + status ---------------- */
+  var params = new URLSearchParams(location.search);
+  var id = params.get('id') || 'a1', demo = params.get('state');
+  var KEY = 'upspace-asg-' + id;
+  var A = ASSIGNMENTS[id], local = {}, resubmitting = false, submitFailedOnce = false;
+
+  // Same derivation as assignments.html
+  function statusOf(){
+    var last = A.subs[A.subs.length - 1];
+    if (last){
+      if (A.visibility === 'hidden') return 'submitted';
+      if (last.grade && last.grade.released) return 'graded';
+      return 'grading';
+    }
+    if (NOW > d(A.closes)) return 'closed';
+    if (NOW > d(A.due)) return 'overdue';
+    return hasDraftContent() ? 'in-progress' : 'todo';
+  }
+  var LABEL = { 'todo':'To do', 'in-progress':'In progress', 'submitted':'Submitted', 'grading':'Grading in progress', 'graded':'Graded', 'overdue':'Overdue', 'closed':'Overdue' };
+  function windowOpen(){ return NOW <= d(A.closes); }
+  function attemptsLeft(){ return A.maxAttempts - A.subs.length; }
+  function canResubmit(){ return A.subs.length > 0 && attemptsLeft() > 0 && windowOpen(); }
+  function editable(){ var s = statusOf(); return resubmitting || s === 'todo' || s === 'in-progress' || s === 'overdue'; }
+  function scoreRule(){ return A.scoring === 'best' ? 'best' : 'latest'; }
+
+  /* ---------------- Draft (ASM-005-FR-04: never lose work) ---------------- */
+  var draft = { text:'', files:[] }, uploads = [], saveTimer = null, lastSavedAt = null, saveState = 'idle', seq = 0;
+  function hasDraftContent(){ return !!(words(draft.text) || uploads.some(function(u){ return u.state !== 'error'; })); }
+  function initDraft(){
+    var stored = local.draft;
+    if (stored){ draft = { text:stored.text || '', files:stored.files || [] }; lastSavedAt = stored.savedAt || null; }
+    else if (A.seedDraft && !(local.submissions || []).length){ draft = { text:A.seedDraft.text, files:A.seedDraft.files.slice() }; lastSavedAt = A.seedDraft.savedAt; }
+    uploads = draft.files.map(function(f){ return { id:++seq, name:f[0], size:f[1], state:'done', pct:100 }; });
+  }
+  function persistDraft(){
+    clearTimeout(saveTimer); saveTimer = null;
+    draft.files = uploads.filter(function(u){ return u.state === 'done'; }).map(function(u){ return [u.name, u.size]; });
+    if (demo === 'savefail'){ // ASM-005-NFR-01: warn, retry, never drop work
+      demo = null; saveState = 'retrying'; renderSaved();
+      setTimeout(persistDraft, 2200);
+      return;
+    }
+    lastSavedAt = new Date().toISOString();
+    local.draft = { text:draft.text, files:draft.files, savedAt:lastSavedAt };
+    saveState = save(KEY, local) ? 'saved' : 'retrying';
+    if (saveState === 'retrying') setTimeout(persistDraft, 3000);
+    renderSaved();
+    var side = document.querySelector('.side'); if (side) side.innerHTML = summary(statusOf()); // To do ↔ In progress
+  }
+  function scheduleSave(){
+    saveState = 'saving'; renderSaved();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(persistDraft, 900);
+  }
+  setInterval(function(){ if (saveState === 'saving') persistDraft(); }, 30000);           // FR-04: every 30 s at the latest
+  window.addEventListener('pagehide', function(){ if (saveState === 'saving') persistDraft(); }); // leaving the page never loses typing
+  function renderSaved(){
+    var el = $('saved'); if (!el) return;
+    el.className = 'saved' + (saveState === 'saving' ? ' saving' : saveState === 'retrying' ? ' fail' : '');
+    el.innerHTML = saveState === 'retrying' ? I.alert + '<span>Save failed — retrying.</span>'
+      : saveState === 'saving' ? I.cloud + '<span>Saving…</span>'
+      : lastSavedAt ? I.cloud + '<span>Draft saved · ' + (days(lastSavedAt) === 0 ? 'today' : md(lastSavedAt)) + ' at ' + time(lastSavedAt) + '</span>'
+      : '<span class="muted">Your work saves automatically as a draft.</span>';
+  }
+
+  /* ---------------- Render ---------------- */
+  function render(){
+    var s = statusOf();
+    document.title = A.title + ' — Assignments';
+    $('crumb').textContent = A.title;
+    $('root').innerHTML =
+      '<header class="head"><div class="eyebrow"><a href="course-overview.html?id=' + A.courseId + '">' + esc(A.course) + '</a> · ' + esc(A.module) + '</div><h1>' + esc(A.title) + '</h1></header>' +
+      '<div class="layout"><div class="stack">' + alerts(s) + result(s) + instructions() + submission(s) + '</div>' +
+      '<aside class="side" aria-label="Assignment summary">' + summary(s) + '</aside></div>';
+    if (editable()) mountEditor();
+  }
+
+  function summary(s){
+    var n = days(A.due), last = A.subs[A.subs.length - 1];
+    var dueSmall = (s === 'overdue' || s === 'closed') ? (n === -1 ? '1 day' : (-n) + ' days') + ' overdue'
+      : (s === 'todo' || s === 'in-progress') ? (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'In ' + n + ' days') : '';
+    var rows = [
+      ['Due', md(A.due) + ', ' + time(A.due), dueSmall, s === 'overdue' || s === 'closed'],
+      ['Points', A.points],
+      ['Attempts', A.maxAttempts === 1 ? '1 allowed' : A.subs.length + ' of ' + A.maxAttempts + ' used']
+    ];
+    if (last && !resubmitting) rows.push(['Submitted', md(last.at) + ', ' + time(last.at), last.late ? 'Late' : '', last.late]);
+    if (s === 'graded' && !resubmitting) rows.push(['Grade', last.grade.score + ' / ' + A.points]);
+
+    var acts, note = '';
+    if (editable()) acts = '<button class="btn btn-primary btn-lg btn-block" type="button" data-go="submit">Submit assignment</button>';
+    else if (s === 'closed') acts = '<span class="btn btn-lg btn-block" aria-disabled="true">' + I.lock + 'Submission closed</span>';
+    else {
+      acts = '<button class="btn ' + (canResubmit() ? 'btn-secondary' : 'btn-primary') + ' btn-lg btn-block" type="button" data-go="view">View submission</button>';
+      if (canResubmit()) acts += '<button class="btn btn-primary btn-lg btn-block" type="button" data-go="resubmit">Resubmit assignment</button>';
+    }
+    if (s === 'overdue' && !resubmitting) note = 'Late submissions are accepted until ' + md(A.closes) + ', ' + time(A.closes) + '. Your submission will be marked late.';
+    if (!editable() && canResubmit()) note = attemptsLeft() + ' of ' + A.maxAttempts + ' attempts left. Resubmissions close ' + md(A.closes) + ', ' + time(A.closes) + '. Your ' + scoreRule() + ' score counts.';
+    if (resubmitting) note = 'Attempt ' + (A.subs.length + 1) + ' of ' + A.maxAttempts + '. Your ' + scoreRule() + ' score counts. Resubmissions close ' + md(A.closes) + '.';
+
+    return '<div class="card summary"><span class="status ' + (resubmitting ? 'in-progress' : s) + '"><i></i>' + (resubmitting ? 'Resubmitting' : LABEL[s]) + '</span>' +
+      '<dl>' + rows.map(function(r){ return '<dt>' + r[0] + '</dt><dd' + (r[3] ? ' class="late"' : '') + '>' + r[1] + (r[2] ? '<small>' + r[2] + '</small>' : '') + '</dd>'; }).join('') + '</dl>' +
+      '<div class="actions">' + acts + '</div>' + (note ? '<p class="note">' + note + '</p>' : '') + '</div>';
+  }
+
+  function alerts(s){
+    if (resubmitting) return '';
+    if (s === 'overdue') return '<div class="alert error" role="alert">' + I.alert + '<div><b>Overdue — due ' + md(A.due) + '</b>You can still submit until ' + md(A.closes) + ', ' + time(A.closes) + '.</div></div>';
+    if (s === 'closed') return '<div class="alert error">' + I.lock + '<div><b>Submission closed</b>This assignment was due ' + md(A.due) + '. Submissions closed on ' + md(A.closes) + '.</div></div>';
+    return '';
+  }
+
+  function result(s){
+    var last = A.subs[A.subs.length - 1];
+    if (!last || resubmitting) return '';
+    if (s === 'grading') return '<section class="card section"><div class="waiting"><span class="ic">' + I.clock + '</span><div><b>Grading in progress</b><span>Your instructor is reviewing your submission. Your grade and feedback will appear here once grading is complete.</span></div></div></section>';
+    if (s === 'submitted') return '<section class="card section"><div class="waiting"><span class="ic">' + I.clock + '</span><div><b>Results not released yet</b><span>Results will be available once released by your instructor.</span></div></div></section>';
+    var g = last.grade, pct = Math.round(g.score / A.points * 100), pass = pct >= A.passMark;
+    var html = '<section class="card section" id="result" aria-labelledby="resTitle"><h2 id="resTitle">Your grade</h2>' +
+      '<div class="grade"><div class="score">' + g.score + ' <small>/ ' + A.points + '</small></div>' +
+      '<div class="grade-meta">' + pct + '% · <b class="' + (pass ? '' : 'fail') + '">' + (pass ? 'Passed' : 'Not passed') + '</b> · pass mark ' + A.passMark + '%<br>Graded by ' + esc(g.grader) + ' on ' + md(g.gradedAt) + (A.maxAttempts > 1 ? ' · Attempt ' + A.subs.length : '') + '</div></div>' +
+      '<h3>Instructor feedback</h3>' +
+      (A.visibility === 'feedback' && g.feedback ? '<div class="feedback prose"><p>' + esc(g.feedback) + '</p><div class="by">— ' + esc(g.grader) + '</div></div>' : '<div class="empty"><b>No feedback has been released yet.</b></div>');
+    if (A.visibility === 'feedback' && g.rubric){
+      var total = g.rubric.reduce(function(a, r){ return a + r[3]; }, 0);
+      html += '<h3>Marking breakdown</h3><div class="rubric-wrap"><table class="rubric"><thead><tr><th scope="col">Criterion</th><th scope="col">Points</th></tr></thead><tbody>' +
+        g.rubric.map(function(r){ return '<tr><td>' + esc(r[0]) + '<small>' + esc(r[1]) + '</small></td><td>' + r[2] + ' / ' + r[3] + '</td></tr>'; }).join('') +
+        '</tbody><tfoot><tr><td>Total</td><td>' + g.score + ' / ' + total + '</td></tr></tfoot></table></div>';
+    }
+    return html + '</section>';
+  }
+
+  function instructions(){
+    return '<section class="card section" aria-labelledby="insTitle"><h2 id="insTitle">Instructions</h2><div class="prose">' + A.instructions + '</div>' +
+      (A.materials.length ? '<h3>Assignment files</h3>' + fileList(A.materials) : '') + '</section>';
+  }
+
+  function submittedBlock(sub, n){
+    return '<div class="sub-meta"><span>Submitted ' + full(sub.at) + '</span>' + (A.maxAttempts > 1 ? '<span>Attempt ' + n + ' of ' + A.maxAttempts + '</span>' : '') + (sub.late ? '<span class="late">Submitted late</span>' : '') + '</div>' +
+      (words(sub.text) ? '<div class="label">Written response</div><div class="response prose">' + clean(sub.text) + '</div>' : '') +
+      (sub.files && sub.files.length ? '<div class="label" style="margin-top:16px">Files</div>' + fileList(sub.files) : '');
+  }
+
+  function submission(s){
+    if (editable()){
+      return '<section class="card section" id="submission" aria-labelledby="subTitle"><h2 id="subTitle">' + (resubmitting ? 'Resubmit assignment' : 'Your submission') + '</h2>' +
+        '<div id="submitError" aria-live="assertive"></div>' +
+        '<div class="field"><div class="label"><span id="respLabel">Written response</span><small>Optional if you upload files</small></div>' +
+          '<div class="rte"><div class="rte-bar" role="toolbar" aria-label="Formatting">' +
+            '<button type="button" data-cmd="bold" aria-label="Bold" aria-pressed="false">' + I.bold + '</button>' +
+            '<button type="button" data-cmd="italic" aria-label="Italic" aria-pressed="false">' + I.italic + '</button><span class="sep"></span>' +
+            '<button type="button" data-cmd="insertUnorderedList" aria-label="Bulleted list" aria-pressed="false">' + I.ul + '</button>' +
+            '<button type="button" data-cmd="insertOrderedList" aria-label="Numbered list" aria-pressed="false">' + I.ol + '</button><span class="sep"></span>' +
+            '<button type="button" data-cmd="link" aria-label="Add link">' + I.link + '</button></div>' +
+            '<div class="rte-link" id="linkRow" hidden><input type="url" id="linkUrl" placeholder="https://" aria-label="Link URL"><button class="btn btn-secondary" type="button" id="linkApply">Add link</button></div>' +
+            '<div class="rte-area" id="editor" contenteditable="true" role="textbox" aria-multiline="true" aria-labelledby="respLabel" data-placeholder="Write your response…"></div>' +
+            '<div class="rte-foot" id="wc"></div></div></div>' +
+        '<div class="field"><div class="label"><span>Files</span><small>' + FMT + ' · up to ' + MAX_MB + ' MB each</small></div>' +
+          '<div class="drop" id="drop" role="button" tabindex="0" aria-label="Upload files"><span class="ic">' + I.upload + '</span><div><b>Drop files here or <u>browse</u></b><span>Format: ' + FMT + ' · Max file size: ' + MAX_MB + ' MB</span></div></div>' +
+          '<ul class="files" id="uploads" aria-live="polite"></ul></div>' +
+        '<div class="sub-foot"><div class="saved" id="saved" aria-live="polite"></div><div class="sub-actions">' +
+          (resubmitting ? '<button class="btn btn-ghost" type="button" id="cancelResub">Cancel</button>' : '') +
+          '<button class="btn btn-secondary" type="button" id="saveDraft">Save draft</button>' +
+          '<button class="btn btn-primary" type="button" id="submitBtn">Submit assignment</button></div>' +
+          '<div class="pop" id="confirm" role="dialog" aria-modal="false" aria-labelledby="popTitle" hidden></div></div>' +
+        '</section>' + previousAttempts(false);
+    }
+    var last = A.subs[A.subs.length - 1];
+    if (!last) return '<section class="card section" id="submission" aria-labelledby="subTitle"><h2 id="subTitle">Your submission</h2><div class="empty"><b>Nothing submitted yet.</b><span>This assignment is closed for submissions.</span></div></section>';
+    return '<section class="card section" id="submission" aria-labelledby="subTitle"><h2 id="subTitle">Submitted work</h2>' + submittedBlock(last, A.subs.length) + '</section>' + previousAttempts(true);
+  }
+
+  // ASM-006-FR-07: earlier attempts stay viewable, each with its own result
+  function previousAttempts(excludeLatest){
+    var list = excludeLatest ? A.subs.slice(0, -1) : A.subs.slice();
+    if (!list.length) return '';
+    return '<section class="card section" aria-labelledby="prevTitle"><h2 id="prevTitle">Previous attempts</h2><ul class="attempts">' + list.map(function(sub, i){
+      var g = sub.grade, shown = g && g.released && A.visibility !== 'hidden';
+      return '<li><details><summary>' + I.chev + '<b>Attempt ' + (i + 1) + '</b><span>' + md(sub.at) + '</span><em>' + (shown ? g.score + ' / ' + A.points : 'Not graded yet') + '</em></summary><div class="inner">' + submittedBlock(sub, i + 1) + '</div></details></li>';
+    }).join('') + '</ul></section>';
+  }
+
+  /* ---------------- Editor ---------------- */
+  var savedRange = null;
+  function mountEditor(){
+    var ed = $('editor');
+    ed.innerHTML = clean(draft.text);
+    updateWc(); renderUploads(); renderSaved();
+    ed.addEventListener('input', function(){ draft.text = words(ed.innerHTML) ? ed.innerHTML : ''; updateWc(); scheduleSave(); });
+    ed.addEventListener('paste', function(e){ // paste as plain text — keeps foreign markup out
+      e.preventDefault();
+      document.execCommand('insertText', false, (e.clipboardData || window.clipboardData).getData('text'));
+    });
+    ed.addEventListener('keyup', syncToolbar);
+    ed.addEventListener('mouseup', syncToolbar);
+    ed.addEventListener('blur', function(){ var s = window.getSelection(); if (s.rangeCount && ed.contains(s.anchorNode)) savedRange = s.getRangeAt(0); });
+    document.querySelectorAll('.rte-bar [data-cmd]').forEach(function(b){
+      b.addEventListener('mousedown', function(e){ e.preventDefault(); });
+      b.addEventListener('click', function(){
+        if (b.dataset.cmd === 'link'){ $('linkRow').hidden = !$('linkRow').hidden; if (!$('linkRow').hidden) $('linkUrl').focus(); return; }
+        ed.focus(); document.execCommand(b.dataset.cmd, false, null); syncToolbar();
+      });
+    });
+    function applyLink(){
+      var url = $('linkUrl').value.trim();
+      if (url && !/^https?:\/\//i.test(url)) url = 'https://' + url;
+      ed.focus();
+      if (savedRange){ var s = window.getSelection(); s.removeAllRanges(); s.addRange(savedRange); }
+      if (url){ if (window.getSelection().isCollapsed) document.execCommand('insertText', false, url); document.execCommand('createLink', false, url); }
+      $('linkRow').hidden = true; $('linkUrl').value = '';
+    }
+    $('linkApply').addEventListener('click', applyLink);
+    $('linkUrl').addEventListener('keydown', function(e){ if (e.key === 'Enter'){ e.preventDefault(); applyLink(); } if (e.key === 'Escape'){ $('linkRow').hidden = true; ed.focus(); } });
+
+    var drop = $('drop');
+    drop.addEventListener('click', function(){ $('fileInput').click(); });
+    drop.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' '){ e.preventDefault(); $('fileInput').click(); } });
+    ['dragenter','dragover'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+    ['dragleave','drop'].forEach(function(ev){ drop.addEventListener(ev, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+    drop.addEventListener('drop', function(e){ addFiles(e.dataTransfer.files); });
+
+    $('saveDraft').addEventListener('click', function(){ persistDraft(); if (saveState === 'saved') toast('Draft saved'); });
+    $('submitBtn').addEventListener('click', openConfirm);
+    if ($('cancelResub')) $('cancelResub').addEventListener('click', function(){ resubmitting = false; initDraft(); render(); });
+  }
+  function syncToolbar(){
+    document.querySelectorAll('.rte-bar [data-cmd]:not([data-cmd="link"])').forEach(function(b){
+      try{ b.setAttribute('aria-pressed', document.queryCommandState(b.dataset.cmd)); }catch(e){}
+    });
+  }
+  function updateWc(){ var n = words(draft.text); $('wc').textContent = n + (n === 1 ? ' word' : ' words'); }
+
+  /* ---------------- Uploads (File Dropper) ---------------- */
+  function addFiles(list, replaceId){
+    Array.prototype.forEach.call(list, function(f){
+      var u = { id:++seq, name:f.name, size:f.size, state:'uploading', pct:0 };
+      if (!ACCEPT.test(f.name)){ u.state = 'error'; u.error = ext(f.name) + ' files aren’t accepted. Upload ' + FMT + '.'; }
+      else if (f.size > MAX_MB * 1048576){ u.state = 'error'; u.error = 'File exceeds maximum size of ' + MAX_MB + ' MB. Compress or split your file'; }
+      var i = replaceId != null ? uploads.findIndex(function(x){ return x.id === replaceId; }) : -1;
+      if (i !== -1) uploads.splice(i, 1, u); else uploads.push(u);
+      if (u.state === 'uploading') simulateUpload(u);
+    });
+    renderUploads(); scheduleSave();
+  }
+  function simulateUpload(u){
+    var fails = /fail/i.test(u.name) && !u.retried, step = Math.max(5, Math.min(24, 14e6 / Math.max(u.size, 1)));
+    var t = setInterval(function(){
+      if (uploads.indexOf(u) === -1){ clearInterval(t); return; }
+      u.pct = Math.min(100, u.pct + step);
+      if (fails && u.pct >= 60){ clearInterval(t); u.state = 'error'; u.error = 'Upload failed — the connection dropped at ' + Math.round(u.pct) + '%. Try again.'; u.retryable = true; renderUploads(); return; }
+      if (u.pct >= 100){ clearInterval(t); u.state = 'done'; renderUploads(); scheduleSave(); return; }
+      var row = document.querySelector('[data-up="' + u.id + '"]');
+      if (row){ row.querySelector('.bar i').style.width = u.pct + '%'; row.querySelector('.bar').setAttribute('aria-valuenow', Math.round(u.pct)); row.querySelector('.mt').textContent = 'Uploading… ' + Math.round(u.pct) + '% of ' + size(u.size); }
+    }, 160);
+  }
+  function renderUploads(){
+    var ul = $('uploads'); if (!ul) return;
+    ul.innerHTML = uploads.map(function(u){
+      var cls = u.state === 'error' ? ' err' : u.state === 'uploading' ? ' up' : '';
+      var meta = u.state === 'error' ? esc(u.error) : u.state === 'uploading' ? 'Uploading… ' + Math.round(u.pct) + '% of ' + size(u.size) : ext(u.name) + ' · ' + size(u.size);
+      return '<li class="file' + cls + '" data-up="' + u.id + '"><span class="ic">' + (u.state === 'error' ? I.alert : fileIcon(u.name)) + '</span>' +
+        '<span class="body"><span class="nm">' + esc(u.name) + '</span><span class="mt">' + meta + '</span>' +
+          (u.state === 'uploading' ? '<div class="bar" role="progressbar" aria-label="Uploading ' + esc(u.name) + '" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + Math.round(u.pct) + '"><i style="width:' + u.pct + '%"></i></div>' : '') + '</span>' +
+        '<span class="acts">' +
+          (u.retryable ? '<button class="ib" type="button" data-act="retry">' + I.retry + '<span>Retry</span></button>' : '') +
+          (u.state === 'done' ? '<button class="ib" type="button" data-act="replace" aria-label="Replace ' + esc(u.name) + '">' + I.swap + '<span>Replace</span></button>' : '') +
+          '<button class="ib danger" type="button" data-act="remove" aria-label="' + (u.state === 'uploading' ? 'Cancel upload of ' : 'Remove ') + esc(u.name) + '">' + (u.state === 'uploading' ? I.x : I.trash) + '</button>' +
+        '</span></li>';
+    }).join('');
+  }
+  var replacing = null;
+  document.addEventListener('click', function(e){
+    var b = e.target.closest('#uploads [data-act]'); if (!b) return;
+    var uid = +b.closest('[data-up]').dataset.up, u = uploads.find(function(x){ return x.id === uid; });
+    if (b.dataset.act === 'remove'){ uploads = uploads.filter(function(x){ return x !== u; }); renderUploads(); scheduleSave(); }
+    if (b.dataset.act === 'replace'){ replacing = uid; $('replaceInput').click(); }
+    if (b.dataset.act === 'retry'){ u.state = 'uploading'; u.pct = 0; u.retryable = false; u.error = null; u.retried = true; renderUploads(); simulateUpload(u); }
+  });
+  $('fileInput').addEventListener('change', function(){ addFiles(this.files); this.value = ''; });
+  $('replaceInput').addEventListener('change', function(){ if (this.files.length) addFiles([this.files[0]], replacing); this.value = ''; replacing = null; });
+
+  /* ---------------- Submit — lightweight confirmation popover ---------------- */
+  function openConfirm(){
+    var err = $('submitError'); err.innerHTML = '';
+    var done = uploads.filter(function(u){ return u.state === 'done'; }), n = words(draft.text);
+    if (uploads.some(function(u){ return u.state === 'uploading'; })){ err.innerHTML = '<div class="alert warning">' + I.clock + '<div><b>Files are still uploading.</b>Wait for uploads to finish, then submit.</div></div>'; return; }
+    if (!n && !done.length){ err.innerHTML = '<div class="alert warning">' + I.alert + '<div><b>Nothing to submit yet.</b>Write a response or upload at least one file.</div></div>'; $('editor').focus(); return; }
+    var late = NOW > d(A.due), last = attemptsLeft() <= 1;
+    var pop = $('confirm');
+    pop.innerHTML = '<h4 id="popTitle">Ready to submit?</h4><p>Your submission will be sent to your instructor for grading.' + (last ? ' You can’t edit it afterwards.' : '') + '</p>' +
+      '<div class="sum">' + (n ? '<b>Written response</b> · ' + n + (n === 1 ? ' word' : ' words') : 'No written response') + '<br>' +
+        (done.length ? '<b>' + done.length + (done.length === 1 ? ' file' : ' files') + '</b> · ' + done.map(function(u){ return esc(u.name); }).join(', ') : 'No files') +
+        (uploads.some(function(u){ return u.state === 'error'; }) ? '<br>Files with errors won’t be included.' : '') +
+        (late ? '<br><span class="late">Will be marked late — it was due ' + md(A.due) + '.</span>' : '') + '</div>' +
+      '<div class="row"><button class="btn btn-secondary" type="button" id="popCancel">Cancel</button><button class="btn btn-primary" type="button" id="popSubmit">Submit assignment</button></div>';
+    pop.hidden = false;
+    $('popSubmit').focus();
+    $('popCancel').onclick = closeConfirm;
+    $('popSubmit').onclick = doSubmit;
+  }
+  function closeConfirm(){ var p = $('confirm'); if (p) p.hidden = true; if ($('submitBtn')) $('submitBtn').focus(); }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('confirm') && !$('confirm').hidden) closeConfirm(); });
+  document.addEventListener('click', function(e){
+    var p = $('confirm');
+    if (p && !p.hidden && !e.target.closest('#confirm, #submitBtn, [data-go="submit"]')) p.hidden = true;
+  });
+
+  function doSubmit(){
+    var b = $('popSubmit');
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>Submitting…';
+    $('popCancel').disabled = true;
+    setTimeout(function(){
+      if (demo === 'submitfail' && !submitFailedOnce){
+        submitFailedOnce = true;
+        $('confirm').hidden = true;
+        persistDraft();
+        $('submitError').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>Submission failed.</b>We couldn’t reach the server, so nothing was sent. Your work is saved as a draft — try again.</div><button class="btn btn-secondary act" type="button" id="retrySubmit">Try again</button></div>';
+        $('retrySubmit').onclick = openConfirm;
+        return;
+      }
+      var sub = { at:new Date().toISOString(), text:clean(draft.text), files:uploads.filter(function(u){ return u.state === 'done'; }).map(function(u){ return [u.name, u.size]; }), late:NOW > d(A.due) };
+      local.submissions = (local.submissions || []).concat([sub]);
+      delete local.draft;
+      save(KEY, local);
+      A.subs.push(sub);
+      resubmitting = false; draft = { text:'', files:[] }; uploads = []; lastSavedAt = null; saveState = 'idle';
+      render();
+      $('submission').scrollIntoView({ behavior:'smooth', block:'start' });
+      toast('Assignment submitted');
+    }, 1100);
+  }
+
+  /* Side-card actions */
+  document.addEventListener('click', function(e){
+    var g = e.target.closest('[data-go]'); if (!g) return;
+    if (g.dataset.go === 'submit'){ $('submission').scrollIntoView({ behavior:'smooth', block:'start' }); setTimeout(openConfirm, 350); }
+    if (g.dataset.go === 'view') $('submission').scrollIntoView({ behavior:'smooth', block:'start' });
+    if (g.dataset.go === 'resubmit'){ resubmitting = true; draft = { text:'', files:[] }; uploads = []; lastSavedAt = null; saveState = 'idle'; render(); $('submission').scrollIntoView({ behavior:'smooth', block:'start' }); $('editor').focus(); }
+  });
+
+  /* Toast — library pattern */
+  var toastTimer;
+  function toast(msg){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic">' + I.check + '</span><span>' + esc(msg) + '</span><button class="ib" type="button" aria-label="Dismiss">' + I.x + '</button>';
+    t.hidden = false;
+    t.querySelector('.ib').onclick = function(){ t.hidden = true; };
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 3200);
+  }
+
+  /* ---------------- Load — skeleton in the page layout, never a full-page spinner ---------------- */
+  function skeleton(){
+    $('crumb').innerHTML = '<span class="sk" style="width:160px;display:inline-block"></span>';
+    var block = function(lines){ return '<div class="card section">' + lines.map(function(w){ return '<span class="sk" style="width:' + w + '%"></span>'; }).join('') + '</div>'; };
+    $('root').innerHTML = '<header class="head" aria-busy="true" aria-label="Loading assignment"><span class="sk" style="width:220px"></span><span class="sk" style="width:48%;height:26px;margin-top:12px"></span></header>' +
+      '<div class="layout"><div class="stack">' + block([30, 92, 86, 70, 40]) + block([24, 100, 100]) + '</div><aside class="side">' + block([40, 90, 90, 90, 100]) + '</aside></div>';
+  }
+  function fetchDetail(){
+    skeleton();
+    setTimeout(function(){
+      if (demo === 'loading') return;
+      if (demo === 'error'){
+        $('crumb').textContent = 'Assignment';
+        $('root').innerHTML = '<div class="card"><div class="empty plain"><b>Couldn’t load this assignment.</b><span>Check your connection and try again.</span><button class="btn btn-secondary" type="button" id="retryLoad">Try again</button> <a class="btn btn-ghost" href="assignments.html">Back to assignments</a></div></div>';
+        $('retryLoad').onclick = function(){ demo = null; fetchDetail(); };
+        return;
+      }
+      if (!A){
+        $('crumb').textContent = 'Not found';
+        $('root').innerHTML = '<div class="card"><div class="empty plain"><b>Assignment not found.</b><span>It may have been removed, or you’re no longer assigned to it.</span><a class="btn btn-secondary" href="assignments.html">Back to assignments</a></div></div>';
+        return;
+      }
+      local = load(KEY) || {};
+      A.subs = A.submissions.concat(local.submissions || []);
+      initDraft();
+      render();
+    }, 450);
+  }
+  fetchDetail();
+</script>
+</body>
+</html>

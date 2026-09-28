@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — My Courses</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — My Courses (CDL-001 "My Learning Dashboard"). v3.
+     - Fluid: content spans the full main column at every width, no
+       centered max-width island.
+     - Top: ONE "Continue" hero (last-accessed in-progress course →
+       player, FR-04) beside a "Due soon" panel (mandatory courses with
+       deadlines, overdue flagged — FR-03). Replaces the 4-card rail and
+       the one-line overdue strip.
+     - Grid: bigger cards, less data per card (tag, title, one meta
+       line, progress, one action). Instructor/duration dropped from
+       cards — not required by FR-01.
+     - Default tab is "Active" — completed stays one tab away (edge
+       case: active shown by default, completed not cluttering).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  /* Fluid — fills the main column at any width; grid adds columns instead of centering */
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:32px clamp(20px, 2.6vw, 48px) 64px; }
+
+  /* ---- Page head: title left, search right ---- */
+  .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px 24px; flex-wrap:wrap; margin-bottom:24px; }
+  .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; }
+  .page-head .sub{ font-size:14px; color:var(--text-secondary); }
+  .search-input-wrap{ position:relative; width:min(360px, 100%); }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:42px; padding:0 12px 0 38px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; flex-shrink:0; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.97); }
+  .btn svg{ width:15px; height:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+
+  /* ---- Top: Continue hero + Due soon ---- */
+  .top{ display:grid; grid-template-columns:minmax(0, 1.7fr) minmax(300px, 1fr); gap:20px; margin-bottom:40px; }
+  .top.no-due{ grid-template-columns:1fr; }
+  .top-col{ display:flex; flex-direction:column; min-width:0; }
+  .section-label{ font-size:12px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--text-tertiary); margin:0 0 12px; }
+
+  .hero{ flex:1; display:grid; grid-template-columns:minmax(0, 1.1fr) minmax(0, 1fr); background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); overflow:hidden; min-height:280px; transition:border-color .2s ease; }
+  .hero:hover{ border-color:var(--border-strong); }
+  .hero:hover .btn-primary{ background:var(--action-primary-hover); }
+  .hero-media{ position:relative; overflow:hidden; background:var(--surface-raised); }
+  .hero-media img{ position:absolute; inset:0; width:100%; height:100%; object-fit:cover; transition:transform .6s var(--ease); }
+  .hero:hover .hero-media img{ transform:scale(1.04); }
+  .hero-media::after{ content:""; position:absolute; inset:0; background:linear-gradient(180deg, rgba(15,15,30,0) 45%, rgba(15,15,30,.45)); }
+  .play{ position:absolute; left:20px; bottom:20px; z-index:1; width:52px; height:52px; border-radius:50%; background:#fff; color:var(--action-primary); display:flex; align-items:center; justify-content:center; box-shadow:0 8px 20px rgba(15,15,30,.25); transition:transform .25s var(--ease); }
+  .play svg{ width:20px; height:20px; margin-left:3px; }
+  .hero:hover .play{ transform:scale(1.08); }
+  .hero-body{ padding:28px 28px 26px; display:flex; flex-direction:column; min-width:0; }
+  .hero-eyebrow{ font-size:12.5px; font-weight:600; color:var(--action-primary); }
+  .hero-title{ margin:8px 0 6px; font-size:clamp(20px, 1.6vw, 26px); font-weight:700; line-height:1.2; letter-spacing:-.4px; text-wrap:balance; }
+  .hero-lesson{ font-size:14px; color:var(--text-secondary); line-height:1.45; }
+  .hero-progress{ margin-top:auto; padding-top:22px; }
+  .hero-progress-row{ display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+  .hero-progress-row b{ color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  .hero .btn{ margin-top:18px; align-self:flex-start; }
+
+  .due{ flex:1; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); padding:18px 20px 10px; display:flex; flex-direction:column; min-width:0; }
+  .due-list{ list-style:none; margin:0; padding:0; }
+  .due-item a{ display:flex; align-items:center; gap:14px; padding:12px 10px; margin:0 -10px; border-radius:var(--radius-lg); transition:background-color .15s ease; }
+  .due-item a:hover{ background:var(--surface-canvas); }
+  .due-item + .due-item{ border-top:1px solid var(--border-subtle); }
+  .due-date{ flex-shrink:0; width:48px; height:52px; border-radius:var(--radius-lg); background:var(--surface-raised); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1; }
+  .due-date .m{ font-size:10.5px; font-weight:700; text-transform:uppercase; color:var(--text-tertiary); letter-spacing:.04em; }
+  .due-date .d{ font-size:19px; font-weight:700; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .due-item.is-overdue .due-date{ background:var(--error-subtle); }
+  .due-item.is-overdue .due-date .m, .due-item.is-overdue .due-date .d{ color:var(--error); }
+  .due-info{ flex:1; min-width:0; }
+  .due-title{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .due-when{ font-size:12.5px; color:var(--text-tertiary); margin-top:3px; }
+  .due-item.is-overdue .due-when{ color:var(--error); font-weight:600; }
+  .due-ring{ flex-shrink:0; width:36px; height:36px; }
+  .due-ring circle{ fill:none; stroke-width:3.5; }
+  .due-ring .bg{ stroke:var(--surface-overlay); }
+  .due-ring .fg{ stroke:var(--action-primary); stroke-linecap:round; transform:rotate(-90deg); transform-origin:center; }
+  .due-ring text{ font-size:9.5px; font-weight:700; fill:var(--text-secondary); font-family:var(--font); }
+
+  /* ---- Tabs + filters ---- */
+  .toolbar{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:22px; }
+  .status-tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); overflow-x:auto; -webkit-overflow-scrolling:touch; max-width:100%; }
+  .status-tab{ appearance:none; border:none; background:transparent; height:34px; padding:0 14px; border-radius:var(--radius-md); font-size:13.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; white-space:nowrap; transition:background-color .15s ease, color .15s ease; }
+  .status-tab:hover{ color:var(--text-primary); }
+  .status-tab.active{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .status-tab .count{ color:var(--text-tertiary); font-weight:600; margin-left:6px; font-variant-numeric:tabular-nums; }
+  .toolbar-spacer{ flex:1; }
+  .toolbar-select{ height:42px; padding:0 30px 0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='13' height='13' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; font-size:13px; font-weight:600; color:var(--text-secondary); appearance:none; cursor:pointer; }
+
+  /* ---- Course grid ---- */
+  .course-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:24px; }
+  .course-card{ display:flex; flex-direction:column; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; transition:border-color .2s ease; }
+  .course-card:hover{ border-color:var(--border-strong); }
+  .course-photo-wrap{ position:relative; aspect-ratio:16/9; overflow:hidden; background:var(--surface-raised); }
+  .course-photo{ width:100%; height:100%; object-fit:cover; display:block; transition:transform .6s var(--ease); }
+  .course-card:hover .course-photo{ transform:scale(1.05); }
+  .course-photo-tag{ position:absolute; left:12px; top:12px; font-size:11.5px; font-weight:600; color:#fff; background:rgba(15,15,15,.5); backdrop-filter:blur(8px); padding:4px 10px; border-radius:var(--radius-md); }
+  .course-card-body{ padding:18px; display:flex; flex-direction:column; flex:1; }
+  .course-card-title{ font-size:16px; font-weight:700; line-height:1.3; letter-spacing:-.2px; text-wrap:balance; }
+  .course-card-meta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13px; color:var(--text-tertiary); margin-top:6px; }
+  .course-card-meta .dot{ width:3px; height:3px; border-radius:50%; background:var(--text-disabled); }
+  .course-card-meta .mandatory{ color:var(--warning); font-weight:600; }
+  .course-card-meta .overdue{ color:var(--error); font-weight:600; }
+  .course-card-foot{ margin-top:auto; padding-top:18px; }
+  .progress-row{ display:flex; align-items:center; gap:10px; }
+  .progress-bar-bg{ flex:1; height:6px; background:var(--surface-overlay); border-radius:var(--radius-full); overflow:hidden; }
+  .progress-bar-fill{ height:100%; border-radius:var(--radius-full); background:var(--action-primary); }
+  .progress-val{ font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .card-action{ display:flex; align-items:center; justify-content:space-between; margin-top:14px; font-size:13.5px; font-weight:600; color:var(--action-primary); }
+  .card-action svg{ width:16px; height:16px; transition:transform .2s var(--ease); }
+  .course-card:hover .card-action svg{ transform:translateX(3px); }
+  .cert-link{ font-size:13px; font-weight:600; color:var(--info); }
+  .cert-link:hover{ text-decoration:underline; }
+
+  .course-card.is-completed{ background:var(--surface-canvas); }
+  .course-card.is-completed .course-photo{ filter:grayscale(60%) brightness(.95); }
+  .course-card.is-completed .course-card-title{ color:var(--text-secondary); }
+  .course-card.is-completed .card-action{ color:var(--text-secondary); }
+  .check-badge{ position:absolute; top:12px; right:12px; width:28px; height:28px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; box-shadow:0 0 0 2px rgba(255,255,255,.9); }
+  .check-badge svg{ width:15px; height:15px; }
+
+  /* ---- States ---- */
+  .widget-state{ display:none; text-align:center; padding:64px 20px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .widget-state.show{ display:block; }
+  .widget-state-title{ font-size:15px; font-weight:700; margin:0 0 6px; }
+  .widget-state-desc{ font-size:13.5px; color:var(--text-tertiary); margin-bottom:16px; }
+
+  .sk{ background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:var(--radius-md); }
+  .skeleton-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; padding-bottom:18px; }
+  .skeleton-card .sk-thumb{ aspect-ratio:16/9; border-radius:0; }
+  .skeleton-card .sk-line{ height:14px; margin:16px 18px 0; }
+  .sk-hero{ height:280px; border-radius:var(--radius-2xl); }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  @media (max-width:1180px){ .top{ grid-template-columns:1fr; } }
+  @media (max-width:700px){
+    .hero{ grid-template-columns:1fr; }
+    .hero-media{ aspect-ratio:16/9; }
+    .hero-body{ padding:20px; }
+    .toolbar-spacer{ display:none; }
+    .course-grid{ grid-template-columns:1fr; gap:16px; }
+  }
+
+  /* ---- Mobile: sidebar becomes an off-canvas drawer ---- */
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 40px; }
+    .sidebar-frame{
+      position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30;
+      transform:translateX(-100%); transition:transform .25s ease;
+      box-shadow:4px 0 24px rgba(0,0,0,.12);
+    }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=My+Courses" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <div class="page-head">
+      <div>
+        <h1>My Courses</h1>
+        <div class="sub">Your assigned and enrolled learning.</div>
+      </div>
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input type="search" id="searchInput" name="search" placeholder="Search courses" autocomplete="off" aria-label="Search courses">
+      </div>
+    </div>
+
+    <div class="widget-state" id="searchEmptyState">
+      <div class="widget-state-title">No matching courses found.</div>
+      <div class="widget-state-desc">Try a different search.</div>
+    </div>
+    <div class="widget-state" id="noCoursesState">
+      <div class="widget-state-title">No courses assigned yet.</div>
+      <div class="widget-state-desc">Check back soon or browse available courses.</div>
+      <a class="btn btn-primary" href="#">Browse courses</a>
+    </div>
+
+    <div id="pageBody">
+      <section class="top" id="topSection" aria-label="Continue and due soon">
+        <div class="top-col" id="heroCol">
+          <p class="section-label" id="heroLabel">Continue learning</p>
+          <a class="hero" id="hero" href="#"></a>
+        </div>
+        <div class="top-col" id="dueCol">
+          <p class="section-label">Due soon · Mandatory</p>
+          <div class="due"><ul class="due-list" id="dueList"></ul></div>
+        </div>
+      </section>
+
+      <div class="toolbar">
+        <div class="status-tabs" id="statusTabs" role="tablist" aria-label="Filter by status">
+          <button class="status-tab active" type="button" data-status="active" role="tab" aria-selected="true">Active<span class="count" id="countActive"></span></button>
+          <button class="status-tab" type="button" data-status="in-progress" role="tab" aria-selected="false">In progress<span class="count" id="countInProgress"></span></button>
+          <button class="status-tab" type="button" data-status="not-started" role="tab" aria-selected="false">Not started<span class="count" id="countNotStarted"></span></button>
+          <button class="status-tab" type="button" data-status="completed" role="tab" aria-selected="false">Completed<span class="count" id="countCompleted"></span></button>
+        </div>
+        <div class="toolbar-spacer"></div>
+        <select class="toolbar-select" id="typeFilter" aria-label="Filter by assignment type">
+          <option value="">All types</option>
+          <option value="mandatory">Mandatory</option>
+          <option value="optional">Optional</option>
+        </select>
+        <select class="toolbar-select" id="sortSelect" aria-label="Sort courses">
+          <option value="last-accessed">Last accessed</option>
+          <option value="deadline">Deadline</option>
+          <option value="title">Title (A–Z)</option>
+        </select>
+      </div>
+
+      <div class="course-grid" id="courseGrid"></div>
+      <div class="widget-state" id="gridEmptyState">
+        <div class="widget-state-title" id="gridEmptyTitle">Nothing here yet.</div>
+      </div>
+    </div>
+
+    <div id="loadingState">
+      <div class="top"><div class="sk sk-hero"></div><div class="sk sk-hero"></div></div>
+      <div class="course-grid">
+        <div class="skeleton-card"><div class="sk sk-thumb"></div><div class="sk sk-line" style="width:70%"></div><div class="sk sk-line" style="width:40%"></div></div>
+        <div class="skeleton-card"><div class="sk sk-thumb"></div><div class="sk sk-line" style="width:70%"></div><div class="sk sk-line" style="width:40%"></div></div>
+        <div class="skeleton-card"><div class="sk sk-thumb"></div><div class="sk sk-line" style="width:70%"></div><div class="sk sk-line" style="width:40%"></div></div>
+        <div class="skeleton-card"><div class="sk sk-thumb"></div><div class="sk sk-line" style="width:70%"></div><div class="sk sk-line" style="width:40%"></div></div>
+      </div>
+    </div>
+  </div></main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (this learner's own enrollments/assignments only) ---------------- */
+  var PHOTOS = {
+    algorithms: 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=800&h=450&q=70',
+    math: 'https://images.unsplash.com/photo-1509228468518-180dd4864904?auto=format&fit=crop&w=800&h=450&q=70',
+    data: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=800&h=450&q=70',
+    ux: 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=800&h=450&q=70',
+    cloud: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?auto=format&fit=crop&w=800&h=450&q=70',
+    web: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&h=450&q=70',
+    product: 'https://images.unsplash.com/photo-1454165804606-c3d57bc86b40?auto=format&fit=crop&w=800&h=450&q=70',
+    systems: 'https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=800&h=450&q=70',
+    mobile: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?auto=format&fit=crop&w=800&h=450&q=70',
+    business: 'https://images.unsplash.com/photo-1553028826-f4804a6dba3b?auto=format&fit=crop&w=800&h=450&q=70',
+    analytics: 'https://images.unsplash.com/photo-1556155092-490a1ba16284?auto=format&fit=crop&w=800&h=450&q=70',
+    security: 'https://images.unsplash.com/photo-1526374965328-7f61d4dc18c5?auto=format&fit=crop&w=800&h=450&q=70'
+  };
+
+  // ponytail: fixed "today" so the mock's relative dates don't drift
+  var TODAY = new Date('2026-09-23T00:00:00');
+
+  var COURSES = [
+    // In progress
+    { id:'CS-301', title:'Advanced Data Structures', tag:'Computer Science', photo:PHOTOS.algorithms, status:'in-progress', progress:68, lastLesson:'Module 4 · Binary Trees · Lesson 3', mandatory:true, deadline:'2026-09-30', lastAccessedSort:1 },
+    { id:'DS-210', title:'Data Visualization Techniques', tag:'Analytics', photo:PHOTOS.analytics, status:'in-progress', progress:77, lastLesson:'Module 3 · Dashboards · Lesson 2', mandatory:true, deadline:'2026-10-03', lastAccessedSort:2 },
+    { id:'WEB-303', title:'Modern Web Architecture', tag:'Web Development', photo:PHOTOS.web, status:'in-progress', progress:52, lastLesson:'Module 3 · Edge Rendering · Lesson 1', mandatory:false, lastAccessedSort:3 },
+    { id:'AI-101', title:'Intro to Machine Learning', tag:'Machine Learning', photo:PHOTOS.math, status:'in-progress', progress:34, lastLesson:'Module 2 · Supervised Learning · Lesson 1', mandatory:false, lastAccessedSort:4 },
+    { id:'MOB-201', title:'iOS App Development Basics', tag:'Mobile', photo:PHOTOS.mobile, status:'in-progress', progress:18, lastLesson:'Module 1 · Swift Foundations · Lesson 4', mandatory:false, lastAccessedSort:5 },
+    // Not started
+    { id:'UX-204', title:'Interaction Design', tag:'Design', photo:PHOTOS.ux, status:'not-started', progress:0, duration:'5h', mandatory:true, deadline:'2026-09-18', lastAccessedSort:20 },
+    { id:'SEC-310', title:'Applied Cryptography', tag:'Security', photo:PHOTOS.security, status:'not-started', progress:0, duration:'6h 20m', mandatory:false, lastAccessedSort:21 },
+    { id:'PM-101', title:'Product Management Foundations', tag:'Product', photo:PHOTOS.product, status:'not-started', progress:0, duration:'4h 45m', mandatory:false, lastAccessedSort:22 },
+    // Completed
+    { id:'WEB-202', title:'Modern Frontend Frameworks', tag:'Web Development', photo:PHOTOS.web, status:'completed', progress:100, mandatory:false, completedDate:'Sep 10', completedSort:'2026-09-10', hasCertificate:true, lastAccessedSort:6 },
+    { id:'CLOUD-FUND', title:'Cloud Fundamentals', tag:'Cloud', photo:PHOTOS.cloud, status:'completed', progress:100, mandatory:false, completedDate:'Aug 20', completedSort:'2026-08-20', hasCertificate:true, lastAccessedSort:7 },
+    { id:'CS-210', title:'Algorithms & Complexity', tag:'Computer Science', photo:PHOTOS.algorithms, status:'completed', progress:100, mandatory:false, completedDate:'Aug 15', completedSort:'2026-08-15', hasCertificate:true, lastAccessedSort:8 },
+    { id:'NET-201', title:'Networking Essentials', tag:'Cloud', photo:PHOTOS.cloud, status:'completed', progress:100, mandatory:false, completedDate:'Aug 2', completedSort:'2026-08-02', hasCertificate:true, lastAccessedSort:9 },
+    { id:'UX-101', title:'Design Fundamentals', tag:'Design', photo:PHOTOS.ux, status:'completed', progress:100, mandatory:false, completedDate:'Jul 28', completedSort:'2026-07-28', hasCertificate:true, lastAccessedSort:10 },
+    { id:'DS-101', title:'Intro to Data Science', tag:'Analytics', photo:PHOTOS.data, status:'completed', progress:100, mandatory:false, completedDate:'Jul 20', completedSort:'2026-07-20', hasCertificate:true, lastAccessedSort:11 },
+    { id:'SEC-201', title:'Cybersecurity Basics', tag:'Security', photo:PHOTOS.security, status:'completed', progress:100, mandatory:false, completedDate:'Jul 12', completedSort:'2026-07-12', hasCertificate:true, lastAccessedSort:12 },
+    { id:'PM-201', title:'Agile & Scrum Practices', tag:'Product', photo:PHOTOS.business, status:'completed', progress:100, mandatory:false, completedDate:'Jun 30', completedSort:'2026-06-30', hasCertificate:true, lastAccessedSort:13 },
+    { id:'WEB-101', title:'HTML & CSS Foundations', tag:'Web Development', photo:PHOTOS.web, status:'completed', progress:100, mandatory:false, completedDate:'Jun 18', completedSort:'2026-06-18', hasCertificate:true, lastAccessedSort:14 },
+    { id:'AI-201', title:'Neural Networks Basics', tag:'Machine Learning', photo:PHOTOS.math, status:'completed', progress:100, mandatory:false, completedDate:'Jun 5', completedSort:'2026-06-05', hasCertificate:true, lastAccessedSort:15 },
+    { id:'SYS-201', title:'Embedded Systems Intro', tag:'Systems', photo:PHOTOS.systems, status:'completed', progress:100, mandatory:false, completedDate:'May 22', completedSort:'2026-05-22', hasCertificate:true, lastAccessedSort:16 },
+    { id:'BUS-101', title:'Business Analytics Essentials', tag:'Analytics', photo:PHOTOS.analytics, status:'completed', progress:100, mandatory:false, completedDate:'May 10', completedSort:'2026-05-10', hasCertificate:false, lastAccessedSort:17 }
+  ];
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function parseDate(s){ return new Date(s + 'T00:00:00'); }
+  function daysUntil(s){ return Math.round((parseDate(s) - TODAY) / 86400000); }
+  function isOverdue(c){ return !!c.deadline && c.status !== 'completed' && daysUntil(c.deadline) < 0; }
+  function shortDate(s){ var d = parseDate(s); return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
+  function relative(s){
+    var n = daysUntil(s);
+    if (n < 0) return 'Overdue by ' + (-n) + (n === -1 ? ' day' : ' days');
+    if (n === 0) return 'Due today';
+    if (n === 1) return 'Due tomorrow';
+    return 'Due in ' + n + ' days';
+  }
+  // Continue hero → player (CDL-003). Every other card → overview first (CDL-002), per user decision —
+  // deviates from CDL-001-FR-04, which sends in-progress cards straight to the player.
+  function playerHref(c){ return 'course-player.html?id=' + encodeURIComponent(c.id); }
+  function hrefFor(c){ return 'course-overview.html?id=' + encodeURIComponent(c.id); }
+
+  var ICON = {
+    play: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+  };
+
+  var state = { status:'active', type:'', sort:'last-accessed', query:'' };
+
+  function matches(c){
+    if (state.query && c.title.toLowerCase().indexOf(state.query) === -1) return false;
+    if (state.type && (state.type === 'mandatory') !== !!c.mandatory) return false;
+    if (state.status === 'active') return c.status !== 'completed';
+    return c.status === state.status;
+  }
+
+  function sortCourses(list){
+    var sorted = list.slice();
+    if (state.status === 'completed') {
+      sorted.sort(function(a,b){ return a.completedSort < b.completedSort ? 1 : -1; });
+    } else if (state.sort === 'deadline') {
+      sorted.sort(function(a,b){
+        if (!a.deadline && !b.deadline) return 0;
+        if (!a.deadline) return 1;
+        if (!b.deadline) return -1;
+        return a.deadline < b.deadline ? -1 : 1;
+      });
+    } else if (state.sort === 'title') {
+      sorted.sort(function(a,b){ return a.title.localeCompare(b.title); });
+    } else {
+      sorted.sort(function(a,b){ return a.lastAccessedSort - b.lastAccessedSort; });
+    }
+    return sorted;
+  }
+
+  function renderCounts(){
+    var c = { 'in-progress':0, 'not-started':0, completed:0 };
+    COURSES.forEach(function(x){ c[x.status]++; });
+    document.getElementById('countActive').textContent = c['in-progress'] + c['not-started'];
+    document.getElementById('countInProgress').textContent = c['in-progress'];
+    document.getElementById('countNotStarted').textContent = c['not-started'];
+    document.getElementById('countCompleted').textContent = c.completed;
+  }
+
+  /* ---- Continue hero: last-accessed in-progress course; falls back to next not-started ---- */
+  function renderHero(){
+    var byRecent = function(a,b){ return a.lastAccessedSort - b.lastAccessedSort; };
+    var c = COURSES.filter(function(x){ return x.status === 'in-progress'; }).sort(byRecent)[0]
+         || COURSES.filter(function(x){ return x.status === 'not-started'; }).sort(byRecent)[0];
+    document.getElementById('heroCol').hidden = !c;
+    if (!c) return false;
+    var started = c.status === 'in-progress';
+    var hero = document.getElementById('hero');
+    document.getElementById('heroLabel').textContent = started ? 'Continue learning' : 'Up next';
+    hero.href = started ? playerHref(c) : hrefFor(c);
+    hero.innerHTML =
+      '<div class="hero-media"><img src="' + c.photo + '" alt="' + c.title + ' course thumbnail"><span class="play">' + ICON.play + '</span></div>' +
+      '<div class="hero-body">' +
+        '<div class="hero-eyebrow">' + c.tag + '</div>' +
+        '<div class="hero-title">' + c.title + '</div>' +
+        '<div class="hero-lesson">' + (started ? 'Up next: ' + c.lastLesson : 'Not started · ' + c.duration + ' total') + '</div>' +
+        '<div class="hero-progress">' + (started
+          ? '<div class="hero-progress-row"><span>Progress</span><b>' + c.progress + '%</b></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + c.progress + '%;"></div></div>'
+          : '') + '</div>' +
+        '<span class="btn btn-primary">' + (started ? 'Resume' : 'Start course') + ICON.arrow + '</span>' +
+      '</div>';
+    return true;
+  }
+
+  /* ---- Due soon: mandatory, not completed, has deadline — soonest (overdue) first. FR-03 ---- */
+  function renderDue(){
+    var items = COURSES.filter(function(c){ return c.mandatory && c.deadline && c.status !== 'completed'; })
+      .sort(function(a,b){ return a.deadline < b.deadline ? -1 : 1; })
+      .slice(0, 4);
+    document.getElementById('dueCol').hidden = items.length === 0;
+    var r = 14, circ = 2 * Math.PI * r;
+    document.getElementById('dueList').innerHTML = items.map(function(c){
+      var d = parseDate(c.deadline);
+      return '<li class="due-item' + (isOverdue(c) ? ' is-overdue' : '') + '"><a href="' + hrefFor(c) + '">' +
+        '<span class="due-date"><span class="m">' + MONTHS[d.getMonth()] + '</span><span class="d">' + d.getDate() + '</span></span>' +
+        '<span class="due-info"><div class="due-title">' + c.title + '</div><div class="due-when">' + relative(c.deadline) + '</div></span>' +
+        '<svg class="due-ring" viewBox="0 0 34 34" role="img" aria-label="' + c.progress + '% complete"><circle class="bg" cx="17" cy="17" r="' + r + '"/>' +
+          '<circle class="fg" cx="17" cy="17" r="' + r + '" stroke-dasharray="' + circ + '" stroke-dashoffset="' + (circ * (1 - c.progress / 100)) + '"/>' +
+          '<text x="17" y="20.5" text-anchor="middle">' + c.progress + '%</text></svg>' +
+      '</a></li>';
+    }).join('');
+    return items.length > 0;
+  }
+
+  function courseCardHtml(c){
+    var done = c.status === 'completed';
+    var meta = [];
+    if (done) meta.push('Completed ' + c.completedDate);
+    else {
+      meta.push(c.mandatory ? '<span class="mandatory">Mandatory</span>' : 'Optional');
+      if (c.deadline) meta.push(isOverdue(c) ? '<span class="overdue">Overdue · ' + shortDate(c.deadline) + '</span>' : 'Due ' + shortDate(c.deadline));
+      if (c.status === 'not-started') meta.push(c.duration);
+    }
+    var progress = c.status === 'in-progress'
+      ? '<div class="progress-row"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + c.progress + '%;"></div></div><span class="progress-val">' + c.progress + '%</span></div>'
+      : '';
+    var action = c.status === 'in-progress' ? 'Continue' : (done ? 'Review' : 'Start course');
+
+    return '<a class="course-card' + (done ? ' is-completed' : '') + '" href="' + hrefFor(c) + '">' +
+      '<div class="course-photo-wrap">' +
+        '<img class="course-photo" src="' + c.photo + '" alt="' + c.title + ' course thumbnail" loading="lazy">' +
+        '<span class="course-photo-tag">' + c.tag + '</span>' +
+        (done ? '<span class="check-badge" aria-label="Completed">' + ICON.check + '</span>' : '') +
+      '</div>' +
+      '<div class="course-card-body">' +
+        '<div class="course-card-title">' + c.title + '</div>' +
+        '<div class="course-card-meta">' + meta.join('<span class="dot"></span>') + '</div>' +
+        '<div class="course-card-foot">' + progress +
+          '<div class="card-action"><span>' + action + '</span>' +
+            (done && c.hasCertificate ? '<span class="cert-link">Certificate</span>' : ICON.arrow) +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+    '</a>';
+  }
+
+  function renderGrid(){
+    var sorted = sortCourses(COURSES.filter(matches));
+    var grid = document.getElementById('courseGrid');
+    grid.hidden = sorted.length === 0;
+    document.getElementById('gridEmptyState').classList.toggle('show', sorted.length === 0);
+    if (sorted.length === 0) {
+      document.getElementById('gridEmptyTitle').textContent = state.status === 'completed' ? 'No completed courses yet.' : (state.status === 'not-started' ? 'Nothing new to start.' : 'No courses match these filters.');
+      return;
+    }
+    grid.innerHTML = sorted.map(courseCardHtml).join('');
+  }
+
+  function renderAll(){
+    var noSearchResults = !!state.query && COURSES.every(function(c){ return c.title.toLowerCase().indexOf(state.query) === -1; });
+    document.getElementById('searchEmptyState').classList.toggle('show', noSearchResults);
+    document.getElementById('noCoursesState').classList.toggle('show', COURSES.length === 0);
+    document.getElementById('pageBody').hidden = COURSES.length === 0 || noSearchResults;
+    if (COURSES.length === 0) return;
+    renderCounts();
+    var hasHero = renderHero(), hasDue = renderDue();
+    var top = document.getElementById('topSection');
+    // Top section is "what to do next" — hidden while searching so results sit right under the search box
+    top.hidden = !!state.query || (!hasHero && !hasDue);
+    top.classList.toggle('no-due', !hasDue || !hasHero);
+    renderGrid();
+  }
+
+  document.querySelectorAll('.status-tab').forEach(function(btn){
+    btn.addEventListener('click', function(){
+      document.querySelectorAll('.status-tab').forEach(function(b){ b.classList.remove('active'); b.setAttribute('aria-selected', 'false'); });
+      btn.classList.add('active');
+      btn.setAttribute('aria-selected', 'true');
+      state.status = btn.dataset.status;
+      renderGrid();
+    });
+  });
+  document.getElementById('typeFilter').addEventListener('change', function(){ state.type = this.value; renderGrid(); });
+  document.getElementById('sortSelect').addEventListener('change', function(){ state.sort = this.value; renderGrid(); });
+  document.getElementById('searchInput').addEventListener('input', function(){ state.query = this.value.trim().toLowerCase(); renderAll(); });
+
+  /* ---------------- Simulated initial load ---------------- */
+  document.getElementById('pageBody').hidden = true;
+  setTimeout(function(){
+    document.getElementById('loadingState').hidden = true;
+    renderAll();
+  }, 500);
+</script>
+</body>
+</html>

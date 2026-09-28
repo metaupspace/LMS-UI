@@ -1,0 +1,343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Certificate</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Certificate detail (CERT-002 view/download, CERT-003-FR-06
+     share code). Opened from certificates.html (?id=c1…c12).
+     The certificate shown is the issued one, rendered with the course's
+     template — same document as the list card and the admin template
+     preview. Expired/Revoked certificates stay viewable and downloadable
+     (CERT-002 edge cases); status is stated above the document.
+     Verify → the public verification page (CERT-003,
+     designs/other-pages/code/verify-certificate.html) prefilled with the code.
+     Bottom-left "Preview" is design-only.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif:Georgia, "Times New Roman", serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 72px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:44px; padding:0 18px; border-radius:var(--radius-lg); font-size:14.5px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:17px; height:17px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn.busy{ opacity:.8; cursor:progress; }
+  .btn-block{ width:100%; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:18px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs > span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .head{ margin-bottom:22px; }
+  .head h1{ margin:8px 0 4px; font-size:clamp(24px, 2.1vw, 30px); font-weight:700; letter-spacing:-.6px; line-height:1.2; text-wrap:balance; }
+  .head .sub{ font-size:14.5px; color:var(--text-secondary); }
+
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; }
+  .pill i{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .pill.valid{ background:var(--success-subtle); color:var(--success); }
+  .pill.expired{ background:var(--warning-subtle); color:#a16207; }
+  .pill.revoked{ background:var(--error-subtle); color:var(--error); }
+
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:clamp(24px, 2.4vw, 36px); align-items:start; }
+  .side{ position:sticky; top:0; display:grid; gap:16px; }
+  .stage{ padding:clamp(16px, 2.4vw, 36px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .stage .doc{ max-width:960px; margin:0 auto; box-shadow:0 1px 3px rgba(23,23,17,.06), 0 12px 32px -16px rgba(23,23,17,.12); }
+  .alert{ display:flex; gap:12px; padding:14px 16px; margin-bottom:16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); }
+  .alert svg{ width:20px; height:20px; margin-top:1px; }
+  .alert b{ display:block; font-weight:600; color:var(--text-primary); }
+  .alert.expired{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.expired svg{ color:var(--warning); }
+  .alert.revoked{ background:var(--error-subtle); border-color:var(--error-border); } .alert.revoked svg{ color:var(--error); }
+
+  /* ---- Certificate document (hand-built, approved) — identical to certificates.html ---- */
+  .doc{ container-type:inline-size; position:relative; aspect-ratio:1.414 / 1; background:#fffdf8; border:1px solid var(--border-default); border-radius:4px; overflow:hidden; color:var(--text-primary); font-family:var(--font); }
+  .doc-in{ position:absolute; inset:0; box-shadow:inset 0 0 0 2.2cqw #f8f1dd; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6cqw 9cqw 12cqw; }
+  .doc-in::before{ content:""; position:absolute; inset:3.6cqw; border:max(1px, .16cqw) solid #d9c58e; pointer-events:none; }
+  .doc-org{ position:absolute; top:6.2cqw; left:6.6cqw; display:flex; align-items:center; gap:1cqw; font-size:1.45cqw; font-weight:700; color:var(--text-strong); letter-spacing:.01em; }
+  .doc-org b{ width:3.2cqw; height:3.2cqw; border-radius:.8cqw; background:var(--action-primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.5cqw; }
+  .doc-eyebrow{ font-size:1.3cqw; letter-spacing:.22em; text-transform:uppercase; color:#947b34; font-weight:700; }
+  .doc-title{ font:400 4.4cqw/1.1 var(--serif); margin:1.3cqw 0 2.6cqw; letter-spacing:-.01em; }
+  .doc-lead{ font-size:1.5cqw; color:var(--text-secondary); }
+  .doc-name{ font:italic 400 4.8cqw/1.15 var(--serif); color:var(--action-primary); margin:.8cqw 0 1.4cqw; padding:0 4cqw .7cqw; border-bottom:.14cqw solid #e8dcb8; }
+  .doc-course{ font-size:2.5cqw; font-weight:700; letter-spacing:-.01em; margin-top:.6cqw; max-width:70cqw; }
+  .doc-foot{ position:absolute; left:11cqw; right:11cqw; bottom:9.4cqw; display:flex; align-items:flex-end; justify-content:space-between; }
+  .doc-sig{ width:21cqw; text-align:center; }
+  .doc-sig span{ display:block; font-size:1.55cqw; font-weight:600; padding-bottom:.6cqw; border-bottom:.12cqw solid #bfae7a; white-space:nowrap; }
+  .doc-sig small{ display:block; margin-top:.6cqw; font-size:1.05cqw; color:var(--text-tertiary); letter-spacing:.08em; text-transform:uppercase; }
+  .doc-seal{ width:9cqw; height:9cqw; border-radius:50%; border:.3cqw solid #d9c58e; box-shadow:inset 0 0 0 .7cqw #fffdf8, inset 0 0 0 .95cqw #e8dcb8; display:flex; align-items:center; justify-content:center; font:700 2cqw var(--serif); color:#947b34; }
+  .doc-code{ position:absolute; bottom:5.4cqw; left:0; right:0; font-size:1.05cqw; color:var(--text-tertiary); letter-spacing:.03em; }
+
+  /* Side cards */
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; }
+  .card h2{ margin:0 0 14px; font-size:15px; font-weight:700; }
+  .facts{ margin:0; display:grid; grid-template-columns:auto 1fr; gap:10px 16px; font-size:14px; }
+  .facts dt{ color:var(--text-tertiary); }
+  .facts dd{ margin:0; text-align:right; font-weight:600; color:var(--text-strong); min-width:0; overflow-wrap:anywhere; }
+  .facts dd.warn{ color:#a16207; } .facts dd.bad{ color:var(--error); }
+  .actions{ display:grid; gap:10px; }
+  .code-box{ display:flex; align-items:center; gap:8px; padding:6px 6px 6px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); }
+  .code-box code{ flex:1; font:600 15px/1.2 ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing:.06em; color:var(--text-primary); }
+  .copy{ height:32px; padding:0 10px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--border-default); border-radius:var(--radius-md); background:#fff; font-size:13px; font-weight:600; color:var(--text-secondary); }
+  .copy:hover{ background:var(--surface-raised); }
+  .copy svg{ width:15px; height:15px; }
+  .hint{ margin:10px 0 0; font-size:13px; line-height:1.5; color:var(--text-secondary); }
+  .dl-err{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; padding:10px 12px; border-radius:var(--radius-lg); background:var(--error-subtle); border:1px solid var(--error-border); font-size:13.5px; color:#991b1b; }
+  .dl-err button{ background:#fff; border:1px solid var(--error-border); border-radius:var(--radius-md); padding:5px 10px; font-size:13px; font-weight:600; color:var(--error); }
+
+  /* Document-shaped skeleton / empty (hand-built, approved) */
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:10px; }
+  .sk-doc{ max-width:960px; margin:0 auto; aspect-ratio:1.414 / 1; background:#fff; border:1px solid var(--border-default); border-radius:4px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:10%; }
+  .sk-doc .sk{ margin:0; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  .empty{ padding:56px 20px; text-align:center; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .empty b{ display:block; font-size:15px; }
+  .empty span{ display:block; margin-top:4px; font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:16px; height:40px; }
+
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:90; display:flex; align-items:center; gap:12px; padding:10px 14px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .toast .ic{ width:30px; height:30px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:15px; height:15px; }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:50; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:1180px){
+    .layout{ grid-template-columns:1fr; }
+    .side{ position:static; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); }
+  }
+  @media (max-width:640px){
+    .stage{ padding:10px; }
+    .card{ padding:16px; }
+    .toast{ left:16px; right:16px; bottom:56px; }
+  }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 56px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=certificates" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Certificates" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="certificates.html">Certificates</a>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span id="crumb" aria-current="page"></span>
+    </nav>
+    <div id="root" aria-live="polite"></div>
+  </div></main>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<label class="preview" title="Design-only: preview UI states">Preview
+  <select id="previewState"><option value="normal">Normal</option><option value="loading">Loading</option><option value="error">Error</option><option value="dlfail">Download fails</option><option value="expired">Expired certificate</option></select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (mirrors certificates.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00');
+  var LEARNER = 'Samira Collins', ORG = { name:'Northwind Learning', mark:'N', seal:'NL' };
+  var VERIFY_URL = '../../other-pages/code/verify-certificate.html';
+  var TEMPLATES = {
+    honour:{ name:'Certificate of Honour', eyebrow:'Certificate of completion', lead:'has successfully completed' },
+    completion:{ name:'Course Completion', eyebrow:'Certificate of completion', lead:'has successfully completed' },
+    compliance:{ name:'Compliance Attestation', eyebrow:'Certificate of compliance', lead:'has completed the required training' },
+    excellence:{ name:'Excellence Award', eyebrow:'Awarded with distinction', lead:'has completed with distinction' }
+  };
+  var CERTS = {
+    c1:{ code:'CERT-A7X9K2', course:'Modern Frontend Frameworks', courseId:'WEB-202', tpl:'honour', instructor:'Dr. Aris', issued:'2026-09-10' },
+    c2:{ code:'CERT-Q4M8TZ', course:'Cloud Fundamentals', courseId:'CLOUD-FUND', tpl:'completion', instructor:'Prof. Vance', issued:'2026-08-20' },
+    c3:{ code:'CERT-H2R6WB', course:'Algorithms & Complexity', courseId:'CS-210', tpl:'excellence', instructor:'Prof. Vance', issued:'2026-08-15' },
+    c4:{ code:'CERT-N9D3PL', course:'Networking Essentials', courseId:'NET-201', tpl:'completion', instructor:'Dr. Aris', issued:'2026-08-02' },
+    c5:{ code:'CERT-K5V1XE', course:'Design Fundamentals', courseId:'UX-101', tpl:'honour', instructor:'Prof. Vance', issued:'2026-07-28' },
+    c6:{ code:'CERT-B8T4JS', course:'Intro to Data Science', courseId:'DS-101', tpl:'completion', instructor:'Dr. Aris', issued:'2026-07-20' },
+    c7:{ code:'CERT-W3F7QA', course:'Cybersecurity Basics', courseId:'SEC-201', tpl:'compliance', instructor:'Prof. Vance', issued:'2026-07-12', expires:'2027-07-12' },
+    c8:{ code:'CERT-Z6L2MC', course:'Agile & Scrum Practices', courseId:'PM-201', tpl:'completion', instructor:'Dr. Aris', issued:'2026-06-30' },
+    c9:{ code:'CERT-R1P9GU', course:'HTML & CSS Foundations', courseId:'WEB-101', tpl:'completion', instructor:'Prof. Vance', issued:'2026-06-18' },
+    c10:{ code:'CERT-E4Y8HN', course:'Neural Networks Basics', courseId:'AI-201', tpl:'honour', instructor:'Dr. Aris', issued:'2026-06-05' },
+    c11:{ code:'CERT-D7K3VR', course:'Data Privacy Basics', tpl:'compliance', instructor:'Dr. Aris', issued:'2026-04-02', expires:'2027-04-02', revoked:'2026-06-01' },
+    c12:{ code:'CERT-S2J6FW', course:'Workplace Safety Induction', tpl:'compliance', instructor:'Prof. Vance', issued:'2025-03-10', expires:'2026-03-10' }
+  };
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function d(s){ return new Date(s + 'T00:00:00'); }
+  function fmt(s){ var x = d(s); return MONTHS[x.getMonth()] + ' ' + x.getDate() + ', ' + x.getFullYear(); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function statusOf(c){ if (c.revoked) return 'revoked'; if (c.expires && d(c.expires) < NOW) return 'expired'; return 'valid'; }
+  var LABEL = { valid:'Valid', expired:'Expired', revoked:'Revoked' };
+  var $ = function(i){ return document.getElementById(i); };
+  var I = {
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>',
+    copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    ban:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>'
+  };
+
+  var params = new URLSearchParams(location.search);
+  var id = params.get('id') || 'c1', mode = params.get('state') || 'normal', C = null;
+
+  function docHtml(c){
+    var t = TEMPLATES[c.tpl];
+    return '<div class="doc" role="img" aria-label="' + esc(t.name) + ' for ' + esc(LEARNER) + ', ' + esc(c.course) + ', issued ' + fmt(c.issued) + ', verification code ' + c.code + '"><div class="doc-in" aria-hidden="true">' +
+      '<div class="doc-org"><b>' + ORG.mark + '</b>' + esc(ORG.name) + '</div>' +
+      '<div class="doc-eyebrow">' + esc(t.eyebrow) + '</div><div class="doc-title">' + esc(t.name) + '</div>' +
+      '<div class="doc-lead">This certifies that</div><div class="doc-name">' + esc(LEARNER) + '</div>' +
+      '<div class="doc-lead">' + esc(t.lead) + '</div><div class="doc-course">' + esc(c.course) + '</div>' +
+      '<div class="doc-foot"><div class="doc-sig"><span>' + esc(c.instructor) + '</span><small>Instructor</small></div><div class="doc-seal">' + ORG.seal + '</div><div class="doc-sig"><span>' + fmt(c.issued) + '</span><small>Date issued</small></div></div>' +
+      '<div class="doc-code">Verification code ' + c.code + (c.expires ? ' · Valid until ' + fmt(c.expires) : '') + ' · Verify at upspace.app/verify</div>' +
+    '</div></div>';
+  }
+
+  function render(){
+    var s = statusOf(C), t = TEMPLATES[C.tpl];
+    document.title = C.course + ' certificate — Certificates';
+    $('crumb').textContent = C.course;
+    var tb = document.querySelector('.topbar-frame'), src = '../component/topnavbar.html?parent=Certificates&parentHref=' + encodeURIComponent('../code/certificates.html') + '&current=' + encodeURIComponent(C.course);
+    if (tb.getAttribute('src') !== src) tb.setAttribute('src', src); // top bar: Learner / Certificates / [course]
+    var alert = s === 'expired' ? '<div class="alert expired" role="status">' + I.clock + '<div><b>Expired on ' + fmt(C.expires) + '</b>You can still view and download this certificate. Anyone who verifies it will see that it has expired.</div></div>'
+      : s === 'revoked' ? '<div class="alert revoked" role="status">' + I.ban + '<div><b>Revoked on ' + fmt(C.revoked) + '</b>This certificate was revoked by your organization. The PDF is still available, but verification shows it as revoked.</div></div>' : '';
+    var expiryRow = s === 'revoked' ? '<dt>Revoked</dt><dd class="bad">' + fmt(C.revoked) + '</dd>'
+      : C.expires ? (s === 'expired' ? '<dt>Expired</dt><dd class="warn">' + fmt(C.expires) + '</dd>' : '<dt>Valid until</dt><dd>' + fmt(C.expires) + '</dd>')
+      : '<dt>Expiry</dt><dd>Doesn’t expire</dd>';
+    $('root').innerHTML =
+      '<header class="head"><span class="pill ' + s + '"><i></i>' + LABEL[s] + '</span><h1>' + esc(C.course) + '</h1><div class="sub">' + esc(t.name) + ' · Issued ' + fmt(C.issued) + '</div></header>' +
+      '<div class="layout"><div>' + alert + '<div class="stage">' + docHtml(C) + '</div></div>' +
+      '<aside class="side" aria-label="Certificate details">' +
+        '<div class="card"><div class="actions"><div id="dlSlot"></div>' +
+          '<button class="btn btn-primary btn-block" type="button" id="dlBtn">' + I.down + 'Download certificate</button>' +
+          '<a class="btn btn-secondary btn-block" href="' + VERIFY_URL + '?code=' + encodeURIComponent(C.code) + '" target="_blank" rel="noopener">' + I.shield + 'Verify certificate</a></div></div>' +
+        '<div class="card"><h2>Details</h2><dl class="facts">' +
+          '<dt>Learner</dt><dd>' + esc(LEARNER) + '</dd>' +
+          '<dt>Course</dt><dd>' + (C.courseId ? '<a href="course-overview.html?id=' + C.courseId + '" style="color:var(--action-primary)">' + esc(C.course) + '</a>' : esc(C.course)) + '</dd>' +
+          '<dt>Issued</dt><dd>' + fmt(C.issued) + '</dd>' + expiryRow +
+          '<dt>Issued by</dt><dd>' + esc(ORG.name) + '</dd>' +
+        '</dl></div>' +
+        '<div class="card"><h2>Verification</h2><div class="code-box"><code>' + C.code + '</code><button class="copy" type="button" id="copyCode" aria-label="Copy verification code">' + I.copy + 'Copy</button></div>' +
+          '<p class="hint">Share this code with an employer or institution. They can check it at upspace.app/verify — no account needed.</p></div>' +
+      '</aside></div>';
+  }
+
+  /* Download — the stored, already-issued PDF (CERT-002-FR-03).
+     ponytail: mock builds a one-page PDF from the issued record so a real file downloads; build streams the stored PDF */
+  function pdfFor(c){
+    var t = TEMPLATES[c.tpl], lines = [[421, 470, 11, ORG.name.toUpperCase()], [421, 420, 12, t.eyebrow.toUpperCase()], [421, 380, 30, t.name], [421, 330, 13, 'This certifies that'], [421, 290, 28, LEARNER], [421, 250, 13, t.lead], [421, 215, 18, c.course], [421, 150, 11, 'Issued ' + fmt(c.issued) + (c.expires ? '  -  Valid until ' + fmt(c.expires) : '') + '  -  Instructor ' + c.instructor], [421, 70, 9, 'Verification code ' + c.code + '  -  Verify at upspace.app/verify']];
+    var stream = lines.map(function(l){ var txt = l[3].replace(/[\\()]/g, '\\$&').replace(/[^\x20-\x7e]/g, '-'); var w = txt.length * l[2] * 0.5; return 'BT /F1 ' + l[2] + ' Tf ' + (l[0] - w / 2).toFixed(1) + ' ' + l[1] + ' Td (' + txt + ') Tj ET'; }).join('\n');
+    var objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>', '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+    var out = '%PDF-1.4\n', offs = [];
+    objs.forEach(function(o, i){ offs.push(out.length); out += (i + 1) + ' 0 obj\n' + o + '\nendobj\n'; });
+    var xref = out.length;
+    out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n' + offs.map(function(o){ return String(o).padStart(10, '0') + ' 00000 n \n'; }).join('') + 'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+    return new Blob([out], { type:'application/pdf' });
+  }
+  function download(){
+    var btn = $('dlBtn'); $('dlSlot').innerHTML = '';
+    btn.classList.add('busy'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Preparing PDF…';
+    setTimeout(function(){
+      btn.classList.remove('busy'); btn.disabled = false; btn.innerHTML = I.down + 'Download certificate';
+      if (mode === 'dlfail'){ mode = 'normal'; $('dlSlot').innerHTML = '<div class="dl-err" role="alert"><span>Couldn’t download this certificate.</span><button type="button" id="dlRetry">Try again</button></div>'; return; } // only this area errors
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(pdfFor(C));
+      a.download = 'Certificate-' + C.course.replace(/[^a-z0-9]+/ig, '-') + '-' + C.code + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      toast('Certificate downloaded');
+    }, 800);
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('button'); if (!t) return;
+    if (t.id === 'dlBtn' || t.id === 'dlRetry') download();
+    if (t.id === 'copyCode'){ try{ navigator.clipboard.writeText(C.code); }catch(err){} t.innerHTML = I.check + 'Copied'; setTimeout(function(){ if ($('copyCode')) $('copyCode').innerHTML = I.copy + 'Copy'; }, 1600); }
+  });
+
+  var tt;
+  function toast(m){ var t = $('toast'); t.innerHTML = '<span class="ic">' + I.check + '</span>' + esc(m); t.hidden = false; clearTimeout(tt); tt = setTimeout(function(){ t.hidden = true; }, 2600); }
+
+  /* Load — document-shaped skeleton, never a full-page spinner */
+  function skeleton(){
+    $('crumb').innerHTML = '<span class="sk" style="width:140px;display:inline-block"></span>';
+    $('root').innerHTML = '<header class="head" aria-busy="true" aria-label="Loading certificate"><span class="sk" style="width:70px;height:22px"></span><span class="sk" style="width:40%;height:24px;margin-top:12px"></span><span class="sk" style="width:26%"></span></header>' +
+      '<div class="layout"><div class="stage"><div class="sk-doc"><span class="sk" style="width:22%"></span><span class="sk" style="width:46%;height:26px"></span><span class="sk" style="width:18%"></span><span class="sk" style="width:38%;height:28px"></span><span class="sk" style="width:30%;height:16px"></span></div></div>' +
+      '<aside class="side"><div class="card"><span class="sk" style="height:44px"></span><span class="sk" style="height:44px"></span></div><div class="card"><span class="sk" style="width:40%"></span><span class="sk"></span><span class="sk"></span><span class="sk"></span></div></aside></div>';
+  }
+  function load(){
+    skeleton();
+    setTimeout(function(){
+      if (mode === 'loading') return;
+      var found = CERTS[id];
+      if (mode === 'error' || !found){
+        $('crumb').textContent = found ? 'Certificate' : 'Not found';
+        $('root').innerHTML = '<div class="empty" role="alert"><b>' + (found ? 'Couldn’t load this certificate.' : 'Certificate not found.') + '</b><span>' + (found ? 'Check your connection and try again.' : 'It may have been removed from your account.') + '</span>' +
+          (found ? '<button class="btn btn-secondary" type="button" id="retryLoad">Retry</button> ' : '') + '<a class="btn btn-secondary" href="certificates.html">Back to Certificates</a></div>';
+        if ($('retryLoad')) $('retryLoad').onclick = function(){ mode = 'normal'; ps.value = 'normal'; load(); };
+        return;
+      }
+      C = Object.assign({}, found);
+      if (mode === 'expired' && !C.revoked && statusOf(C) !== 'expired') C.expires = '2026-09-20'; // design check: show this one as expired
+      render();
+    }, 450);
+  }
+  var ps = $('previewState');
+  ps.value = mode;
+  ps.addEventListener('change', function(){ mode = this.value; load(); });
+  load();
+</script>
+</body>
+</html>

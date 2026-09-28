@@ -1,0 +1,1255 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Assessment Authoring Workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     UpSpace Instructor — Assessment Editor (Premium Workspace)
+     Design System: UpSpace Design System (DM Sans, Neutrals UpSpace,
+     Brand/600 #4f46e5) — tokens mirror colors.json / textStyles.json.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#737373; --text-quaternary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#ffffff; --surface-overlay:#f5f5f5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#d4d4d4; --border-emphasis:#a3a3a3;
+    --icon-muted:#a3a3a3; --icon-primary:#404040;
+    --brand-50:#eef2ff; --brand-100:#e0e7ff; --brand-200:#c7d2fe; --brand-500:#6366f1;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-pressed:#3730a3; --focus-ring:#6366f1;
+    --error:#dc2626; --error-600:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca; --error-text:#b91c1c;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a; --warning-text:#a16207;
+    --success:#15803d; --success-600:#16a34a; --success-subtle:#f0fdf4; --success-border:#bbf7d0; --success-text:#15803d;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --purple-subtle:#faf5ff; --purple-border:#e9d5ff; --purple-text:#9333ea;
+    --sky-subtle:#f0f9ff; --sky-border:#bae6fd; --sky-text:#0369a1;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --shadow-xs: 0 1px 2px 0 rgba(16,24,40,0.05);
+    --shadow-sm: 0 1px 3px 0 rgba(16,24,40,0.06), 0 1px 2px -1px rgba(16,24,40,0.06);
+    --shadow-md: 0 4px 8px -2px rgba(16,24,40,0.06), 0 2px 4px -2px rgba(16,24,40,0.04);
+    --shadow-lg: 0 12px 24px -6px rgba(16,24,40,0.08), 0 4px 8px -4px rgba(16,24,40,0.04);
+    --shadow-focus: 0 0 0 4px rgba(99,102,241,0.14);
+    --ease: cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  *{ box-sizing:border-box; margin:0; padding:0; }
+  html,body{ height:100%; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  ::selection{ background:var(--brand-200); }
+  :focus-visible{ outline:none; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:28px 40px 80px; max-width:1180px; margin:0 auto; width:100%; }
+
+  /* Navigation Breadcrumb */
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:18px; cursor:pointer; transition:color .15s var(--ease), gap .15s var(--ease); }
+  .back-link svg{ transition:transform .15s var(--ease); }
+  .back-link:hover{ color:var(--action-primary); }
+  .back-link:hover svg{ transform:translateX(-2px); }
+
+  /* Top Workspace Header */
+  .workspace-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:24px; margin-bottom:26px; flex-wrap:wrap; }
+  .title-group{ display:flex; flex-direction:column; gap:8px; flex:1; min-width:340px; }
+  .title-row{ display:flex; align-items:center; gap:10px; }
+  .title-input{ font-size:23px; font-weight:700; color:var(--text-primary); border:1px solid transparent; background:transparent; padding:5px 9px; margin-left:-9px; border-radius:var(--radius-md); width:100%; outline:none; transition:all .15s var(--ease); letter-spacing:-0.4px; }
+  .title-input:hover{ border-color:var(--border-strong); background:#fff; }
+  .title-input:focus{ border-color:var(--focus-ring); background:#fff; box-shadow:var(--shadow-focus); }
+
+  .meta-row{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .type-badge{ font-size:11.5px; font-weight:700; padding:3px 10px 3px 8px; border-radius:var(--radius-full); background:var(--brand-50); color:var(--action-primary); border:1px solid var(--brand-200); display:inline-flex; align-items:center; gap:5px; letter-spacing:0.1px; }
+  .type-badge::before{ content:""; width:5px; height:5px; border-radius:50%; background:var(--action-primary); }
+  .save-state{ font-size:12.5px; color:var(--text-quaternary); font-weight:600; display:inline-flex; align-items:center; gap:6px; white-space:nowrap; }
+  .save-state .dot{ width:6px; height:6px; border-radius:50%; background:var(--success-600); flex-shrink:0; }
+  .save-state.unsaved .dot{ background:var(--warning); animation:pulse 1.6s ease-in-out infinite; }
+  .save-state.unsaved{ color:var(--warning-text); }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+  .header-actions{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
+
+  /* Buttons — matches library Button/_Button base sizing (40px md, radius-lg, 8px icon gap) */
+  .btn{ height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:1px solid transparent; text-decoration:none; white-space:nowrap; transition:background .15s var(--ease), border-color .15s var(--ease), box-shadow .15s var(--ease), color .15s var(--ease), transform .1s var(--ease); }
+  .btn:active{ transform:translateY(1px); }
+  .btn-primary{ background:var(--action-primary); color:#fff; box-shadow:var(--shadow-xs), 0 0 0 1px rgba(79,70,229,0.05); }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary:focus-visible{ box-shadow:var(--shadow-focus); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border-color:var(--border-strong); box-shadow:var(--shadow-xs); }
+  .btn-secondary:hover{ background:var(--surface-overlay); color:var(--text-primary); border-color:var(--border-emphasis); }
+  .btn-secondary:focus-visible{ box-shadow:var(--shadow-focus); border-color:var(--focus-ring); }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); border-color:transparent; }
+  .btn-ghost:hover{ background:var(--surface-overlay); color:var(--text-primary); }
+  .btn-sm{ height:32px; padding:0 12px; font-size:12.5px; border-radius:var(--radius-md); }
+  .btn-block-icon{ width:16px; height:16px; flex-shrink:0; }
+
+  /* Wizard Stepper — connected-track pattern */
+  .stepper{ margin-bottom:32px; }
+  .stepper-track{ position:relative; display:grid; grid-template-columns:repeat(3, 1fr); }
+  .stepper-progress-rail{ position:absolute; top:15px; left:calc(16.66% ); right:calc(16.66%); height:2px; background:var(--border-default); z-index:0; }
+  .stepper-progress-fill{ position:absolute; top:0; left:0; height:100%; width:0%; background:var(--action-primary); transition:width .35s var(--ease); }
+  .step-node{ position:relative; z-index:1; display:flex; flex-direction:column; align-items:center; gap:10px; background:none; border:none; cursor:pointer; padding:2px 8px 0; }
+  .step-icon-circle{ width:32px; height:32px; border-radius:50%; background:#fff; border:2px solid var(--border-default); color:var(--text-quaternary); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .2s var(--ease); }
+  .step-node.active .step-icon-circle{ background:var(--action-primary); color:#fff; border-color:var(--action-primary); box-shadow:0 0 0 4px var(--brand-50); }
+  .step-node.completed .step-icon-circle{ background:var(--action-primary); color:#fff; border-color:var(--action-primary); }
+  .step-node:hover:not(.active) .step-icon-circle{ border-color:var(--border-emphasis); color:var(--text-secondary); }
+  .step-labels{ display:flex; flex-direction:column; align-items:center; gap:1px; text-align:center; }
+  .step-tagline{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-quaternary); }
+  .step-node.active .step-tagline, .step-node.completed .step-tagline{ color:var(--action-primary); }
+  .step-heading{ font-size:13px; font-weight:700; color:var(--text-quaternary); white-space:nowrap; }
+  .step-node.active .step-heading, .step-node.completed .step-heading{ color:var(--text-primary); }
+
+  /* Wizard Step Panels */
+  .wizard-step-panel{ display:none; flex-direction:column; gap:24px; }
+  .wizard-step-panel.active{ display:flex; animation:panelIn .28s var(--ease); }
+  @keyframes panelIn{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:translateY(0); } }
+
+  /* Structural Cards */
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:28px; box-shadow:var(--shadow-xs); }
+  .card-header{ margin-bottom:22px; padding-bottom:18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:flex-start; gap:14px; }
+  .card-header-icon{ width:38px; height:38px; border-radius:var(--radius-lg); background:var(--brand-50); border:1px solid var(--brand-200); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .card-header-text{ display:flex; flex-direction:column; gap:3px; padding-top:2px; }
+  .card-title{ font-size:16px; font-weight:700; color:var(--text-primary); letter-spacing:-0.2px; }
+  .card-subtitle{ font-size:13px; color:var(--text-tertiary); line-height:1.5; }
+  .section-label-row{ display:flex; align-items:center; gap:10px; margin:26px 0 16px; }
+  .section-label-row .card-header-icon{ width:30px; height:30px; }
+  .section-label-row .card-title{ font-size:14.5px; }
+
+  /* Form Elements & Inputs */
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px 22px; }
+  .form-group{ display:flex; flex-direction:column; gap:6px; }
+  .form-group.full-width{ grid-column:1 / -1; }
+  .field-label{ font-size:13px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; }
+  .field-label .label-hint{ font-size:11.5px; font-weight:600; color:var(--text-quaternary); }
+  .field-desc{ font-size:12px; color:var(--text-quaternary); line-height:1.4; margin-top:-2px; }
+
+  .form-control{ height:40px; padding:0 14px; border:1px solid var(--border-strong); border-radius:var(--radius-lg); font-size:13.5px; background:#fff; outline:none; color:var(--text-primary); box-shadow:var(--shadow-xs); transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  .form-control:hover{ border-color:var(--border-emphasis); }
+  .form-control:focus{ border-color:var(--focus-ring); box-shadow:var(--shadow-focus); }
+  select.form-control{ appearance:none; -webkit-appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23737373' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 12px center; padding-right:38px; }
+
+  /* Audience selector — Icon-card radio pattern */
+  .radio-card-grid{ display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-bottom:22px; }
+  .radio-card{ border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:18px; cursor:pointer; display:flex; flex-direction:column; gap:12px; transition:all .15s var(--ease); background:#fff; position:relative; }
+  .radio-card:hover{ border-color:var(--border-emphasis); box-shadow:var(--shadow-sm); }
+  .radio-card.selected{ border-color:var(--action-primary); background:var(--brand-50); box-shadow:0 0 0 1px var(--action-primary); }
+  .radio-card-top{ display:flex; align-items:flex-start; justify-content:space-between; }
+  .radio-card-icon{ width:36px; height:36px; border-radius:var(--radius-md); background:var(--surface-overlay); border:1px solid var(--border-default); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; transition:all .15s var(--ease); }
+  .radio-card.selected .radio-card-icon{ background:var(--action-primary); border-color:var(--action-primary); color:#fff; }
+  .radio-pip{ width:18px; height:18px; border-radius:50%; border:1.5px solid var(--border-strong); flex-shrink:0; display:flex; align-items:center; justify-content:center; transition:all .15s var(--ease); }
+  .radio-card.selected .radio-pip{ border-color:var(--action-primary); background:var(--action-primary); }
+  .radio-pip::after{ content:""; width:7px; height:7px; border-radius:50%; background:#fff; opacity:0; transition:opacity .1s; }
+  .radio-card.selected .radio-pip::after{ opacity:1; }
+  .radio-card-body{ display:flex; flex-direction:column; gap:3px; }
+  .radio-card-title{ font-size:13.5px; font-weight:700; color:var(--text-primary); }
+  .radio-card-desc{ font-size:12.5px; color:var(--text-tertiary); line-height:1.45; }
+
+  /* Learner Multi-Select Tagger */
+  .learner-tag-box{ min-height:48px; padding:9px 10px; border:1px solid var(--border-strong); border-radius:var(--radius-lg); background:#fff; display:flex; flex-wrap:wrap; gap:8px; align-items:center; box-shadow:var(--shadow-xs); }
+  .learner-chip{ font-size:12.5px; font-weight:600; background:var(--surface-overlay); color:var(--text-primary); padding:4px 6px 4px 4px; border-radius:var(--radius-full); border:1px solid var(--border-default); display:inline-flex; align-items:center; gap:7px; transition:border-color .15s var(--ease); }
+  .learner-chip:hover{ border-color:var(--border-emphasis); }
+  .learner-avatar{ width:20px; height:20px; border-radius:50%; background:var(--action-primary); color:#fff; font-size:9.5px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .chip-remove{ border:none; background:transparent; cursor:pointer; color:var(--text-quaternary); width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; transition:all .15s var(--ease); flex-shrink:0; }
+  .chip-remove:hover{ color:#fff; background:var(--error); }
+
+  /* Toggle Switch Rows */
+  .toggle-stack{ display:flex; flex-direction:column; gap:12px; }
+  .toggle-card{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:16px 18px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; transition:border-color .15s var(--ease), box-shadow .15s var(--ease); }
+  .toggle-card:hover{ border-color:var(--border-emphasis); box-shadow:var(--shadow-xs); }
+  .toggle-info{ display:flex; align-items:flex-start; gap:12px; }
+  .toggle-icon{ width:34px; height:34px; border-radius:var(--radius-md); background:var(--surface-overlay); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .toggle-copy{ display:flex; flex-direction:column; gap:2px; padding-top:2px; }
+  .toggle-title{ font-size:13.5px; font-weight:700; color:var(--text-primary); }
+  .toggle-desc{ font-size:12px; color:var(--text-quaternary); line-height:1.4; }
+
+  .toggle-switch{ position:relative; display:inline-block; width:40px; height:22px; flex-shrink:0; }
+  .toggle-switch input{ position:absolute; opacity:0; width:100%; height:100%; margin:0; cursor:pointer; z-index:1; }
+  .slider{ position:absolute; cursor:pointer; inset:0; background-color:var(--border-strong); transition:.2s; border-radius:24px; }
+  .slider::before{ position:absolute; content:""; height:16px; width:16px; left:3px; top:3px; background-color:white; transition:.2s var(--ease); border-radius:50%; box-shadow:0 1px 3px rgba(0,0,0,0.2); }
+  .toggle-switch input:checked + .slider{ background-color:var(--action-primary); }
+  .toggle-switch input:checked + .slider::before{ transform:translateX(18px); }
+  .toggle-switch input:focus-visible + .slider{ box-shadow:var(--shadow-focus); }
+
+  /* Question Authoring Toolbar (Step 3) */
+  .authoring-toolbar{ position:sticky; top:0; z-index:10; background:rgba(255,255,255,0.92); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; box-shadow:var(--shadow-sm); margin-bottom:20px; }
+  .toolbar-btn-group{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+  .type-pill-btn{ height:34px; padding:0 13px; border-radius:var(--radius-lg); font-size:12.5px; font-weight:600; cursor:pointer; border:1px solid var(--border-strong); background:#fff; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px; transition:all .15s var(--ease); box-shadow:var(--shadow-xs); }
+  .type-pill-btn:hover{ background:var(--surface-overlay); color:var(--text-primary); border-color:var(--border-emphasis); }
+  .type-pill-btn.ai-pill{ color:var(--action-primary); border-color:var(--brand-200); background:linear-gradient(180deg, #fff, var(--brand-50)); }
+  .type-pill-btn.ai-pill:hover{ border-color:var(--action-primary); }
+
+  .points-badge-pill{ font-size:12.5px; font-weight:700; color:var(--action-primary); background:var(--brand-50); padding:7px 14px; border-radius:var(--radius-full); border:1px solid var(--brand-200); display:inline-flex; align-items:center; gap:7px; white-space:nowrap; }
+
+  /* Section Divider Box — accent-bar pattern (no library equivalent, hand-authored) */
+  .section-container{ background:#fff; border:1px solid var(--border-default); border-left:3px solid var(--action-primary); border-radius:var(--radius-lg); padding:16px 20px; margin-bottom:18px; box-shadow:var(--shadow-xs); }
+  .section-head{ display:flex; align-items:center; justify-content:space-between; gap:14px; margin-bottom:4px; }
+  .section-title-field{ font-size:15.5px; font-weight:700; border:none; background:transparent; width:100%; color:var(--text-primary); outline:none; padding:2px 0; border-radius:var(--radius-sm); }
+  .section-title-field:focus{ box-shadow:none; text-decoration:underline; text-decoration-color:var(--brand-200); text-underline-offset:3px; }
+  .section-count-badge{ font-size:11.5px; color:var(--text-quaternary); font-weight:700; white-space:nowrap; background:var(--surface-overlay); padding:3px 9px; border-radius:var(--radius-full); }
+  .section-desc-field{ font-size:12.5px; border:none; background:transparent; width:100%; color:var(--text-tertiary); outline:none; padding:1px 0; }
+
+  /* Question Unit Container */
+  .question-unit{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:22px; margin-bottom:16px; box-shadow:var(--shadow-xs); transition:border-color .15s var(--ease), box-shadow .15s var(--ease); position:relative; }
+  .question-unit:hover{ border-color:var(--border-emphasis); box-shadow:var(--shadow-sm); }
+  .question-unit.active-q{ border-color:var(--action-primary); box-shadow:0 0 0 1px var(--action-primary), var(--shadow-sm); }
+
+  .q-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:16px; }
+  .q-header-left{ display:flex; align-items:center; gap:12px; }
+  .q-drag{ cursor:grab; color:var(--text-disabled); display:flex; align-items:center; transition:color .15s var(--ease); }
+  .q-drag:hover{ color:var(--text-tertiary); }
+  .q-number-badge{ width:26px; height:26px; border-radius:50%; background:var(--surface-overlay); color:var(--text-secondary); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .question-unit.active-q .q-number-badge{ background:var(--action-primary); color:#fff; }
+
+  .q-kind-badge{ font-size:11px; font-weight:700; padding:3px 9px 3px 7px; border-radius:var(--radius-full); display:inline-flex; align-items:center; gap:5px; letter-spacing:0.1px; }
+  .q-kind-badge::before{ content:""; width:5px; height:5px; border-radius:50%; }
+  .q-kind-badge.mcq{ background:var(--brand-50); color:var(--action-primary); border:1px solid var(--brand-200); }
+  .q-kind-badge.mcq::before{ background:var(--action-primary); }
+  .q-kind-badge.multi{ background:var(--purple-subtle); color:var(--purple-text); border:1px solid var(--purple-border); }
+  .q-kind-badge.multi::before{ background:var(--purple-text); }
+  .q-kind-badge.tf{ background:var(--warning-subtle); color:var(--warning-text); border:1px solid var(--warning-border); }
+  .q-kind-badge.tf::before{ background:var(--warning); }
+  .q-kind-badge.sa{ background:var(--sky-subtle); color:var(--sky-text); border:1px solid var(--sky-border); }
+  .q-kind-badge.sa::before{ background:var(--sky-text); }
+
+  .q-header-right{ display:flex; align-items:center; gap:8px; }
+  .pts-box{ display:flex; align-items:center; gap:6px; background:var(--surface-overlay); padding:3px 4px 3px 10px; border-radius:var(--radius-md); border:1px solid var(--border-default); }
+  .pts-box label{ font-size:11.5px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.3px; }
+  .pts-box input{ width:44px; height:26px; text-align:center; font-size:13px; font-weight:700; color:var(--text-primary); border:1px solid var(--border-default); border-radius:var(--radius-sm); outline:none; background:#fff; }
+  .pts-box input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 2px var(--brand-100); }
+
+  .q-action-icon{ width:32px; height:32px; border-radius:var(--radius-md); border:1px solid var(--border-default); background:#fff; color:var(--text-tertiary); display:flex; align-items:center; justify-content:center; transition:all .15s var(--ease); }
+  .q-action-icon:hover{ background:var(--surface-overlay); color:var(--text-primary); border-color:var(--border-emphasis); }
+  .q-action-icon.danger:hover{ background:var(--error-subtle); color:var(--error); border-color:var(--error-border); }
+
+  .q-editor-box{ margin-bottom:16px; }
+  .q-prompt-input{ width:100%; padding:13px 14px; border:1px solid var(--border-strong); border-radius:var(--radius-lg); font-size:14.5px; font-weight:600; color:var(--text-primary); outline:none; transition:all .15s var(--ease); background:var(--surface-canvas); }
+  .q-prompt-input:hover{ background:#fff; }
+  .q-prompt-input:focus{ border-color:var(--focus-ring); box-shadow:var(--shadow-focus); background:#fff; }
+  .q-prompt-input::placeholder{ color:var(--text-quaternary); font-weight:500; }
+
+  /* Option List Rows */
+  .option-stack{ display:flex; flex-direction:column; gap:8px; margin-bottom:14px; }
+  .option-item{ display:flex; align-items:center; gap:12px; padding:9px 10px 9px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; transition:all .15s var(--ease); }
+  .option-item:hover{ border-color:var(--border-emphasis); }
+  .option-item.correct{ border-color:var(--success-border); background:var(--success-subtle); }
+  .option-item input[type="radio"], .option-item input[type="checkbox"]{ width:17px; height:17px; accent-color:var(--action-primary); cursor:pointer; flex-shrink:0; }
+  .option-item.correct input[type="radio"], .option-item.correct input[type="checkbox"]{ accent-color:var(--success-600); }
+  .option-input{ flex:1; height:30px; border:none; background:transparent; font-size:13.5px; color:var(--text-primary); outline:none; }
+  .option-item.correct .option-input{ font-weight:600; color:var(--success-text); }
+  .correct-indicator{ font-size:10.5px; font-weight:700; color:var(--success-text); background:#fff; padding:3px 9px 3px 6px; border-radius:var(--radius-full); border:1px solid var(--success-border); white-space:nowrap; display:inline-flex; align-items:center; gap:4px; }
+  .opt-delete-btn{ border:none; background:transparent; color:var(--text-disabled); cursor:pointer; width:22px; height:22px; border-radius:var(--radius-sm); display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all .15s var(--ease); }
+  .opt-delete-btn:hover{ color:var(--error); background:var(--error-subtle); }
+
+  .add-choice-btn{ font-size:13px; font-weight:700; color:var(--action-primary); background:transparent; border:none; cursor:pointer; padding:6px 4px; display:inline-flex; align-items:center; gap:6px; border-radius:var(--radius-sm); transition:background .15s var(--ease); }
+  .add-choice-btn:hover{ background:var(--brand-50); }
+
+  /* Marking rubric callout */
+  .rubric-box{ background:var(--surface-canvas); padding:14px; border-radius:var(--radius-lg); border:1px solid var(--border-subtle); }
+  .rubric-head{ font-size:11.5px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px; display:flex; align-items:center; gap:6px; }
+  .rubric-textarea{ width:100%; padding:11px 12px; border:1px solid var(--border-default); border-radius:var(--radius-md); font-size:13px; line-height:1.5; outline:none; background:#fff; color:var(--text-primary); resize:vertical; transition:all .15s var(--ease); }
+  .rubric-textarea:focus{ border-color:var(--focus-ring); box-shadow:var(--shadow-focus); }
+
+  /* Sticky Navigation Footer */
+  .wizard-nav-footer{ display:flex; align-items:center; justify-content:space-between; margin-top:8px; padding-top:22px; border-top:1px solid var(--border-default); }
+
+  /* Modal Dialogs */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(23,23,23,0.48); backdrop-filter:blur(4px); -webkit-backdrop-filter:blur(4px); z-index:100; display:none; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.show{ display:flex; animation:overlayIn .15s var(--ease); }
+  @keyframes overlayIn{ from{ opacity:0; } to{ opacity:1; } }
+  .modal-card{ background:#fff; border-radius:var(--radius-2xl); border:1px solid var(--border-default); box-shadow:var(--shadow-lg); width:100%; max-width:600px; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column; animation:modalIn .2s var(--ease); }
+  @keyframes modalIn{ from{ opacity:0; transform:translateY(8px) scale(.98); } to{ opacity:1; transform:translateY(0) scale(1); } }
+  .modal-header{ padding:22px 24px 18px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:flex-start; gap:14px; }
+  .modal-header-icon{ width:40px; height:40px; border-radius:var(--radius-lg); background:var(--brand-50); border:1px solid var(--brand-200); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .modal-title-group{ flex:1; padding-top:2px; }
+  .modal-title{ font-size:16.5px; font-weight:700; margin:0 0 2px; color:var(--text-primary); }
+  .modal-sub{ font-size:12.5px; color:var(--text-tertiary); }
+  .modal-close{ width:32px; height:32px; border-radius:50%; border:none; background:transparent; color:var(--text-quaternary); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all .15s var(--ease); flex-shrink:0; }
+  .modal-close:hover{ background:var(--surface-overlay); color:var(--text-primary); }
+  .modal-body{ padding:22px 24px; display:flex; flex-direction:column; gap:14px; }
+  .bank-callout{ font-size:12.5px; color:var(--action-primary); background:var(--brand-50); border:1px solid var(--brand-200); padding:11px 14px; border-radius:var(--radius-lg); line-height:1.5; }
+  .bank-item{ padding:14px 16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); display:flex; justify-content:space-between; align-items:center; gap:16px; background:#fff; transition:border-color .15s var(--ease); }
+  .bank-item:hover{ border-color:var(--border-emphasis); box-shadow:var(--shadow-xs); }
+  .bank-item-title{ font-weight:700; font-size:13.5px; color:var(--text-primary); }
+  .bank-item-meta{ font-size:12px; color:var(--text-quaternary); margin-top:3px; }
+  .modal-footer{ padding:16px 24px; border-top:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:flex-end; gap:12px; background:var(--surface-canvas); border-radius:0 0 var(--radius-2xl) var(--radius-2xl); }
+  .modal-footer.spread{ justify-content:space-between; }
+  .modal-footer-count{ font-size:12.5px; font-weight:600; color:var(--text-tertiary); }
+
+  /* Learner Picker Modal */
+  .picker-search{ position:relative; }
+  .picker-search svg{ position:absolute; left:13px; top:50%; transform:translateY(-50%); color:var(--text-quaternary); pointer-events:none; }
+  .picker-search input{ padding-left:38px; }
+  .picker-list{ border:1px solid var(--border-default); border-radius:var(--radius-lg); overflow-y:auto; max-height:320px; }
+  .picker-row{ display:flex; align-items:center; gap:12px; padding:11px 14px; cursor:pointer; border-bottom:1px solid var(--border-subtle); transition:background .15s var(--ease); }
+  .picker-row:last-child{ border-bottom:none; }
+  .picker-row:hover{ background:var(--surface-overlay); }
+  .picker-row.picker-selected{ background:var(--brand-50); }
+  .picker-row input[type="checkbox"]{ width:17px; height:17px; accent-color:var(--action-primary); cursor:pointer; flex-shrink:0; pointer-events:none; }
+  .picker-avatar{ width:30px; height:30px; border-radius:50%; background:var(--action-primary); color:#fff; font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .picker-copy{ display:flex; flex-direction:column; gap:1px; flex:1; min-width:0; }
+  .picker-name{ font-size:13px; font-weight:700; color:var(--text-primary); }
+  .picker-meta{ font-size:11.5px; color:var(--text-quaternary); }
+  .picker-empty{ padding:28px 16px; text-align:center; font-size:12.5px; color:var(--text-quaternary); }
+
+  @media (max-width: 900px){
+    .form-grid, .radio-card-grid{ grid-template-columns:1fr; }
+    .main{ padding:20px 18px 60px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Assessment+Editor" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <!-- Breadcrumb -->
+    <a href="assessments-overview.html" class="back-link">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Assessments Directory
+    </a>
+
+    <!-- Workspace Header -->
+    <div class="workspace-header">
+      <div class="title-group">
+        <div class="title-row">
+          <input type="text" class="title-input" id="asmTitle" aria-label="Assessment title" value="Mid-Term Knowledge Check: CS-301" oninput="markUnsaved()">
+        </div>
+        <div class="meta-row">
+          <span class="type-badge">Instructor Assessment</span>
+          <span class="save-state" id="saveState"><span class="dot"></span>Saved</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-secondary" onclick="saveDraft()">Save Draft</button>
+        <button class="btn btn-primary" onclick="submitAndPublish()">
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+          Submit &amp; Publish
+        </button>
+      </div>
+    </div>
+
+    <!-- 3-Step Wizard Navigation Stepper -->
+    <nav class="stepper" aria-label="Assessment authoring steps">
+      <div class="stepper-track">
+        <div class="stepper-progress-rail"><div class="stepper-progress-fill" id="stepperFill"></div></div>
+
+        <button class="step-node active" id="stepBtn-1" onclick="goToStep(1)" aria-current="step">
+          <div class="step-icon-circle" id="stepIcon-1">1</div>
+          <div class="step-labels">
+            <span class="step-tagline">Step 1</span>
+            <span class="step-heading">Target &amp; Deadlines</span>
+          </div>
+        </button>
+
+        <button class="step-node" id="stepBtn-2" onclick="goToStep(2)">
+          <div class="step-icon-circle" id="stepIcon-2">2</div>
+          <div class="step-labels">
+            <span class="step-tagline">Step 2</span>
+            <span class="step-heading">Rules &amp; Timing</span>
+          </div>
+        </button>
+
+        <button class="step-node" id="stepBtn-3" onclick="goToStep(3)">
+          <div class="step-icon-circle" id="stepIcon-3">3</div>
+          <div class="step-labels">
+            <span class="step-tagline">Step 3</span>
+            <span class="step-heading">Question Selection</span>
+          </div>
+        </button>
+      </div>
+    </nav>
+
+    <!-- =========================================================
+         STEP 1: TARGET AUDIENCE & DEADLINES
+    ========================================================= -->
+    <div class="wizard-step-panel active" id="stepPanel-1">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          </div>
+          <div class="card-header-text">
+            <h3 class="card-title">Select Target Learners &amp; Assignment Scope</h3>
+            <p class="card-subtitle">Define whether this assessment is assigned to an entire class/cohort or to specific selected learners.</p>
+          </div>
+        </div>
+
+        <div class="radio-card-grid" role="radiogroup" aria-label="Assignment scope">
+          <div class="radio-card selected" id="audienceCard-class" onclick="selectAudience('class')">
+            <div class="radio-card-top">
+              <div class="radio-card-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <input type="radio" name="audience_type" value="class" id="audienceRadio-class" checked style="position:absolute; opacity:0; pointer-events:none;">
+              <span class="radio-pip"></span>
+            </div>
+            <div class="radio-card-body">
+              <span class="radio-card-title">Assign to Class / Department / Cohort</span>
+              <span class="radio-card-desc">Delivers this assessment to all registered learners enrolled in a specific class or section.</span>
+            </div>
+          </div>
+
+          <div class="radio-card" id="audienceCard-individual" onclick="selectAudience('individual')">
+            <div class="radio-card-top">
+              <div class="radio-card-icon">
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2"/><path d="m17 11 2 2 4-4"/></svg>
+              </div>
+              <input type="radio" name="audience_type" value="individual" id="audienceRadio-individual" style="position:absolute; opacity:0; pointer-events:none;">
+              <span class="radio-pip"></span>
+            </div>
+            <div class="radio-card-body">
+              <span class="radio-card-title">Assign to Specific Individual Learners</span>
+              <span class="radio-card-desc">Select specific individual students requiring an at-risk assessment or makeup test.</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Class Selection Option -->
+        <div class="form-grid" id="classSelectionBox" style="margin-bottom:22px;">
+          <div class="form-group full-width">
+            <label class="field-label" for="classSelect">
+              Select Target Class / Cohort
+              <span class="label-hint">Required</span>
+            </label>
+            <select class="form-control" id="classSelect" name="classSelect" onchange="markUnsaved()">
+              <option value="cs-301-a" selected>Computer Science 2026 — Section A (28 Enrolled Learners)</option>
+              <option value="cs-301-b">Computer Science 2026 — Section B (32 Enrolled Learners)</option>
+              <option value="ux-204">Interaction Design Dept — Batch 2026 (18 Enrolled Learners)</option>
+              <option value="ai-101">Intro to AI &amp; Machine Learning — Evening (40 Enrolled Learners)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Individual Learner Picker Option -->
+        <div class="form-grid" id="individualSelectionBox" style="display:none; margin-bottom:22px;">
+          <div class="form-group full-width">
+            <span class="field-label" id="learnerBoxLabel">Assigned Individual Learners</span>
+            <div class="learner-tag-box" id="learnerTagBox" role="group" aria-labelledby="learnerBoxLabel">
+              <span class="learner-chip" data-learner-id="l1">
+                <span class="learner-avatar">AS</span>
+                Ananya Sharma (CS-104)
+                <button class="chip-remove" aria-label="Remove Ananya Sharma" onclick="removeLearnerChip('l1')">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </span>
+              <span class="learner-chip" data-learner-id="l2">
+                <span class="learner-avatar">MC</span>
+                Marcus Chen (CS-109)
+                <button class="chip-remove" aria-label="Remove Marcus Chen" onclick="removeLearnerChip('l2')">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </span>
+              <span class="learner-chip" data-learner-id="l3">
+                <span class="learner-avatar">SR</span>
+                Sophia Rodriguez (CS-112)
+                <button class="chip-remove" aria-label="Remove Sophia Rodriguez" onclick="removeLearnerChip('l3')">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+                </button>
+              </span>
+              <button class="btn btn-sm btn-secondary" onclick="openLearnerModal()">+ Add Learner</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delivery Schedule -->
+        <div class="section-label-row">
+          <div class="card-header-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h4 class="card-title">Delivery Timeline &amp; Deadlines</h4>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="field-label" for="releaseDate">Release Date &amp; Time</label>
+            <input type="datetime-local" class="form-control" id="releaseDate" name="releaseDate" value="2026-10-01T09:00" oninput="markUnsaved()">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="deadlineDate">Submission Deadline Date &amp; Time</label>
+            <input type="datetime-local" class="form-control" id="deadlineDate" name="deadlineDate" value="2026-10-15T23:59" oninput="markUnsaved()">
+          </div>
+
+          <div class="form-group full-width">
+            <label class="field-label" for="latePolicy">Late Submissions Policy</label>
+            <select class="form-control" id="latePolicy" name="latePolicy" onchange="markUnsaved()">
+              <option value="strict" selected>Strict — Automatically reject submissions after deadline</option>
+              <option value="grace">Grace Period — Allow submissions up to 12 hrs late with 10% penalty</option>
+              <option value="allow-late">Permissive — Flag late submissions for instructor evaluation</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 1 Footer -->
+      <div class="wizard-nav-footer">
+        <div></div>
+        <button class="btn btn-primary" onclick="goToStep(2)">
+          Next: Rules &amp; Timing Settings
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         STEP 2: ASSESSMENT RULES & TIMING SETTINGS
+    ========================================================= -->
+    <div class="wizard-step-panel" id="stepPanel-2">
+      <div class="card">
+        <div class="card-header">
+          <div class="card-header-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          </div>
+          <div class="card-header-text">
+            <h3 class="card-title">Configure Timing, Attempts &amp; Pass Criteria</h3>
+            <p class="card-subtitle">Set exam timer, submission retry limits, pass marks, and answer key visibility rules.</p>
+          </div>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:26px;">
+          <div class="form-group">
+            <label class="field-label" for="timerDuration">Timer Duration (Minutes)</label>
+            <span class="field-desc">Enter 0 for untimed open-ended assessments.</span>
+            <input type="number" class="form-control" id="timerDuration" name="timerDuration" value="45" oninput="markUnsaved()">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="maxAttempts">Maximum Allowed Attempts</label>
+            <span class="field-desc">Number of allowed submission attempts for learners.</span>
+            <select class="form-control" id="maxAttempts" name="maxAttempts" onchange="markUnsaved()">
+              <option value="1">1 Attempt</option>
+              <option value="2" selected>2 Attempts</option>
+              <option value="3">3 Attempts</option>
+              <option value="unlimited">Unlimited Attempts</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="passScore">Passing Score Percentage (%)</label>
+            <span class="field-desc">Minimum score percentage required to achieve a Pass status.</span>
+            <input type="number" class="form-control" id="passScore" name="passScore" value="70" oninput="markUnsaved()">
+          </div>
+
+          <div class="form-group">
+            <label class="field-label" for="resultVisibility">Result &amp; Answer Key Visibility</label>
+            <span class="field-desc">When learners can view correct answers and detailed feedback.</span>
+            <select class="form-control" id="resultVisibility" name="resultVisibility" onchange="markUnsaved()">
+              <option value="immediate" selected>Show score and answers immediately upon submission</option>
+              <option value="after-sub">Show score immediately; answers after submission</option>
+              <option value="after-deadline">Hide correct answers until submission deadline passes</option>
+              <option value="instructor-release">Hide all results until manual instructor release</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="section-label-row">
+          <div class="card-header-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+          </div>
+          <h4 class="card-title">Exam Integrity &amp; Randomization Controls</h4>
+        </div>
+
+        <div class="toggle-stack">
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 3h5v5"/><path d="M4 20 21 3"/><path d="M21 16v5h-5"/><path d="M15 15l6 6"/><path d="M4 4l5 5"/></svg>
+              </div>
+              <div class="toggle-copy">
+                <span class="toggle-title" id="toggleShuffleQTitle">Randomize Question Sequence</span>
+                <span class="toggle-desc">Shuffle question order uniquely for every student exam attempt.</span>
+              </div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked aria-labelledby="toggleShuffleQTitle" onchange="markUnsaved()">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div class="toggle-card">
+            <div class="toggle-info">
+              <div class="toggle-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></svg>
+              </div>
+              <div class="toggle-copy">
+                <span class="toggle-title" id="toggleShuffleATitle">Shuffle Answer Choice Sequence</span>
+                <span class="toggle-desc">Randomize option choices for multiple choice and multi-select questions.</span>
+              </div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" checked aria-labelledby="toggleShuffleATitle" onchange="markUnsaved()">
+              <span class="slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 2 Footer -->
+      <div class="wizard-nav-footer">
+        <button class="btn btn-secondary" onclick="goToStep(1)">
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Back: Target &amp; Deadlines
+        </button>
+        <button class="btn btn-primary" onclick="goToStep(3)">
+          Next: Question Selection
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         STEP 3: QUESTION SELECTION & AUTHORING
+    ========================================================= -->
+    <div class="wizard-step-panel" id="stepPanel-3">
+
+      <!-- Authoring Sticky Toolbar -->
+      <div class="authoring-toolbar">
+        <div class="toolbar-btn-group">
+          <button class="btn btn-primary btn-sm" onclick="addQuestion('mcq')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Question
+          </button>
+          <button class="type-pill-btn" onclick="openBankModal()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
+            From Question Bank
+          </button>
+          <a href="ai-question-generator.html" class="type-pill-btn ai-pill">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Generate with AI
+          </a>
+          <button class="type-pill-btn" onclick="addSectionHeader()">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12h18"/><path d="M3 6h18"/><path d="M3 18h18"/></svg>
+            Add Section Header
+          </button>
+        </div>
+        <span class="points-badge-pill" id="totalPointsPill">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          4 Questions · 50 Total Points
+        </span>
+      </div>
+
+      <!-- Section Header Container -->
+      <div class="section-container">
+        <div class="section-head">
+          <input type="text" class="section-title-field" aria-label="Section title" value="Section 1: Binary Search Trees &amp; Graph Algorithms" onchange="markUnsaved()">
+          <span class="section-count-badge">3 Questions · 35 Pts</span>
+        </div>
+        <input type="text" class="section-desc-field" aria-label="Section description" value="Answer all objective questions regarding tree traversals and graph properties." onchange="markUnsaved()">
+      </div>
+
+      <div id="questionsList">
+        <!-- Question 1: Multiple Choice -->
+        <div class="question-unit active-q" id="qunit-1">
+          <div class="q-header">
+            <div class="q-header-left">
+              <span class="q-drag" title="Drag to reorder" role="img" aria-label="Drag handle">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              </span>
+              <span class="q-number-badge">1</span>
+              <span class="q-kind-badge mcq">Multiple Choice</span>
+            </div>
+            <div class="q-header-right">
+              <div class="pts-box">
+                <label for="pts-q1">Points</label>
+                <input type="number" id="pts-q1" value="10" oninput="updateTotals(); markUnsaved();">
+              </div>
+              <button class="q-action-icon" title="Duplicate Question" aria-label="Duplicate question 1" onclick="duplicateQ('qunit-1')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
+              <button class="q-action-icon danger" title="Delete Question" aria-label="Delete question 1" onclick="deleteQ('qunit-1')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="q-editor-box">
+            <input type="text" class="q-prompt-input" aria-label="Question 1 prompt" value="What is the average time complexity of searching in a balanced Binary Search Tree (BST)?" oninput="markUnsaved()">
+          </div>
+
+          <div class="option-stack">
+            <div class="option-item correct">
+              <input type="radio" name="q1_radio" checked aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="O(log N)" oninput="markUnsaved()">
+              <span class="correct-indicator">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Correct
+              </span>
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="option-item">
+              <input type="radio" name="q1_radio" aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="O(N)" oninput="markUnsaved()">
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="option-item">
+              <input type="radio" name="q1_radio" aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="O(N log N)" oninput="markUnsaved()">
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="add-choice-btn" onclick="addOptionRow(this, 'radio', 'q1_radio')">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Choice Option
+          </button>
+        </div>
+
+        <!-- Question 2: Multiple Select -->
+        <div class="question-unit" id="qunit-2">
+          <div class="q-header">
+            <div class="q-header-left">
+              <span class="q-drag" title="Drag to reorder" role="img" aria-label="Drag handle">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              </span>
+              <span class="q-number-badge">2</span>
+              <span class="q-kind-badge multi">Multiple Select</span>
+            </div>
+            <div class="q-header-right">
+              <div class="pts-box">
+                <label for="pts-q2">Points</label>
+                <input type="number" id="pts-q2" value="15" oninput="updateTotals(); markUnsaved();">
+              </div>
+              <button class="q-action-icon" title="Duplicate Question" aria-label="Duplicate question 2" onclick="duplicateQ('qunit-2')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
+              <button class="q-action-icon danger" title="Delete Question" aria-label="Delete question 2" onclick="deleteQ('qunit-2')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="q-editor-box">
+            <input type="text" class="q-prompt-input" aria-label="Question 2 prompt" value="Select all properties that apply to a Max-Heap data structure:" oninput="markUnsaved()">
+          </div>
+
+          <div class="option-stack">
+            <div class="option-item correct">
+              <input type="checkbox" checked aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="The key at the root node must be maximum among all keys." oninput="markUnsaved()">
+              <span class="correct-indicator">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Correct
+              </span>
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="option-item correct">
+              <input type="checkbox" checked aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="Every node's value is greater than or equal to its children." oninput="markUnsaved()">
+              <span class="correct-indicator">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Correct
+              </span>
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+            <div class="option-item">
+              <input type="checkbox" aria-label="Mark as correct answer" onchange="markUnsaved()">
+              <input type="text" class="option-input" aria-label="Option text" value="It is always a binary search tree." oninput="markUnsaved()">
+              <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+              </button>
+            </div>
+          </div>
+          <button class="add-choice-btn" onclick="addOptionRow(this, 'checkbox', null)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Add Choice Option
+          </button>
+        </div>
+
+        <!-- Question 3: True / False -->
+        <div class="question-unit" id="qunit-3">
+          <div class="q-header">
+            <div class="q-header-left">
+              <span class="q-drag" title="Drag to reorder" role="img" aria-label="Drag handle">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              </span>
+              <span class="q-number-badge">3</span>
+              <span class="q-kind-badge tf">True / False</span>
+            </div>
+            <div class="q-header-right">
+              <div class="pts-box">
+                <label for="pts-q3">Points</label>
+                <input type="number" id="pts-q3" value="10" oninput="updateTotals(); markUnsaved();">
+              </div>
+              <button class="q-action-icon" title="Duplicate Question" aria-label="Duplicate question 3" onclick="duplicateQ('qunit-3')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
+              <button class="q-action-icon danger" title="Delete Question" aria-label="Delete question 3" onclick="deleteQ('qunit-3')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="q-editor-box">
+            <input type="text" class="q-prompt-input" aria-label="Question 3 prompt" value="Dijkstra's algorithm correctly handles graphs with negative edge weights." oninput="markUnsaved()">
+          </div>
+
+          <div class="option-stack">
+            <div class="option-item">
+              <input type="radio" name="q3_radio" aria-label="Mark True as correct answer" onchange="markUnsaved()">
+              <span style="font-size:13.5px; font-weight:600; flex:1;">True</span>
+            </div>
+            <div class="option-item correct">
+              <input type="radio" name="q3_radio" checked aria-label="Mark False as correct answer" onchange="markUnsaved()">
+              <span style="font-size:13.5px; font-weight:600; color:var(--success-text); flex:1;">False</span>
+              <span class="correct-indicator">
+                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+                Correct
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Question 4: Short Answer -->
+        <div class="question-unit" id="qunit-4">
+          <div class="q-header">
+            <div class="q-header-left">
+              <span class="q-drag" title="Drag to reorder" role="img" aria-label="Drag handle">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+              </span>
+              <span class="q-number-badge">4</span>
+              <span class="q-kind-badge sa">Short Answer</span>
+            </div>
+            <div class="q-header-right">
+              <div class="pts-box">
+                <label for="pts-q4">Points</label>
+                <input type="number" id="pts-q4" value="15" oninput="updateTotals(); markUnsaved();">
+              </div>
+              <button class="q-action-icon" title="Duplicate Question" aria-label="Duplicate question 4" onclick="duplicateQ('qunit-4')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+              </button>
+              <button class="q-action-icon danger" title="Delete Question" aria-label="Delete question 4" onclick="deleteQ('qunit-4')">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="q-editor-box">
+            <input type="text" class="q-prompt-input" aria-label="Question 4 prompt" value="Explain why Breadth-First Search (BFS) is preferred over DFS when searching for the shortest path in an unweighted graph." oninput="markUnsaved()">
+          </div>
+
+          <div class="rubric-box">
+            <div class="rubric-head">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+              Instructor Grading Guidance / Marking Rubric
+            </div>
+            <label for="rubric-q4" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Marking rubric for question 4</label>
+            <textarea id="rubric-q4" class="rubric-textarea" rows="2" oninput="markUnsaved()">Full credit (15 pts) for explaining that BFS explores vertices level-by-level, guaranteeing the first discovery of target vertex is via shortest distance path.</textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Step 3 Footer -->
+      <div class="wizard-nav-footer">
+        <button class="btn btn-secondary" onclick="goToStep(2)">
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>
+          Back: Rules &amp; Timing Settings
+        </button>
+        <button class="btn btn-primary" onclick="submitAndPublish()">
+          <svg class="btn-block-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          Submit &amp; Publish Assessment
+        </button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal: Question Bank Selection -->
+<div class="modal-overlay" id="bankModal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="bankModalTitle">
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
+      </div>
+      <div class="modal-title-group">
+        <h3 class="modal-title" id="bankModalTitle">Select Question from Bank</h3>
+        <p class="modal-sub">Insert a reusable question from your shared question bank.</p>
+      </div>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('bankModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="bank-callout">
+        Inserting a question creates an <b>independent copy</b>. Future bank edits will not alter this assessment.
+      </div>
+      <div class="bank-item">
+        <div>
+          <div class="bank-item-title">What is the worst-case time complexity of QuickSort?</div>
+          <div class="bank-item-meta">Multiple Choice • #algorithms • 10 Pts</div>
+        </div>
+        <button class="btn btn-sm btn-primary" onclick="insertFromBank()">Select Question</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('bankModal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Learner Picker -->
+<div class="modal-overlay" id="learnerModal">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="learnerModalTitle">
+    <div class="modal-header">
+      <div class="modal-header-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+      </div>
+      <div class="modal-title-group">
+        <h3 class="modal-title" id="learnerModalTitle">Select Individual Learners</h3>
+        <p class="modal-sub">Choose learners to assign this assessment to directly.</p>
+      </div>
+      <button class="modal-close" aria-label="Close dialog" onclick="closeModal('learnerModal')">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div class="picker-search">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>
+        <label for="learnerSearch" style="position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0);">Search learners</label>
+        <input type="text" class="form-control" id="learnerSearch" placeholder="Search learners by name or class ID…" oninput="filterLearnerList(this.value)" autocomplete="off">
+      </div>
+      <div class="picker-list" id="learnerPickerList" role="listbox" aria-multiselectable="true" aria-label="Learner directory"></div>
+    </div>
+    <div class="modal-footer spread">
+      <span class="modal-footer-count" id="learnerPickerCount">0 learners selected</span>
+      <div style="display:flex; gap:12px;">
+        <button class="btn btn-secondary" onclick="closeModal('learnerModal')">Cancel</button>
+        <button class="btn btn-primary" onclick="applyLearnerSelection()">Add Selected</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let currentStep = 1;
+  let isUnsaved = false;
+
+  function goToStep(stepNum) {
+    currentStep = stepNum;
+
+    document.querySelectorAll('.step-node').forEach((btn, idx) => {
+      const num = idx + 1;
+      btn.classList.remove('active');
+      btn.removeAttribute('aria-current');
+      const iconCircle = document.getElementById(`stepIcon-${num}`);
+      if (num < stepNum) {
+        btn.classList.add('completed');
+        iconCircle.innerHTML = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+      } else {
+        btn.classList.remove('completed');
+        iconCircle.textContent = num;
+      }
+      if (num === stepNum) {
+        btn.classList.add('active');
+        btn.setAttribute('aria-current', 'step');
+      }
+    });
+
+    document.getElementById('stepperFill').style.width = `${((stepNum - 1) / 2) * 100}%`;
+
+    document.querySelectorAll('.wizard-step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`stepPanel-${stepNum}`).classList.add('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function selectAudience(type) {
+    document.querySelectorAll('.radio-card').forEach(c => c.classList.remove('selected'));
+    document.getElementById(`audienceCard-${type}`).classList.add('selected');
+    document.getElementById(`audienceRadio-${type}`).checked = true;
+
+    if (type === 'class') {
+      document.getElementById('classSelectionBox').style.display = 'grid';
+      document.getElementById('individualSelectionBox').style.display = 'none';
+    } else {
+      document.getElementById('classSelectionBox').style.display = 'none';
+      document.getElementById('individualSelectionBox').style.display = 'grid';
+    }
+    markUnsaved();
+  }
+
+  function markUnsaved() {
+    isUnsaved = true;
+    const saveState = document.getElementById('saveState');
+    saveState.classList.add('unsaved');
+    saveState.innerHTML = `<span class="dot"></span>Unsaved changes`;
+  }
+
+  function saveDraft() {
+    isUnsaved = false;
+    const saveState = document.getElementById('saveState');
+    saveState.classList.remove('unsaved');
+    saveState.innerHTML = `<span class="dot"></span>Saved`;
+    alert('Draft saved successfully.');
+  }
+
+  function submitAndPublish() {
+    alert('Assessment submitted & published successfully to target learners!');
+    location.href = 'assessments-overview.html';
+  }
+
+  function updateTotals() {
+    const qUnits = document.querySelectorAll('.question-unit');
+    let pts = 0;
+    qUnits.forEach(u => {
+      const val = parseInt(u.querySelector('.pts-box input')?.value) || 0;
+      pts += val;
+    });
+
+    document.getElementById('totalPointsPill').innerHTML = `
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      ${qUnits.length} Questions · ${pts} Total Points
+    `;
+  }
+
+  function addQuestion(type) {
+    const list = document.getElementById('questionsList');
+    const newId = 'qunit-' + Date.now();
+    const count = document.querySelectorAll('.question-unit').length + 1;
+
+    const div = document.createElement('div');
+    div.className = 'question-unit';
+    div.id = newId;
+
+    div.innerHTML = `
+      <div class="q-header">
+        <div class="q-header-left">
+          <span class="q-drag" role="img" aria-label="Drag handle">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="5" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="9" cy="19" r="1"/><circle cx="15" cy="5" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="15" cy="19" r="1"/></svg>
+          </span>
+          <span class="q-number-badge">${count}</span>
+          <span class="q-kind-badge mcq">Multiple Choice</span>
+        </div>
+        <div class="q-header-right">
+          <div class="pts-box">
+            <label for="pts-${newId}">Points</label>
+            <input type="number" id="pts-${newId}" value="10" oninput="updateTotals(); markUnsaved();">
+          </div>
+          <button class="q-action-icon" title="Duplicate Question" aria-label="Duplicate question ${count}" onclick="duplicateQ('${newId}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>
+          </button>
+          <button class="q-action-icon danger" title="Delete Question" aria-label="Delete question ${count}" onclick="deleteQ('${newId}')">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="q-editor-box">
+        <input type="text" class="q-prompt-input" aria-label="Question ${count} prompt" placeholder="Enter question prompt..." oninput="markUnsaved()">
+      </div>
+      <div class="option-stack">
+        <div class="option-item correct">
+          <input type="radio" name="${newId}_r" checked aria-label="Mark as correct answer" onchange="markUnsaved()">
+          <input type="text" class="option-input" aria-label="Option text" value="Option A" oninput="markUnsaved()">
+          <span class="correct-indicator">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>
+            Correct
+          </span>
+          <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+        <div class="option-item">
+          <input type="radio" name="${newId}_r" aria-label="Mark as correct answer" onchange="markUnsaved()">
+          <input type="text" class="option-input" aria-label="Option text" value="Option B" oninput="markUnsaved()">
+          <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+          </button>
+        </div>
+      </div>
+      <button class="add-choice-btn" onclick="addOptionRow(this, 'radio', '${newId}_r')">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Add Choice Option
+      </button>
+    `;
+
+    list.appendChild(div);
+    updateTotals();
+    markUnsaved();
+  }
+
+  function addOptionRow(btn, type, name) {
+    const stack = btn.previousElementSibling;
+    const div = document.createElement('div');
+    div.className = 'option-item';
+    div.innerHTML = `
+      <input type="${type}" ${name ? `name="${name}"` : ''} aria-label="Mark as correct answer" onchange="markUnsaved()">
+      <input type="text" class="option-input" aria-label="Option text" placeholder="New Option Choice" oninput="markUnsaved()">
+      <button class="opt-delete-btn" aria-label="Remove option" onclick="this.closest('.option-item').remove()">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+      </button>
+    `;
+    stack.appendChild(div);
+    markUnsaved();
+  }
+
+  function duplicateQ(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      const clone = el.cloneNode(true);
+      clone.id = 'qunit-' + Date.now();
+      el.after(clone);
+      updateTotals();
+      markUnsaved();
+    }
+  }
+
+  function deleteQ(id) {
+    const el = document.getElementById(id);
+    if (el) {
+      el.remove();
+      updateTotals();
+      markUnsaved();
+    }
+  }
+
+  function addSectionHeader() {
+    alert('Section header container added.');
+  }
+
+  function openBankModal() {
+    document.getElementById('bankModal').classList.add('show');
+  }
+
+  function insertFromBank() {
+    closeModal('bankModal');
+    addQuestion('mcq');
+    alert('Inserted question from Question Bank as an independent copy.');
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('show');
+  }
+
+  // -----------------------------------------------------------
+  // Learner Picker Modal
+  // -----------------------------------------------------------
+  const LEARNER_ROSTER = [
+    { id: 'l1', name: 'Ananya Sharma', meta: 'CS-104 · Computer Science 2026 — Section A' },
+    { id: 'l2', name: 'Marcus Chen', meta: 'CS-109 · Computer Science 2026 — Section A' },
+    { id: 'l3', name: 'Sophia Rodriguez', meta: 'CS-112 · Computer Science 2026 — Section A' },
+    { id: 'l4', name: 'Ethan Brooks', meta: 'CS-115 · Computer Science 2026 — Section A' },
+    { id: 'l5', name: 'Priya Nair', meta: 'CS-118 · Computer Science 2026 — Section B' },
+    { id: 'l6', name: 'Daniel Kim', meta: 'CS-121 · Computer Science 2026 — Section B' },
+    { id: 'l7', name: 'Wei Zhang', meta: 'CS-124 · Intro to AI & Machine Learning' },
+    { id: 'l8', name: 'Fatima Noor', meta: 'CS-127 · Intro to AI & Machine Learning' },
+    { id: 'l9', name: 'Lucas Bianchi', meta: 'UX-204 · Interaction Design Dept' },
+  ];
+
+  const selectedLearnerIds = new Set(
+    Array.from(document.querySelectorAll('#learnerTagBox .learner-chip')).map(c => c.dataset.learnerId)
+  );
+
+  function learnerInitials(name) {
+    return name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  function renderLearnerList(filterText) {
+    const list = document.getElementById('learnerPickerList');
+    const q = (filterText || '').trim().toLowerCase();
+    const matches = LEARNER_ROSTER.filter(l =>
+      !q || l.name.toLowerCase().includes(q) || l.meta.toLowerCase().includes(q)
+    );
+
+    if (!matches.length) {
+      list.innerHTML = `<div class="picker-empty">No learners match “${filterText}”.</div>`;
+      return;
+    }
+
+    list.innerHTML = matches.map(l => {
+      const checked = selectedLearnerIds.has(l.id);
+      return `
+        <div class="picker-row ${checked ? 'picker-selected' : ''}" role="option" aria-selected="${checked}" onclick="toggleLearnerSelect('${l.id}')">
+          <input type="checkbox" ${checked ? 'checked' : ''} tabindex="-1" aria-hidden="true">
+          <span class="picker-avatar">${learnerInitials(l.name)}</span>
+          <span class="picker-copy">
+            <span class="picker-name">${l.name}</span>
+            <span class="picker-meta">${l.meta}</span>
+          </span>
+        </div>
+      `;
+    }).join('');
+  }
+
+  function updateLearnerPickerCount() {
+    const n = selectedLearnerIds.size;
+    document.getElementById('learnerPickerCount').textContent = `${n} learner${n === 1 ? '' : 's'} selected`;
+  }
+
+  function toggleLearnerSelect(id) {
+    if (selectedLearnerIds.has(id)) {
+      selectedLearnerIds.delete(id);
+    } else {
+      selectedLearnerIds.add(id);
+    }
+    renderLearnerList(document.getElementById('learnerSearch').value);
+    updateLearnerPickerCount();
+  }
+
+  function filterLearnerList(value) {
+    renderLearnerList(value);
+  }
+
+  function openLearnerModal() {
+    document.getElementById('learnerSearch').value = '';
+    renderLearnerList('');
+    updateLearnerPickerCount();
+    document.getElementById('learnerModal').classList.add('show');
+    document.getElementById('learnerSearch').focus();
+  }
+
+  function applyLearnerSelection() {
+    const box = document.getElementById('learnerTagBox');
+    const addBtn = box.querySelector('button.btn-secondary');
+
+    box.querySelectorAll('.learner-chip').forEach(chip => {
+      if (!selectedLearnerIds.has(chip.dataset.learnerId)) chip.remove();
+    });
+
+    const existingIds = new Set(
+      Array.from(box.querySelectorAll('.learner-chip')).map(c => c.dataset.learnerId)
+    );
+
+    selectedLearnerIds.forEach(id => {
+      if (existingIds.has(id)) return;
+      const learner = LEARNER_ROSTER.find(l => l.id === id);
+      if (!learner) return;
+      const chip = document.createElement('span');
+      chip.className = 'learner-chip';
+      chip.dataset.learnerId = id;
+      chip.innerHTML = `
+        <span class="learner-avatar">${learnerInitials(learner.name)}</span>
+        ${learner.name} (${learner.meta.split(' · ')[0]})
+        <button class="chip-remove" aria-label="Remove ${learner.name}" onclick="removeLearnerChip('${id}')">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>
+        </button>
+      `;
+      box.insertBefore(chip, addBtn);
+    });
+
+    closeModal('learnerModal');
+    markUnsaved();
+  }
+
+  function removeLearnerChip(id) {
+    selectedLearnerIds.delete(id);
+    const chip = document.querySelector(`#learnerTagBox .learner-chip[data-learner-id="${id}"]`);
+    if (chip) chip.remove();
+    markUnsaved();
+  }
+
+  // Initial setup
+  updateTotals();
+</script>
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Create Assessment (Step 1: Type Selection)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Create Assessment (Step 1: Type Selection)
+     UpSpace Design System compliant.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --warning:#ca8a04; --success:#15803d; --info:#2563eb;
+    --brand-subtle:#eef2ff; --brand-border:#c7d2fe;
+    --product-1:#9333ea; --product-1-subtle:#faf5ff; --product-1-border:#e9d5ff;
+    --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; display:flex; flex-direction:column; align-items:center; }
+
+  .container{ width:100%; max-width:880px; }
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:20px; cursor:pointer; }
+  .back-link:hover{ color:var(--action-primary); }
+
+  .head-box{ text-align:center; margin-bottom:36px; }
+  .head-box h1{ font-size:30px; font-weight:700; margin:0 0 8px; letter-spacing:-0.4px; }
+  .head-box p{ font-size:15px; color:var(--text-secondary); margin:0; }
+
+  /* Type Cards Grid */
+  .type-grid{ display:grid; grid-template-columns:repeat(3, 1fr); gap:20px; margin-bottom:32px; }
+  .type-card{ background:#fff; border:2px solid var(--border-default); border-radius:var(--radius-xl); padding:24px; display:flex; flex-direction:column; justify-content:space-between; cursor:pointer; transition:border-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease; position:relative; }
+  .type-card:hover{ border-color:var(--action-primary); box-shadow:0 8px 24px rgba(79,70,229,0.1); transform:translateY(-2px); }
+  .type-card.selected{ border-color:var(--action-primary); background:var(--brand-subtle); }
+
+  .icon-box{ width:48px; height:48px; border-radius:var(--radius-xl); display:flex; align-items:center; justify-content:center; margin-bottom:18px; }
+  .icon-box svg{ width:24px; height:24px; }
+
+  .type-title{ font-size:18px; font-weight:700; margin:0 0 6px; color:var(--text-primary); }
+  .type-subtitle{ font-size:12.5px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.3px; margin-bottom:12px; }
+  .type-desc{ font-size:13.5px; color:var(--text-secondary); line-height:1.5; margin-bottom:20px; }
+
+  .feature-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:24px; padding:0; list-style:none; }
+  .feature-item{ font-size:12.5px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+  .feature-item svg{ width:14px; height:14px; color:var(--success); flex-shrink:0; }
+
+  .btn-select{ width:100%; height:40px; border-radius:var(--radius-lg); border:none; background:var(--action-primary); color:#fff; font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; }
+  .btn-select:hover{ background:var(--action-primary-hover); }
+
+  @media (max-width: 900px){ .type-grid{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Create+Assessment" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <div class="container">
+      <a href="assessments-overview.html" class="back-link">&larr; Back to Assessments</a>
+
+      <div class="head-box">
+        <h1>Select Assessment Type</h1>
+        <p>Choose the format that best fits your evaluation goal. Each type configures tailored question formats and grading options.</p>
+      </div>
+
+      <div class="type-grid">
+        <!-- Quiz -->
+        <div class="type-card" onclick="location.href='assessment-editor.html?type=quiz'">
+          <div>
+            <div class="icon-box" style="background:var(--brand-subtle); color:var(--action-primary);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+            </div>
+            <div class="type-title">Quiz</div>
+            <div class="type-subtitle">Auto-graded Objective</div>
+            <div class="type-desc">Fast, objective knowledge checks using automated scoring rules. Perfect for lesson checks and module quizzes.</div>
+            <ul class="feature-list">
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> 100% Instant Auto-Grading</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Multiple Choice & True/False</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Fill in the Blank</li>
+            </ul>
+          </div>
+          <button class="btn-select">Select Quiz &rarr;</button>
+        </div>
+
+        <!-- Test -->
+        <div class="type-card" onclick="location.href='assessment-editor.html?type=test'">
+          <div>
+            <div class="icon-box" style="background:var(--info-subtle); color:var(--info);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <div class="type-title">Test / Exam</div>
+            <div class="type-subtitle">Mixed Objective & Subjective</div>
+            <div class="type-desc">Comprehensive midterms and final exams combining automated questions with short/long answer evaluation.</div>
+            <ul class="feature-list">
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Mixed Objective & Subjective</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Timed Controls & Randomization</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> AI-Assisted Short Answer Grading</li>
+            </ul>
+          </div>
+          <button class="btn-select" style="background:var(--info);">Select Test &rarr;</button>
+        </div>
+
+        <!-- Assignment -->
+        <div class="type-card" onclick="location.href='assessment-editor.html?type=assignment'">
+          <div>
+            <div class="icon-box" style="background:var(--product-1-subtle); color:var(--product-1);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            </div>
+            <div class="type-title">Assignment</div>
+            <div class="type-subtitle">Open-Ended Submissions</div>
+            <div class="type-desc">Project work, essay submissions, file uploads, and code repository links evaluated via rubric guidance.</div>
+            <ul class="feature-list">
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> File Uploads & Rich Text</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Rubric Marking Guidance</li>
+              <li class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Manual Instructor Review Queue</li>
+            </ul>
+          </div>
+          <button class="btn-select" style="background:var(--product-1);">Select Assignment &rarr;</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

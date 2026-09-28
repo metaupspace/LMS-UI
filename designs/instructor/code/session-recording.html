@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Recording</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Session Recording (LSN-005 Session Recording).
+     Reached from live-sessions-overview.html's drawer (Completed
+     session → Recording). Standalone file (Rule 7) except
+     sidebar/topbar iframes (Rule 8 instructor exception).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --warning:#ca8a04; --warning-subtle:#fefce8;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:24px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:14px; }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:6px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.3px; }
+  .page-head .sub{ font-size:13.5px; color:var(--text-tertiary); }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; line-height:1; padding:5px 10px; border-radius:999px; background:var(--surface-raised); color:var(--text-secondary); }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; background:var(--text-tertiary); }
+
+  .layout{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; margin-top:20px; }
+  @media (max-width:960px){ .layout{ grid-template-columns:1fr; } }
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:22px 24px; }
+
+  .player{ position:relative; background:#111; border-radius:var(--radius-xl); overflow:hidden; aspect-ratio:16/9; display:flex; align-items:center; justify-content:center; }
+  .player-play{ width:64px; height:64px; border-radius:50%; background:rgba(255,255,255,.14); border:2px solid rgba(255,255,255,.7); display:flex; align-items:center; justify-content:center; cursor:pointer; color:#fff; }
+  .player-play:hover{ background:rgba(255,255,255,.22); }
+  .player-play svg{ width:26px; height:26px; margin-left:2px; }
+  .player-bar{ position:absolute; left:16px; right:16px; bottom:14px; display:flex; align-items:center; gap:10px; color:#fff; font-size:11.5px; font-variant-numeric:tabular-nums; }
+  .player-track{ flex:1; height:4px; border-radius:2px; background:rgba(255,255,255,.25); position:relative; }
+  .player-track .fill{ position:absolute; left:0; top:0; height:100%; width:22%; border-radius:2px; background:#fff; }
+
+  .rec-meta{ margin-top:16px; }
+  .rec-meta h2{ margin:0 0 4px; font-size:16px; font-weight:700; }
+  .rec-meta .sub{ font-size:13px; color:var(--text-tertiary); }
+  .rec-actions{ display:flex; gap:8px; margin-top:16px; flex-wrap:wrap; }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; white-space:nowrap; }
+  .btn svg{ width:15px; height:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+
+  .rail-card{ margin-bottom:14px; }
+  .rail-card h3{ margin:0 0 12px; font-size:13px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.04em; }
+  .rail-row{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:6px 0; }
+  .rail-row .k{ color:var(--text-tertiary); }
+  .rail-row .v{ font-weight:600; text-align:right; }
+
+  .processing-state{ text-align:center; padding:80px 20px; }
+  .processing-state svg{ width:40px; height:40px; color:var(--warning); margin-bottom:16px; animation:spin 1.6s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .processing-state h2{ margin:0 0 8px; font-size:18px; font-weight:700; }
+  .processing-state p{ margin:0; font-size:13.5px; color:var(--text-tertiary); }
+
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:10px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:80; }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast svg{ width:16px; height:16px; color:var(--success); flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions&amp;pending=34" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Recording" title="Top bar"></iframe>
+
+  <main class="main">
+    <a class="back-link" href="live-sessions-overview.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Live Sessions
+    </a>
+
+    <div class="page-head">
+      <div>
+        <h1 id="rTitle">Session recording</h1>
+        <div class="sub" id="rGroup"></div>
+      </div>
+      <span class="status-pill"><i></i>Completed</span>
+    </div>
+
+    <div id="body"></div>
+  </main>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+  <span id="toastMsg">Link copied</span>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var SESSIONS = {
+    s5: { title:'Algorithms Office Hours', group:'Data Structures & Algorithms', date:'Sun, Sep 20, 2026', duration:45, platform:'Google Meet', recordingStatus:'available', fileSize:'182 MB' },
+    s9: { title:'Data Structures Lab Session (recap)', group:'Data Structures & Algorithms', date:'Fri, Sep 18, 2026', duration:45, platform:'Zoom', recordingStatus:'processing' }
+  };
+
+  var sessionId = new URLSearchParams(location.search).get('session') || 's5';
+  var s = SESSIONS[sessionId] || SESSIONS.s5;
+
+  document.getElementById('rTitle').textContent = s.title;
+  document.getElementById('rGroup').textContent = s.group + ' · ' + s.date;
+
+  function fmtDuration(min){
+    var h = Math.floor(min/60), m = min%60;
+    return h ? (h + ':' + (m<10?'0':'') + m + ':00') : ('0:' + (m<10?'0':'') + m + ':00');
+  }
+
+  var body = document.getElementById('body');
+  if (s.recordingStatus === 'processing') {
+    body.innerHTML = '<div class="card"><div class="processing-state">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>' +
+      '<h2>Still processing</h2>' +
+      '<p>' + s.platform + ' is finishing up this recording — check back in a few minutes.</p>' +
+    '</div></div>';
+  } else {
+    body.innerHTML =
+      '<div class="layout">' +
+        '<div>' +
+          '<div class="player">' +
+            '<div class="player-play" onclick="return false;"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg></div>' +
+            '<div class="player-bar"><span>10:02</span><div class="player-track"><div class="fill"></div></div><span>' + fmtDuration(s.duration) + '</span></div>' +
+          '</div>' +
+          '<div class="rec-meta">' +
+            '<h2>' + s.title + '</h2>' +
+            '<div class="sub">Recorded ' + s.date + ' · ' + s.duration + ' min · ' + s.platform + ' Cloud Recording</div>' +
+          '</div>' +
+          '<div class="rec-actions">' +
+            '<button class="btn btn-primary" onclick="return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download</button>' +
+            '<button class="btn btn-secondary" onclick="copyLink()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>Copy link</button>' +
+            '<button class="btn btn-secondary" onclick="location.href=\'session-attendance.html?session=' + sessionId + '\'">View attendance</button>' +
+          '</div>' +
+        '</div>' +
+        '<div>' +
+          '<div class="card rail-card">' +
+            '<h3>Details</h3>' +
+            '<div class="rail-row"><span class="k">Platform</span><span class="v">' + s.platform + '</span></div>' +
+            '<div class="rail-row"><span class="k">Duration</span><span class="v">' + s.duration + ' min</span></div>' +
+            '<div class="rail-row"><span class="k">File size</span><span class="v">' + s.fileSize + '</span></div>' +
+            '<div class="rail-row"><span class="k">Access</span><span class="v">Instructor only</span></div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+  }
+
+  function copyLink(){
+    showToast('Link copied');
+  }
+  function showToast(msg){
+    document.getElementById('toastMsg').textContent = msg;
+    var t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 2500);
+  }
+</script>
+</body>
+</html>

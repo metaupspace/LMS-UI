@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Attendance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Attendance (LSN-004 Attendance Tracking). Unified
+     workflow: online auto-capture, in-person QR + manual roster,
+     and the Review & Finalize step (locks the record once done).
+     Reached from live-sessions-overview.html's drawer and from
+     session-run.html (View attendance / End session). Standalone
+     file (Rule 7) except sidebar/topbar iframes (Rule 8 exception).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:24px 32px 90px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:14px; }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:6px; }
+  .page-head h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.3px; }
+  .page-head .sub{ font-size:13.5px; color:var(--text-tertiary); }
+
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; line-height:1; padding:5px 10px; border-radius:999px; }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .status-pill.in-progress{ background:var(--success-subtle); color:var(--success); } .status-pill.in-progress i{ background:var(--success); }
+  .status-pill.completed{ background:var(--surface-raised); color:var(--text-secondary); } .status-pill.completed i{ background:var(--text-tertiary); }
+
+  .info-banner{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:var(--info-subtle); border:1px solid var(--info-border); border-radius:var(--radius-lg); margin:16px 0; font-size:13px; color:#1e3a8a; }
+  .info-banner svg{ width:16px; height:16px; flex-shrink:0; color:var(--info); margin-top:1px; }
+  .locked-banner{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); margin:16px 0; font-size:13px; color:var(--text-secondary); }
+  .locked-banner svg{ width:16px; height:16px; flex-shrink:0; color:var(--text-tertiary); margin-top:1px; }
+
+  .kpi-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin:16px 0 20px; }
+  .kpi-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:16px 18px; }
+  .kpi-card .k{ font-size:12px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.03em; }
+  .kpi-card .v{ font-size:26px; font-weight:700; margin-top:6px; font-variant-numeric:tabular-nums; }
+  .kpi-card .v.present{ color:var(--success); }
+  .kpi-card .v.absent{ color:var(--error); }
+  .kpi-card .v.late{ color:var(--warning); }
+  @media (max-width:900px){ .kpi-row{ grid-template-columns:1fr 1fr; } }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+
+  .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--border-default); margin-bottom:16px; }
+  .tab{ position:relative; padding:0 0 12px; border:0; background:transparent; color:var(--text-tertiary); font-size:13.5px; font-weight:600; cursor:pointer; }
+  .tab.active{ color:var(--action-primary); }
+  .tab.active:after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--action-primary); }
+  .tab-panel[hidden]{ display:none; }
+
+  .toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
+  .search-input-wrap{ position:relative; min-width:240px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:36px; padding:0 12px 0 34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13.5px; outline:none; }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+
+  table{ width:100%; border-collapse:collapse; }
+  thead th{ text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-top:1px solid var(--border-default); border-bottom:1px solid var(--border-default); white-space:nowrap; }
+  tbody tr{ border-bottom:1px solid var(--border-subtle); }
+  tbody tr:last-child{ border-bottom:none; }
+  td{ padding:13px 20px; font-size:14px; vertical-align:middle; }
+  .learner-cell{ display:flex; align-items:center; gap:10px; }
+  .learner-avatar{ width:32px; height:32px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#f9f5ff; color:#7f56d9; font-size:12.5px; font-weight:600; }
+  .mono{ font-variant-numeric:tabular-nums; color:var(--text-secondary); }
+
+  .status-select{ height:32px; border:1px solid var(--border-default); border-radius:6px; padding:0 8px; font-size:12.5px; font-weight:600; }
+  .status-select.present{ color:var(--success); border-color:var(--success-border); background:var(--success-subtle); }
+  .status-select.absent{ color:var(--error); border-color:var(--error-border); background:var(--error-subtle); }
+  .status-select.late{ color:var(--warning); border-color:var(--warning-border); background:var(--warning-subtle); }
+  .status-pill-static{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 9px; border-radius:999px; }
+  .status-pill-static.present{ background:var(--success-subtle); color:var(--success); }
+  .status-pill-static.absent{ background:var(--error-subtle); color:var(--error); }
+  .status-pill-static.late{ background:var(--warning-subtle); color:var(--warning); }
+
+  .quick-mark{ display:inline-flex; gap:4px; }
+  .quick-mark button{ height:30px; padding:0 10px; border-radius:6px; border:1px solid var(--border-default); background:#fff; font-size:12px; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+  .quick-mark button.selected.present{ background:var(--success); color:#fff; border-color:var(--success); }
+  .quick-mark button.selected.absent{ background:var(--error); color:#fff; border-color:var(--error); }
+  .quick-mark button.selected.late{ background:var(--warning); color:#171717; border-color:var(--warning); }
+  .quick-mark button:disabled{ cursor:default; }
+
+  .qr-inline{ display:flex; align-items:center; gap:20px; padding:24px; }
+  .qr-inline svg{ width:120px; height:120px; border:1px solid var(--border-default); border-radius:8px; flex-shrink:0; }
+  .qr-inline .t{ font-size:14.5px; font-weight:700; margin-bottom:4px; }
+  .qr-inline .s{ font-size:13px; color:var(--text-tertiary); }
+
+  .zero-state{ text-align:center; padding:64px 20px; }
+  .zero-state svg{ width:38px; height:38px; color:var(--text-disabled); margin-bottom:14px; }
+  .zero-state h3{ margin:0 0 6px; font-size:16px; font-weight:700; }
+  .zero-state p{ margin:0; font-size:13.5px; color:var(--text-tertiary); }
+
+  .action-bar{ position:fixed; bottom:0; left:232px; right:0; background:#fff; border-top:1px solid var(--border-default); padding:14px 32px; display:flex; align-items:center; justify-content:flex-end; gap:10px; z-index:20; transition:left .2s ease; }
+  .shell.sidebar-collapsed ~ .action-bar{ left:0; }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; white-space:nowrap; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary:disabled{ background:var(--text-disabled); cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+
+  .modal-overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:70; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:420px; max-width:100%; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal h3{ margin:0 0 8px; font-size:16px; font-weight:700; }
+  .modal p{ margin:0 0 16px; font-size:13px; color:var(--text-secondary); line-height:1.5; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
+
+  .toast{ position:fixed; bottom:80px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:10px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:80; }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast svg{ width:16px; height:16px; color:var(--success); flex-shrink:0; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions&amp;pending=34" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Attendance" title="Top bar"></iframe>
+
+  <main class="main">
+    <a class="back-link" href="live-sessions-overview.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Live Sessions
+    </a>
+
+    <div class="page-head">
+      <div>
+        <h1 id="aTitle">Session title</h1>
+        <div class="sub" id="aGroup">Group</div>
+      </div>
+      <span class="status-pill" id="aStatusPill"><i></i><span></span></span>
+    </div>
+
+    <div class="info-banner" id="reviewBanner" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+      <div>Session ended — review attendance below, then finalize when it looks right.</div>
+    </div>
+    <div class="locked-banner" id="lockedBanner" style="display:none;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div id="lockedText">Attendance finalized — this record is locked.</div>
+    </div>
+
+    <div class="kpi-row">
+      <div class="kpi-card"><div class="k">Attendance</div><div class="v" id="kpiPct">—</div></div>
+      <div class="kpi-card"><div class="k">Present</div><div class="v present" id="kpiPresent">0</div></div>
+      <div class="kpi-card"><div class="k">Late</div><div class="v late" id="kpiLate">0</div></div>
+      <div class="kpi-card"><div class="k">Absent</div><div class="v absent" id="kpiAbsent">0</div></div>
+    </div>
+
+    <div id="attendanceBody"></div>
+  </main>
+</div>
+
+<div class="action-bar" id="actionBar">
+  <button class="btn btn-secondary" onclick="location.href='live-sessions-overview.html'">Done for now</button>
+  <button class="btn btn-primary" id="finalizeBtn" onclick="openFinalizeModal()">Finalize attendance</button>
+</div>
+
+<div class="modal-overlay" id="finalizeModal">
+  <div class="modal">
+    <h3>Finalize attendance?</h3>
+    <p>This locks the record — Present/Absent/Late marks can no longer be edited afterward. You can still view it anytime.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="closeFinalizeModal()">Not yet</button>
+      <button class="btn btn-primary" type="button" onclick="confirmFinalize()">Finalize</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+  <span id="toastMsg">Attendance finalized</span>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var NAMES = ['Priya Nair','Marcus Webb','Elena Ruiz','David Okafor','Sofia Almeida','James Whitfield','Wei Chen','Tamsin Reid','Noah Patel','Grace Kim','Liam O\'Connor','Aisha Bello'];
+  function initials(n){ return n.split(' ').map(function(w){ return w[0]; }).slice(0,2).join(''); }
+
+  function onlineRoster(count, opts){
+    opts = opts || {};
+    var statuses = opts.statuses || ['present','present','present','late','present','absent','present','present','present','present'];
+    var out = [];
+    for (var i = 0; i < count; i++) {
+      var joinMin = 0 - Math.floor(Math.random()*3);
+      var status = statuses[i % statuses.length];
+      var stillIn = opts.someStillIn && i < 3;
+      out.push({ name: NAMES[i], status: status, join: joinMin, leave: stillIn ? null : (opts.durationBase || 28) + joinMin, duration: stillIn ? null : (opts.durationBase || 28) });
+    }
+    return out;
+  }
+  function manualRoster(count, opts){
+    opts = opts || {};
+    var statuses = opts.statuses || ['present','present','absent','present','late','present','present','absent','present','present','present','present'];
+    var out = [];
+    for (var i = 0; i < count; i++) out.push({ name: NAMES[i], status: statuses[i % statuses.length] });
+    return out;
+  }
+
+  var SESSIONS = {
+    s3: { title:'Weekly Standup: Group Projects', group:'UX Research Methods', type:'online', status:'in-progress', finalized:false, roster: onlineRoster(6, { someStillIn:true, durationBase:10 }) },
+    s5: { title:'Algorithms Office Hours', group:'Data Structures & Algorithms', type:'online', status:'completed', finalized:true, roster: onlineRoster(9, { durationBase:42 }) },
+    s6: { title:'Cloud Fundamentals Intro Lecture', group:'Cloud Fundamentals', type:'in-person', status:'completed', finalized:true, roster: manualRoster(12) },
+    s2: { title:'Data Structures Lab Session', group:'Data Structures & Algorithms', type:'in-person', status:'in-progress', finalized:false, roster: manualRoster(10) },
+    s8: { title:'Guest Speaker: Security in Practice', group:'New Cohort — Fall Intake', type:'online', status:'upcoming', finalized:false, roster: [] }
+  };
+
+  var params = new URLSearchParams(location.search);
+  var sessionId = params.get('session') || 's3';
+  var s = SESSIONS[sessionId] || SESSIONS.s3;
+
+  document.getElementById('aTitle').textContent = s.title;
+  document.getElementById('aGroup').textContent = s.group;
+  var pill = document.getElementById('aStatusPill');
+  pill.className = 'status-pill ' + (s.status === 'in-progress' ? 'in-progress' : 'completed');
+  pill.querySelector('span').textContent = s.status === 'in-progress' ? 'In Progress' : (s.status === 'upcoming' ? 'Upcoming' : 'Completed');
+  if (params.get('review')) document.getElementById('reviewBanner').style.display = 'flex';
+
+  function recalcKpis(){
+    var present = s.roster.filter(function(r){ return r.status === 'present'; }).length;
+    var late = s.roster.filter(function(r){ return r.status === 'late'; }).length;
+    var absent = s.roster.filter(function(r){ return r.status === 'absent'; }).length;
+    var total = s.roster.length;
+    document.getElementById('kpiPresent').textContent = present;
+    document.getElementById('kpiLate').textContent = late;
+    document.getElementById('kpiAbsent').textContent = absent;
+    document.getElementById('kpiPct').textContent = total ? Math.round(((present+late)/total)*100) + '%' : '—';
+  }
+
+  function setStatus(idx, status){
+    if (s.finalized) return;
+    s.roster[idx].status = status;
+    renderBody();
+  }
+
+  function renderOnlineTable(){
+    var rows = s.roster.map(function(r, i){
+      var statusCell = s.finalized
+        ? '<span class="status-pill-static ' + r.status + '">' + r.status.charAt(0).toUpperCase()+r.status.slice(1) + '</span>'
+        : '<select class="status-select ' + r.status + '" id="status-' + i + '" name="status-' + i + '" aria-label="Attendance status for ' + r.name + '" onchange="setStatus(' + i + ', this.value)">' +
+            ['present','late','absent'].map(function(v){ return '<option value="' + v + '"' + (v===r.status?' selected':'') + '>' + v.charAt(0).toUpperCase()+v.slice(1) + '</option>'; }).join('') +
+          '</select>';
+      return '<tr>' +
+        '<td class="learner-cell"><div class="learner-avatar">' + initials(r.name) + '</div>' + r.name + '</td>' +
+        '<td class="mono">' + (r.join <= 0 ? r.join + ' min' : '+' + r.join + ' min') + '</td>' +
+        '<td class="mono">' + (r.leave === null ? '<span style="color:var(--success); font-weight:600;">Still in session</span>' : r.leave + ' min') + '</td>' +
+        '<td class="mono">' + (r.duration === null ? '—' : r.duration + ' min') + '</td>' +
+        '<td>' + statusCell + '</td>' +
+      '</tr>';
+    }).join('');
+    return '<div class="card" style="padding:0;"><div style="overflow-x:auto;"><table><thead><tr><th>Learner</th><th>Join time</th><th>Leave time</th><th>Duration</th><th>Status</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
+
+  function renderManualRoster(){
+    var q = (document.getElementById('rosterSearch') ? document.getElementById('rosterSearch').value : '').trim().toLowerCase();
+    var rows = s.roster.map(function(r, i){ return { r:r, i:i }; })
+      .filter(function(x){ return !q || x.r.name.toLowerCase().indexOf(q) > -1; })
+      .map(function(x){
+        var r = x.r, i = x.i;
+        var marks = ['present','late','absent'].map(function(v){
+          return '<button type="button" class="' + (r.status===v?'selected '+v:'') + '" ' + (s.finalized?'disabled':'') + ' onclick="setStatus(' + i + ',\'' + v + '\')">' + v.charAt(0).toUpperCase()+v.slice(1) + '</button>';
+        }).join('');
+        return '<tr><td class="learner-cell"><div class="learner-avatar">' + initials(r.name) + '</div>' + r.name + '</td><td><div class="quick-mark">' + marks + '</div></td></tr>';
+      }).join('');
+    return '<div class="toolbar"><div class="search-input-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input type="text" id="rosterSearch" name="rosterSearch" aria-label="Search learners" placeholder="Search learners" oninput="renderBody()"></div></div>' +
+      '<div class="card" style="padding:0;"><div style="overflow-x:auto;"><table><thead><tr><th>Learner</th><th>Attendance</th></tr></thead><tbody>' + rows + '</tbody></table></div></div>';
+  }
+
+  var activeTab = 'roster';
+  function setTab(t){ activeTab = t; renderBody(); }
+
+  function renderBody(){
+    var wrap = document.getElementById('attendanceBody');
+    if (!s.roster.length) {
+      wrap.innerHTML = '<div class="card"><div class="zero-state"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg><h3>No learners enrolled yet</h3><p>Attendance can\'t be tracked until learners are enrolled in "' + s.group + '".</p></div></div>';
+      document.getElementById('actionBar').style.display = 'none';
+      recalcKpis();
+      return;
+    }
+    document.getElementById('actionBar').style.display = '';
+
+    var html = '';
+    if (s.type === 'online') {
+      html = renderOnlineTable();
+    } else {
+      html += '<div class="tabs" role="tablist">' +
+        '<button class="tab' + (activeTab==='roster'?' active':'') + '" onclick="setTab(\'roster\')">Manual roster</button>' +
+        '<button class="tab' + (activeTab==='qr'?' active':'') + '" onclick="setTab(\'qr\')">QR code</button>' +
+      '</div>';
+      if (activeTab === 'qr') {
+        html += '<div class="card"><div class="qr-inline"><svg viewBox="0 0 100 100"><rect width="100" height="100" fill="#fff"/><rect x="6" y="6" width="20" height="20" fill="#171717"/><rect x="30" y="6" width="8" height="8" fill="#171717"/><rect x="74" y="6" width="20" height="20" fill="#171717"/><rect x="6" y="42" width="20" height="20" fill="#171717"/><rect x="34" y="46" width="8" height="24" fill="#171717"/><rect x="74" y="42" width="20" height="20" fill="#171717"/><rect x="6" y="74" width="20" height="20" fill="#171717"/><rect x="42" y="78" width="8" height="8" fill="#171717"/><rect x="74" y="74" width="20" height="20" fill="#171717"/></svg><div><div class="t">Learners who scan this are marked Present automatically</div><div class="s">Time-limited — refreshes every 5 minutes for accuracy.</div></div></div></div>';
+      } else {
+        html += renderManualRoster();
+      }
+    }
+    wrap.innerHTML = html;
+
+    document.getElementById('lockedBanner').style.display = s.finalized ? 'flex' : 'none';
+    document.getElementById('lockedText').textContent = 'Attendance finalized — this record is locked.';
+    document.getElementById('finalizeBtn').disabled = s.finalized;
+    document.getElementById('finalizeBtn').textContent = s.finalized ? 'Finalized' : 'Finalize attendance';
+    recalcKpis();
+  }
+
+  function openFinalizeModal(){ document.getElementById('finalizeModal').classList.add('open'); }
+  function closeFinalizeModal(){ document.getElementById('finalizeModal').classList.remove('open'); }
+  function confirmFinalize(){
+    s.finalized = true;
+    closeFinalizeModal();
+    renderBody();
+    var t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3000);
+  }
+
+  renderBody();
+</script>
+</body>
+</html>

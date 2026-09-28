@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Assignments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Assignments list (ASM-005 assignment type, ASM-006 results).
+     Reached from the learner sidebar "Assessments" item (user decision:
+     reuse that item, no new nav entry). Rows open assignment-detail.html.
+     Status is derived from config + submissions (same function as the
+     detail page). Overdue rule (user decision, interpretation of a spec
+     conflict): past deadline but availability window open → "Overdue",
+     still submittable; past window end → "Submission closed".
+     Library: Table, Badge (dot), Input, Buttons. Hand-built (approved,
+     MISSING_COMPONENTS.md): Tabs, Skeleton loader, Empty state.
+     Demo states: ?state=loading | error | empty
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:32px clamp(20px, 2.6vw, 48px) 64px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+
+  /* Head */
+  .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px 24px; flex-wrap:wrap; margin-bottom:24px; }
+  .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; }
+  .page-head .sub{ font-size:15px; color:var(--text-secondary); }
+  .search{ position:relative; width:min(340px, 100%); }
+  .search svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
+  .search input{ width:100%; height:42px; padding:0 12px 0 38px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .search input::placeholder{ color:var(--text-tertiary); }
+  .search input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+
+  /* Tabs (hand-built, approved) */
+  .tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); width:max-content; max-width:100%; overflow-x:auto; margin-bottom:16px; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ height:34px; padding:0 14px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; transition:background-color .15s ease, color .15s ease; }
+  .tab:hover{ color:var(--text-primary); }
+  .tab[aria-selected="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .tab .n{ margin-left:6px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+
+  /* Table — library pattern (Gray header cell, bordered rows) */
+  .table-wrap{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
+  table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  thead th{ background:var(--surface-raised); text-align:left; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:11px 20px; border-bottom:1px solid var(--border-default); }
+  col.c-due{ width:17%; } col.c-status{ width:18%; } col.c-grade{ width:11%; } col.c-action{ width:200px; }
+  tbody tr{ border-top:1px solid var(--border-default); cursor:pointer; transition:background-color .15s ease; }
+  tbody tr:first-child{ border-top:0; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+  td{ padding:16px 20px; vertical-align:middle; font-size:14px; }
+  .t-title{ display:block; font-size:15px; font-weight:600; color:var(--text-primary); line-height:1.35; }
+  tr:hover .t-title{ color:var(--action-primary); }
+  .t-course{ display:block; font-size:13.5px; color:var(--text-tertiary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .t-due{ display:block; font-weight:600; font-variant-numeric:tabular-nums; }
+  .t-rel{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+  .t-rel.late{ color:var(--error); font-weight:500; }
+  .t-grade{ font-weight:600; font-variant-numeric:tabular-nums; }
+  .t-grade.none{ color:var(--text-disabled); font-weight:500; }
+  .t-action{ text-align:right; }
+  .row-link{ display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:var(--action-primary); padding:6px 8px; margin-right:-8px; border-radius:var(--radius-md); white-space:nowrap; }
+  .row-link:hover{ background:var(--action-primary-subtle); }
+  .row-link svg{ width:16px; height:16px; }
+  .row-link.quiet{ color:var(--text-secondary); }
+  .row-link.quiet:hover{ background:var(--surface-raised); }
+
+  /* Status — Badge (dot) pattern, restrained: color only where it carries meaning */
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:500; color:var(--text-strong); white-space:nowrap; }
+  .status i{ width:7px; height:7px; border-radius:50%; background:var(--text-disabled); flex-shrink:0; }
+  .status.todo i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
+  .status.in-progress i{ background:var(--action-primary); }
+  .status.submitted i, .status.grading i{ background:var(--text-tertiary); }
+  .status.graded i{ background:var(--success); }
+  .status.overdue, .status.closed{ color:var(--error); }
+  .status.overdue i, .status.closed i{ background:var(--error); }
+  .status-sub, .grade-inline{ display:block; font-size:12.5px; color:var(--text-tertiary); margin:3px 0 0 14px; }
+  .grade-inline{ display:none; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
+
+  /* States (hand-built, approved) */
+  .empty{ padding:56px 20px; text-align:center; }
+  .empty b{ display:block; font-size:15px; margin-bottom:4px; }
+  .empty span{ font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:16px; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  .sk-row{ cursor:default !important; }
+  .sk-row:hover{ background:transparent !important; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  /* Tablet: grade folds into the status cell */
+  @media (max-width:1100px){
+    col.c-grade, th.h-grade, td.d-grade{ display:none; }
+    .grade-inline{ display:block; }
+    col.c-action{ width:176px; }
+    col.c-status{ width:20%; }
+  }
+
+  /* Mobile: rows become stacked cards — same hierarchy (title → course → due / status → action) */
+  @media (max-width:760px){
+    .table-wrap{ background:transparent; border:0; border-radius:0; overflow:visible; }
+    table, tbody, tr, td{ display:block; width:100%; }
+    thead, colgroup{ display:none; }
+    tbody tr{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); margin-bottom:10px; padding:14px 16px 6px; display:grid; grid-template-columns:minmax(0,1fr) auto; gap:10px 12px; }
+    tbody tr:first-child{ border-top:1px solid var(--border-default); }
+    td{ padding:0; }
+    td.d-title{ grid-column:1 / -1; }
+    td.d-due{ grid-column:1; }
+    td.d-status{ grid-column:2; text-align:right; }
+    td.d-status .status-sub, td.d-status .grade-inline{ margin-left:0; }
+    td.d-action{ grid-column:1 / -1; text-align:left; border-top:1px solid var(--border-subtle); padding-top:4px; }
+    .row-link{ margin:0 0 0 -8px; }
+    .t-due, .t-rel{ display:inline; }
+    .t-rel::before{ content:" · "; color:var(--text-disabled); }
+    .empty{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 40px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Assignments" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <div class="page-head">
+      <div>
+        <h1>Assignments</h1>
+        <div class="sub">Keep track of work that needs to be completed.</div>
+      </div>
+      <label class="search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input type="search" id="q" placeholder="Search assignments" aria-label="Search assignments" autocomplete="off">
+      </label>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Filter by status" id="tabs">
+      <button class="tab" role="tab" type="button" data-f="all" aria-selected="true">All<span class="n" id="n-all"></span></button>
+      <button class="tab" role="tab" type="button" data-f="todo" aria-selected="false">To do<span class="n" id="n-todo"></span></button>
+      <button class="tab" role="tab" type="button" data-f="submitted" aria-selected="false">Submitted<span class="n" id="n-submitted"></span></button>
+      <button class="tab" role="tab" type="button" data-f="graded" aria-selected="false">Graded<span class="n" id="n-graded"></span></button>
+      <button class="tab" role="tab" type="button" data-f="overdue" aria-selected="false">Overdue<span class="n" id="n-overdue"></span></button>
+    </div>
+
+    <div class="table-wrap" id="wrap">
+      <table id="table">
+        <colgroup><col class="c-title"><col class="c-due"><col class="c-status"><col class="c-grade"><col class="c-action"></colgroup>
+        <thead><tr><th scope="col">Assignment</th><th scope="col">Due</th><th scope="col">Status</th><th scope="col" class="h-grade">Grade</th><th scope="col"><span class="sr">Action</span></th></tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="empty" id="empty" role="status" hidden></div>
+    </div>
+  </div></main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (mirrors assignment-detail.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same convention as my-courses.html
+  var ASSIGNMENTS = [
+    { id:'a1', title:'Trees & Graphs Assignment', course:'Advanced Data Structures', due:'2026-09-24T23:59', closes:'2026-09-24T23:59', points:100, submissions:[] },
+    { id:'a2', title:'Dashboard Critique', course:'Data Visualization Techniques', due:'2026-09-28T23:59', closes:'2026-09-28T23:59', points:50, submissions:[], seedDraft:true },
+    { id:'a3', title:'Interaction Prototype', course:'Interaction Design', due:'2026-09-20T23:59', closes:'2026-09-27T23:59', points:100, submissions:[] },
+    { id:'a4', title:'Hash Table Implementation', course:'Advanced Data Structures', due:'2026-09-15T23:59', closes:'2026-09-18T23:59', points:100, submissions:[] },
+    { id:'a5', title:'Edge Rendering Write-up', course:'Modern Web Architecture', due:'2026-09-22T23:59', closes:'2026-09-22T23:59', points:40, visibility:'feedback', submissions:[{ at:'2026-09-21T18:42' }] },
+    { id:'a6', title:'Heap Sort Analysis', course:'Advanced Data Structures', due:'2026-09-18T23:59', closes:'2026-09-30T23:59', points:100, visibility:'feedback', submissions:[{ at:'2026-09-17T21:05', grade:{ score:84, released:true } }] },
+    { id:'a7', title:'Supervised Learning Report', course:'Intro to Machine Learning', due:'2026-09-19T23:59', closes:'2026-09-19T23:59', points:60, visibility:'hidden', submissions:[{ at:'2026-09-19T16:20', grade:{ score:51, released:false } }] },
+    { id:'a8', title:'Component Library Audit', course:'Modern Frontend Frameworks', due:'2026-09-05T23:59', closes:'2026-09-05T23:59', points:50, visibility:'score', submissions:[{ at:'2026-09-04T11:10', grade:{ score:46, released:true } }] }
+  ];
+
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function d(s){ return new Date(s); }
+  function md(s){ var x = d(s); return MONTHS[x.getMonth()] + ' ' + x.getDate(); }
+  function days(s){ var a = d(s); a.setHours(0,0,0,0); var b = new Date(NOW); b.setHours(0,0,0,0); return Math.round((a - b) / 86400000); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+
+  // Merge what the learner did on the detail page (drafts / submissions kept locally in this mock)
+  function withLocal(a){
+    var local = load('upspace-asg-' + a.id) || {};
+    var draft = local.draft;
+    var hasDraft = draft ? !!(draft.text || (draft.files || []).length) : !!a.seedDraft;
+    return Object.assign({}, a, { submissions:a.submissions.concat(local.submissions || []), hasDraft:hasDraft });
+  }
+  // Same derivation as assignment-detail.html
+  function statusOf(a){
+    var last = a.submissions[a.submissions.length - 1];
+    if (last){
+      if (a.visibility === 'hidden') return 'submitted';
+      if (last.grade && last.grade.released) return 'graded';
+      return 'grading';
+    }
+    if (NOW > d(a.closes)) return 'closed';
+    if (NOW > d(a.due)) return 'overdue';
+    return a.hasDraft ? 'in-progress' : 'todo';
+  }
+  var LABEL = { 'todo':'To do', 'in-progress':'In progress', 'submitted':'Submitted', 'grading':'Grading in progress', 'graded':'Graded', 'overdue':'Overdue', 'closed':'Overdue' };
+  var FILTER = {
+    all:function(){ return true; },
+    todo:function(s){ return s === 'todo' || s === 'in-progress'; },
+    submitted:function(s){ return s === 'submitted' || s === 'grading'; },
+    graded:function(s){ return s === 'graded'; },
+    overdue:function(s){ return s === 'overdue' || s === 'closed'; }
+  };
+  // Needs action first: overdue-but-open → to do / in progress (soonest due) → waiting on grading → graded → closed
+  var ORDER = { 'overdue':0, 'in-progress':1, 'todo':1, 'grading':2, 'submitted':2, 'graded':3, 'closed':4 };
+  var ACTION = { 'todo':['Open assignment',''], 'overdue':['Submit assignment',''], 'in-progress':['Continue draft',''], 'grading':['View submission','quiet'], 'submitted':['View submission','quiet'], 'graded':['View grade',''], 'closed':['View details','quiet'] };
+  var ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
+
+  function lastSub(a){ return a.submissions[a.submissions.length - 1]; }
+  function dueCell(a, s){
+    var n = days(a.due), rel;
+    if (s === 'grading' || s === 'submitted' || s === 'graded') rel = '<span class="t-rel">Submitted ' + md(lastSub(a).at) + '</span>';
+    else if (s === 'overdue' || s === 'closed') rel = '<span class="t-rel late">' + (n === -1 ? '1 day overdue' : (-n) + ' days overdue') + '</span>';
+    else rel = '<span class="t-rel">' + (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'In ' + n + ' days') + '</span>';
+    return '<span class="t-due">Due ' + md(a.due) + '</span>' + rel;
+  }
+
+  var state = { f:'all', q:'' }, data = [];
+
+  function render(){
+    var items = data.map(function(a){ return { a:a, s:statusOf(a) }; });
+    Object.keys(FILTER).forEach(function(k){ document.getElementById('n-' + k).textContent = items.filter(function(x){ return FILTER[k](x.s); }).length; });
+    var rows = items.filter(function(x){
+      return FILTER[state.f](x.s) && (!state.q || (x.a.title + ' ' + x.a.course).toLowerCase().indexOf(state.q) !== -1);
+    }).sort(function(x, y){ return ORDER[x.s] - ORDER[y.s] || (ORDER[x.s] >= 3 ? d(y.a.due) - d(x.a.due) : d(x.a.due) - d(y.a.due)); });
+
+    var empty = document.getElementById('empty');
+    document.getElementById('table').hidden = !rows.length;
+    empty.hidden = !!rows.length;
+    if (!data.length){ empty.innerHTML = '<b>No assignments yet.</b><span>Assigned work will appear here.</span>'; return; }
+    if (!rows.length){ empty.innerHTML = '<b>No assignments match your filters.</b><span>Try another status or clear the search.</span>'; return; }
+
+    document.getElementById('rows').innerHTML = rows.map(function(x){
+      var a = x.a, s = x.s, act = ACTION[s], href = 'assignment-detail.html?id=' + a.id;
+      var g = s === 'graded' ? lastSub(a).grade.score + ' / ' + a.points : '';
+      return '<tr data-href="' + href + '">' +
+        '<td class="d-title"><a class="t-title" href="' + href + '">' + esc(a.title) + '</a><span class="t-course">' + esc(a.course) + '</span></td>' +
+        '<td class="d-due">' + dueCell(a, s) + '</td>' +
+        '<td class="d-status"><span class="status ' + s + '"><i></i>' + LABEL[s] + '</span>' +
+          (s === 'closed' ? '<span class="status-sub">Submission closed</span>' : '') +
+          (s === 'overdue' ? '<span class="status-sub">Open until ' + md(a.closes) + '</span>' : '') +
+          (g ? '<span class="grade-inline">' + g + '</span>' : '') + '</td>' +
+        '<td class="d-grade">' + (g ? '<span class="t-grade">' + g + '</span>' : '<span class="t-grade none" aria-label="No grade">—</span>') + '</td>' +
+        '<td class="d-action t-action"><a class="row-link ' + act[1] + '" href="' + href + '" tabindex="-1">' + act[0] + ARROW + '</a></td>' +
+      '</tr>';
+    }).join('');
+  }
+
+  document.getElementById('rows').addEventListener('click', function(e){
+    var tr = e.target.closest('tr[data-href]');
+    if (tr && !e.target.closest('a')) location.href = tr.dataset.href;
+  });
+  document.getElementById('tabs').addEventListener('click', function(e){
+    var t = e.target.closest('.tab'); if (!t) return;
+    document.querySelectorAll('.tab').forEach(function(x){ x.setAttribute('aria-selected', x === t); });
+    state.f = t.dataset.f; render();
+  });
+  document.getElementById('q').addEventListener('input', function(){ state.q = this.value.trim().toLowerCase(); render(); });
+
+  /* ---------------- Load — skeleton rows in place, never a full-page spinner ---------------- */
+  var demo = new URLSearchParams(location.search).get('state');
+  function skeleton(){
+    document.getElementById('table').hidden = false;
+    document.getElementById('empty').hidden = true;
+    document.getElementById('rows').innerHTML = [1,2,3,4,5].map(function(){
+      return '<tr class="sk-row" aria-hidden="true"><td class="d-title"><span class="sk" style="width:62%;height:14px"></span><span class="sk" style="width:38%;margin-top:9px"></span></td><td class="d-due"><span class="sk" style="width:60%"></span></td><td class="d-status"><span class="sk" style="width:64%"></span></td><td class="d-grade"><span class="sk" style="width:50%"></span></td><td class="d-action"><span class="sk" style="width:70%;margin-left:auto"></span></td></tr>';
+    }).join('');
+  }
+  function fetchList(){
+    skeleton();
+    setTimeout(function(){
+      if (demo === 'loading') return;
+      if (demo === 'error'){
+        document.getElementById('table').hidden = true;
+        var e = document.getElementById('empty'); e.hidden = false;
+        e.innerHTML = '<b>Couldn’t load your assignments.</b><span>Check your connection and try again.</span><br><button class="btn btn-secondary" type="button" id="retry">Try again</button>';
+        document.getElementById('retry').onclick = function(){ demo = null; fetchList(); };
+        return;
+      }
+      data = demo === 'empty' ? [] : ASSIGNMENTS.map(withLocal);
+      render();
+    }, 450);
+  }
+  fetchList();
+</script>
+</body>
+</html>

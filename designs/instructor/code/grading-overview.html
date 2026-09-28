@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Grading</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Grading Overview (GRD-001 Grading Queue + the
+     "Needs Manual Review" surfacing from AI-003/AI-004).
+     Standalone file (CLAUDE.md Rule 7) except the sidebar/topbar,
+     which come from ../component/*.html via iframe (Rule 8's
+     documented instructor exception) so nav can't drift per screen.
+     This is the QUEUE screen only — NOT the main Instructor
+     Dashboard (that's a separate, not-yet-built screen).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:22px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 6px; font-size:32px; font-weight:700; letter-spacing:-.4px; }
+  .page-head .sub{ font-size:14.5px; color:var(--text-tertiary); }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+
+  /* ---- Tabs ---- */
+  .tabs{ display:flex; gap:22px; border-bottom:1px solid var(--border-default); margin-bottom:18px; }
+  .tab{ position:relative; padding:0 0 12px; border:0; background:transparent; color:var(--text-tertiary); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .tab.active{ color:var(--action-primary); }
+  .tab.active:after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--action-primary); }
+  .tab-count{ display:inline-flex; align-items:center; justify-content:center; min-width:18px; height:18px; padding:0 5px; border-radius:999px; background:var(--surface-raised); color:var(--text-secondary); font-size:11px; font-weight:700; }
+  .tab.active .tab-count{ background:var(--info-subtle); color:var(--info); }
+  .tab-panel[hidden]{ display:none; }
+
+  .state-preview{ height:36px; min-width:190px; }
+
+  /* ---- Alert banner (Pending tab, needs-review items) ---- */
+  .alert-banner{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); margin-bottom:16px; font-size:13px; color:#7c5b06; }
+  .alert-banner svg{ width:17px; height:17px; flex-shrink:0; color:var(--warning); margin-top:1px; }
+  .alert-banner b{ font-weight:700; }
+
+  /* ---- Toolbar ---- */
+  .toolbar{ display:flex; align-items:center; gap:10px; margin-bottom:14px; flex-wrap:wrap; }
+  .search-input-wrap{ position:relative; min-width:260px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:36px; padding:0 12px 0 34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13.5px; color:var(--text-primary); outline:none; }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+  .filter-select{ height:36px; min-width:150px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:0 30px 0 12px; appearance:none; cursor:pointer; }
+  .filter-select:focus{ outline:2px solid var(--focus-ring); outline-offset:1px; }
+  .toolbar-spacer{ flex:1; }
+  .result-count{ font-size:12.5px; color:var(--text-tertiary); white-space:nowrap; }
+  .result-count b{ color:var(--text-secondary); font-weight:700; }
+
+  /* ---- Table ---- */
+  #tableCard{ padding:0; }
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:980px; }
+  thead th{ text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-top:1px solid var(--border-default); border-bottom:1px solid var(--border-default); white-space:nowrap; user-select:none; }
+  th.sortable{ cursor:pointer; }
+  th.sortable:hover{ color:var(--text-primary); }
+  th .th-inner{ display:inline-flex; align-items:center; gap:5px; }
+  th .sort-icon{ width:12px; height:12px; opacity:.4; transition:opacity .15s ease, transform .15s ease; }
+  th.sort-asc .sort-icon{ opacity:1; }
+  th.sort-desc .sort-icon{ opacity:1; transform:rotate(180deg); }
+  tbody tr{ border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+  td{ padding:16px 20px; font-size:14px; color:var(--text-primary); vertical-align:middle; }
+  .assessment-cell .name{ font-weight:600; font-size:14px; }
+  .assessment-cell .course{ font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+  .num-cell{ font-variant-numeric:tabular-nums; }
+  .pending-cell{ font-weight:700; }
+  .pending-cell.zero{ color:var(--text-tertiary); font-weight:500; }
+  .last-sub{ color:var(--text-secondary); white-space:nowrap; }
+
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:500; line-height:1; padding:4px 8px; border-radius:999px; white-space:nowrap; }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .status-pill.in-progress{ background:var(--info-subtle); color:var(--info); }
+  .status-pill.in-progress i{ background:var(--info); }
+  .status-pill.needs-review{ background:var(--warning-subtle); color:var(--warning); }
+  .status-pill.needs-review i{ background:var(--warning); }
+  .status-pill.fully-graded{ background:var(--success-subtle); color:var(--success); }
+  .status-pill.fully-graded i{ background:var(--success); }
+
+  .ai-tag{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .ai-tag svg{ width:13px; height:13px; flex-shrink:0; }
+  .ai-tag.ai-assisted{ color:var(--info); }
+  .ai-tag.auto-graded{ color:var(--text-tertiary); font-weight:500; }
+  .ai-tag.needs-attention{ color:var(--warning); }
+  .ai-tag.not-applicable{ color:var(--text-disabled); font-weight:500; }
+
+  /* ---- No-results ---- */
+  .no-results{ display:none; text-align:center; padding:56px 20px; }
+  .no-results.show{ display:block; }
+  .no-results svg{ width:36px; height:36px; color:var(--text-disabled); margin-bottom:10px; }
+  .no-results h3{ margin:0 0 6px; font-size:15px; font-weight:700; }
+  .no-results p{ margin:0 0 14px; font-size:13px; color:var(--text-tertiary); }
+  .no-results button{ height:34px; padding:0 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+  .no-results button:hover{ background:var(--surface-raised); }
+
+  /* ---- Table footer / pagination ---- */
+  .table-footer{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 20px 16px; border-top:1px solid var(--border-default); flex-wrap:wrap; }
+  .table-footer .sub{ font-size:13.5px; color:var(--text-secondary); }
+  .pager{ display:flex; align-items:center; gap:2px; }
+  .pager button{ width:36px; height:36px; border-radius:var(--radius-lg); border:none; background:transparent; color:var(--text-tertiary); font-size:13.5px; font-weight:400; cursor:pointer; }
+  .pager button:hover{ background:var(--surface-raised); }
+  .pager button.active{ background:#f9f5ff; color:#7f56d9; }
+  .pager button:disabled{ cursor:default; color:var(--text-disabled); }
+  .pager button:disabled:hover{ background:transparent; }
+
+  /* ---- Demo state blocks (Empty queue / All caught up / Error) ---- */
+  .full-state{ display:none; text-align:center; padding:72px 20px; }
+  .full-state.show{ display:block; }
+  .full-state svg{ width:40px; height:40px; color:var(--text-disabled); margin-bottom:14px; }
+  .full-state h3{ margin:0 0 8px; font-size:16px; font-weight:700; }
+  .full-state p{ margin:0 0 18px; font-size:13.5px; color:var(--text-tertiary); max-width:360px; margin-left:auto; margin-right:auto; }
+  .full-state.error svg{ color:var(--error); }
+  .full-state.error h3{ color:var(--error); }
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=grading&amp;pending=34" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Grading" title="Top bar"></iframe>
+
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <h1>Grading</h1>
+        <div class="sub">Assessments and assignments with submissions waiting on you — 34 pending across 5 items.</div>
+      </div>
+      <select class="filter-select state-preview" id="statePreview" aria-label="Preview queue state" onchange="showFullState(this.value || null)">
+        <option value="">Live queue</option>
+        <option value="empty">Preview: Empty queue</option>
+        <option value="all-graded">Preview: All caught up</option>
+        <option value="error">Preview: Error loading queue</option>
+      </select>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="all" role="tab" aria-selected="true">All <span class="tab-count" id="allCount">7</span></button>
+      <button class="tab" data-tab="pending" role="tab" aria-selected="false">Pending <span class="tab-count" id="pendingCount">5</span></button>
+      <button class="tab" data-tab="approved" role="tab" aria-selected="false">Approved <span class="tab-count" id="approvedCount">2</span></button>
+    </div>
+
+    <div id="queueView">
+      <div class="alert-banner" id="reviewBanner" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+        <div><b id="reviewBannerCount">3</b> of these have submissions where AI confidence is low or the format needs a human look — they won't get an automatic grade until you review them.</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+          <input type="text" id="searchInput" name="searchInput" aria-label="Search assessments or courses" placeholder="Search assessments or courses">
+        </div>
+        <select class="filter-select" id="statusFilter" name="statusFilter" aria-label="Filter by status">
+          <option value="">All statuses</option>
+          <option value="in-progress">In progress</option>
+          <option value="needs-review">Needs review</option>
+          <option value="fully-graded">Fully graded</option>
+        </select>
+        <div class="toolbar-spacer"></div>
+        <div class="result-count"><b id="resultCount">7</b> of 7 items</div>
+      </div>
+
+      <div class="card" id="tableCard">
+        <div class="table-wrap">
+          <table id="queueTable">
+            <thead>
+              <tr>
+                <th>Assessment / Assignment</th>
+                <th class="sortable" data-sort="submissions"><span class="th-inner">Submissions <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></th>
+                <th class="sortable" data-sort="pending"><span class="th-inner">Pending <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></th>
+                <th>Status</th>
+                <th class="sortable" data-sort="last"><span class="th-inner">Last submission <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span></th>
+                <th>AI grading</th>
+              </tr>
+            </thead>
+            <tbody id="queueBody">
+              <!-- rows injected by JS from QUEUE data below, so search/filter/sort share one source of truth -->
+            </tbody>
+          </table>
+          <div class="no-results" id="noResults">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+            <h3>No matching assessments</h3>
+            <p>Try a different search term or clear the status filter.</p>
+            <button type="button" onclick="clearFilters()">Clear filters</button>
+          </div>
+        </div>
+        <div class="table-footer">
+          <div class="sub">Showing <span id="footerCount">7</span> of 7 items</div>
+          <div class="pager">
+            <button disabled>&lsaquo;</button>
+            <button class="active">1</button>
+            <button disabled>&rsaquo;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="full-state" id="emptyState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/></svg>
+      <h3>Nothing to grade yet</h3>
+      <p>Once learners start submitting assessments and assignments in your courses, they'll show up here.</p>
+    </div>
+    <div class="full-state" id="allGradedState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+      <h3>All submissions graded</h3>
+      <p>You're fully caught up — no pending grading across any of your courses right now.</p>
+    </div>
+    <div class="full-state error" id="errorState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+      <h3>Couldn't load your grading queue</h3>
+      <p>Something went wrong fetching submissions. Check your connection and try again.</p>
+      <button class="btn btn-primary" type="button" onclick="document.getElementById('statePreview').value=''; showFullState(null)">Retry</button>
+    </div>
+
+  </main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var QUEUE = [
+    { id:"essay-cloud-security", name:"Essay: Cloud Security Tradeoffs", course:"Cloud Fundamentals", submissions:28, pending:9, status:"needs-review", lastMinutes:45, ai:"needs-attention", aiLabel:"3 low-confidence", reviewReason:"3 submissions below 70% AI confidence" },
+    { id:"midterm-data-structures", name:"Midterm Exam — Data Structures", course:"Data Structures & Algorithms", submissions:42, pending:12, status:"in-progress", lastMinutes:120, ai:"ai-assisted", aiLabel:"Auto-graded, 12 pending review" },
+    { id:"lab4-binary-trees", name:"Lab 4: Binary Trees (code)", course:"Data Structures & Algorithms", submissions:35, pending:6, status:"in-progress", lastMinutes:300, ai:"auto-graded", aiLabel:"Auto-graded" },
+    { id:"ux-research-report", name:"UX Research Report (PDF upload)", course:"UX Research Methods", submissions:19, pending:4, status:"needs-review", lastMinutes:1440, ai:"not-applicable", aiLabel:"File — needs manual read", reviewReason:"PDF submissions aren't AI-scored" },
+    { id:"quiz3-networking", name:"Quiz 3: Networking Basics", course:"Cloud Fundamentals", submissions:51, pending:0, status:"fully-graded", lastMinutes:4320, ai:"auto-graded", aiLabel:"Auto-graded" },
+    { id:"group-project-presentation", name:"Group Project Presentation (video)", course:"UX Research Methods", submissions:12, pending:3, status:"needs-review", lastMinutes:360, ai:"needs-attention", aiLabel:"Video — needs attention", reviewReason:"AI can't confidently score video submissions" },
+    { id:"assignment2-recursion", name:"Assignment 2: Recursion Practice", course:"Data Structures & Algorithms", submissions:38, pending:0, status:"fully-graded", lastMinutes:2880, ai:"auto-graded", aiLabel:"Auto-graded" }
+  ];
+
+  var STATUS_LABEL = { "in-progress":"In progress", "needs-review":"Needs review", "fully-graded":"Fully graded" };
+  var AI_ICON = {
+    "ai-assisted":'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+    "auto-graded":'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>',
+    "needs-attention":'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    "not-applicable":'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>'
+  };
+
+  function relTime(mins){
+    if (mins < 60) return mins + " min ago";
+    if (mins < 1440) return Math.round(mins/60) + " hours ago";
+    return Math.round(mins/1440) + (Math.round(mins/1440) === 1 ? " day ago" : " days ago");
+  }
+
+  function renderRow(item){
+    return '<tr onclick="location.href=\'submission-list.html?assessment=' + item.id + '\'">' +
+      '<td class="assessment-cell"><div class="name">' + item.name + '</div><div class="course">' + item.course + '</div></td>' +
+      '<td class="num-cell">' + item.submissions + '</td>' +
+      '<td class="num-cell pending-cell' + (item.pending === 0 ? ' zero' : '') + '">' + item.pending + '</td>' +
+      '<td><span class="status-pill ' + item.status + '"><i></i>' + STATUS_LABEL[item.status] + '</span></td>' +
+      '<td class="last-sub">' + relTime(item.lastMinutes) + '</td>' +
+      '<td><span class="ai-tag ' + item.ai + '">' + AI_ICON[item.ai] + item.aiLabel + '</span></td>' +
+    '</tr>';
+  }
+
+  var sortKey = null, sortDir = 1;
+  var activeTab = 'all';
+
+  function inTab(i){
+    if (activeTab === 'pending') return i.status === 'in-progress' || i.status === 'needs-review';
+    if (activeTab === 'approved') return i.status === 'fully-graded';
+    return true;
+  }
+
+  function applyQueue(){
+    var q = document.getElementById('searchInput').value.trim().toLowerCase();
+    var status = document.getElementById('statusFilter').value;
+    var rows = QUEUE.filter(function(i){
+      var matchesText = !q || i.name.toLowerCase().indexOf(q) > -1 || i.course.toLowerCase().indexOf(q) > -1;
+      var matchesStatus = !status || i.status === status;
+      return matchesText && matchesStatus && inTab(i);
+    });
+
+    var flaggedInTab = rows.filter(function(i){ return i.status === 'needs-review'; });
+    document.getElementById('reviewBanner').style.display = (activeTab !== 'approved' && flaggedInTab.length) ? 'flex' : 'none';
+    document.getElementById('reviewBannerCount').textContent = flaggedInTab.length;
+
+    if (sortKey) {
+      rows.sort(function(a,b){
+        var av = sortKey === 'last' ? a.lastMinutes : (sortKey === 'submissions' ? a.submissions : a.pending);
+        var bv = sortKey === 'last' ? b.lastMinutes : (sortKey === 'submissions' ? b.submissions : b.pending);
+        return (av - bv) * sortDir;
+      });
+    }
+    document.getElementById('queueBody').innerHTML = rows.map(renderRow).join('');
+    document.getElementById('resultCount').textContent = rows.length;
+    document.getElementById('footerCount').textContent = rows.length;
+    document.getElementById('noResults').classList.toggle('show', rows.length === 0);
+    document.getElementById('queueTable').style.display = rows.length === 0 ? 'none' : '';
+  }
+
+  function clearFilters(){
+    document.getElementById('searchInput').value = '';
+    document.getElementById('statusFilter').value = '';
+    applyQueue();
+  }
+
+  document.getElementById('searchInput').addEventListener('input', applyQueue);
+  document.getElementById('statusFilter').addEventListener('change', applyQueue);
+  document.querySelectorAll('th.sortable').forEach(function(th){
+    th.addEventListener('click', function(){
+      var key = th.dataset.sort;
+      if (sortKey === key) { sortDir *= -1; } else { sortKey = key; sortDir = 1; }
+      document.querySelectorAll('th.sortable').forEach(function(t){ t.classList.remove('sort-asc','sort-desc'); });
+      th.classList.add(sortDir === 1 ? 'sort-asc' : 'sort-desc');
+      applyQueue();
+    });
+  });
+
+  document.querySelectorAll('.tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.remove('active'); t.setAttribute('aria-selected','false'); });
+      tab.classList.add('active'); tab.setAttribute('aria-selected','true');
+      activeTab = tab.dataset.tab;
+      applyQueue();
+    });
+  });
+
+  function showFullState(which){
+    ['emptyState','allGradedState','errorState'].forEach(function(id){ document.getElementById(id).classList.remove('show'); });
+    document.getElementById('queueView').style.display = which ? 'none' : '';
+    if (which === 'empty') document.getElementById('emptyState').classList.add('show');
+    if (which === 'all-graded') document.getElementById('allGradedState').classList.add('show');
+    if (which === 'error') document.getElementById('errorState').classList.add('show');
+  }
+
+  applyQueue();
+  document.getElementById('allCount').textContent = QUEUE.length;
+  document.getElementById('pendingCount').textContent = QUEUE.filter(function(i){ return i.status === 'in-progress' || i.status === 'needs-review'; }).length;
+  document.getElementById('approvedCount').textContent = QUEUE.filter(function(i){ return i.status === 'fully-graded'; }).length;
+</script>
+</body>
+</html>

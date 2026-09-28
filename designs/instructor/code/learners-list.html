@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Learners</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Learners Directory (Main List View)
+     UpSpace Design System compliant (Matching homepage/integrations KPI cards)
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --icon-muted:#a3a3a3; --icon-primary:#404040;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --brand-subtle:#eef2ff; --brand-border:#c7d2fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  /* Page Header */
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 6px; font-size:32px; font-weight:700; letter-spacing:-.4px; }
+  .page-head .sub{ font-size:14.5px; color:var(--text-secondary); max-width:680px; }
+  
+  .header-actions{ display:flex; align-items:center; gap:12px; }
+  .state-preview{ height:36px; min-width:200px; padding:0 30px 0 12px; font-size:12.5px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance:none; cursor:pointer; }
+  .state-preview:focus{ outline:2px solid var(--focus-ring); }
+
+  /* ---- KPI Cards — 1:1 match to homepage / integrations catalog ---- */
+  .kpi-row{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px; }
+  .card{ background:#ffffff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .kpi-card{ padding:20px 22px; display:flex; flex-direction:column; }
+  .kpi-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .kpi-title{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .kpi-icon{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .kpi-icon svg{ width:15px; height:15px; }
+  .kpi-title span{ font-size:13px; font-weight:600; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  
+  .pill{ display:inline-flex; align-items:center; gap:3px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; flex-shrink:0; }
+  .pill.up{ background:var(--success-subtle); color:var(--success); }
+  .pill.warn{ background:var(--warning-subtle); color:var(--warning); }
+  .pill.neutral{ background:var(--surface-raised); color:var(--text-secondary); }
+
+  .kpi-value{ font-size:28px; font-weight:700; letter-spacing:-.4px; font-variant-numeric:tabular-nums; color:var(--text-primary); }
+  .kpi-sub{ font-size:12.5px; color:var(--text-tertiary); margin-top:4px; }
+
+  @media (max-width: 1200px){ .kpi-row{ grid-template-columns:repeat(2, 1fr); } }
+  @media (max-width: 640px){ .kpi-row{ grid-template-columns:1fr; } }
+
+  /* Toolbar */
+  .toolbar{ display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; background:#fff; }
+  .search-input-wrap{ position:relative; flex:1; min-width:240px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:36px; padding:0 12px 0 34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13.5px; color:var(--text-primary); outline:none; }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+  
+  .filter-select{ height:36px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:0 28px 0 12px; appearance:none; cursor:pointer; }
+  .filter-select:focus{ outline:2px solid var(--focus-ring); }
+  
+  .btn-reset{ height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn-reset:hover{ background:var(--surface-raised); }
+
+  .toolbar-spacer{ flex:1; }
+  .result-count{ font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+  .result-count b{ color:var(--text-primary); font-weight:700; }
+
+  /* Table — Tranquil, low cognitive load */
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:980px; }
+  thead th{ text-align:left; font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-bottom:1px solid var(--border-default); white-space:nowrap; user-select:none; }
+  th.sortable{ cursor:pointer; }
+  th.sortable:hover{ color:var(--text-primary); background:var(--surface-raised); }
+  th .th-inner{ display:inline-flex; align-items:center; gap:5px; }
+  th .sort-icon{ width:13px; height:13px; opacity:.4; transition:opacity .15s ease, transform .15s ease; }
+  th.sort-asc .sort-icon{ opacity:1; }
+  th.sort-desc .sort-icon{ opacity:1; transform:rotate(180deg); }
+
+  tbody tr{ border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; height:60px; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+
+  td{ padding:12px 20px; font-size:13.5px; color:var(--text-primary); vertical-align:middle; white-space:nowrap; }
+
+  /* Learner Cell */
+  .learner-cell{ display:flex; align-items:center; gap:12px; }
+  .avatar{ width:34px; height:34px; border-radius:50%; background:var(--brand-subtle); color:var(--action-primary); border:1px solid var(--brand-border); font-weight:700; font-size:12.5px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .avatar.at-risk-avatar{ background:var(--warning-subtle); color:var(--warning); border-color:var(--warning-border); }
+  .learner-info{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .learner-name{ font-weight:600; font-size:13.5px; color:var(--text-primary); line-height:1.2; }
+  .learner-name:hover{ color:var(--action-primary); }
+  .learner-id{ font-size:11.5px; color:var(--text-tertiary); font-family:monospace; }
+
+  /* Progress Bar Component */
+  .progress-wrap{ display:flex; align-items:center; gap:10px; width:140px; }
+  .progress-bar-bg{ flex:1; height:6px; background:var(--surface-raised); border-radius:var(--radius-full); overflow:hidden; border:1px solid var(--border-subtle); }
+  .progress-bar-fill{ height:100%; border-radius:var(--radius-full); background:var(--action-primary); transition:width .3s ease; }
+  .progress-bar-fill.low{ background:var(--warning); }
+  .progress-bar-fill.high{ background:var(--success); }
+  .progress-val{ font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-primary); min-width:32px; text-align:right; }
+
+  /* Course Pill */
+  .course-pill{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; padding:3px 8px; border-radius:var(--radius-md); background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .course-more{ font-size:11.5px; font-weight:600; color:var(--text-tertiary); margin-left:4px; }
+
+  /* Status Badges & At-Risk Hover Popover */
+  .status-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; position:relative; }
+  .status-badge i{ width:6px; height:6px; border-radius:50%; }
+  .status-badge.active{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .status-badge.active i{ background:var(--success); }
+  .status-badge.inactive{ background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .status-badge.inactive i{ background:var(--text-tertiary); }
+  
+  /* At Risk Badge Wrapper & Popover */
+  .risk-badge-wrap{ position:relative; display:inline-block; }
+  .status-badge.at-risk{ background:var(--warning-subtle); color:var(--warning); border:1px solid var(--warning-border); cursor:pointer; }
+  .status-badge.at-risk i{ background:var(--warning); }
+
+  .risk-popover{
+    position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%) translateY(4px);
+    width:240px; background:#ffffff; border:1px solid var(--border-default); border-radius:var(--radius-lg);
+    box-shadow:0 12px 28px -6px rgba(0,0,0,0.14), 0 4px 10px -2px rgba(0,0,0,0.06);
+    padding:12px 14px; z-index:100; opacity:0; visibility:hidden; pointer-events:none;
+    transition:opacity 0.15s ease, transform 0.15s ease, visibility 0.15s ease;
+  }
+  .risk-popover:after{
+    content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+    border-width:6px; border-style:solid; border-color:#ffffff transparent transparent transparent;
+  }
+  .risk-badge-wrap:hover .risk-popover{ opacity:1; visibility:visible; transform:translateX(-50%) translateY(0); }
+  
+  .popover-head{ display:flex; align-items:center; justify-content:space-between; font-size:12px; font-weight:700; color:#854d0e; margin-bottom:8px; padding-bottom:6px; border-bottom:1px solid var(--border-subtle); }
+  .popover-list{ display:flex; flex-direction:column; gap:4px; margin:0; padding:0; list-style:none; }
+  .popover-item{ font-size:12px; color:var(--text-secondary); display:flex; align-items:center; gap:6px; white-space:normal; line-height:1.3; }
+  .popover-item:before{ content:"•"; color:var(--warning); font-weight:bold; }
+  .popover-footer{ margin-top:8px; font-size:11px; color:var(--action-primary); font-weight:600; display:flex; align-items:center; gap:4px; }
+
+  /* Pagination */
+  .pagination-bar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 20px; border-top:1px solid var(--border-default); background:#fff; flex-wrap:wrap; }
+  .pagination-info{ font-size:13px; color:var(--text-secondary); }
+  .pagination-controls{ display:flex; align-items:center; gap:4px; }
+  .page-btn{ height:32px; min-width:32px; padding:0 8px; border:1px solid var(--border-default); border-radius:var(--radius-md); background:#fff; color:var(--text-secondary); font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .page-btn:hover:not(:disabled){ background:var(--surface-raised); color:var(--text-primary); }
+  .page-btn.active{ background:var(--action-primary); color:#fff; border-color:var(--action-primary); }
+  .page-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  /* Empty / Error State Displays */
+  .state-box{ padding:64px 24px; text-align:center; display:none; }
+  .state-box.show{ display:block; }
+  .state-icon{ width:48px; height:48px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px; }
+  .state-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0 0 6px; }
+  .state-desc{ font-size:13.5px; color:var(--text-secondary); max-width:440px; margin:0 auto 20px; line-height:1.5; }
+  
+  .btn-primary{ height:38px; padding:0 16px; background:var(--action-primary); color:#fff; border:none; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+
+  /* Skeleton Loading */
+  .skeleton-row td{ padding:18px 20px; }
+  .skeleton{ height:14px; background:linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:4px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  .action-arrow{ color:var(--text-tertiary); font-weight:700; transition:transform 0.15s ease, color 0.15s ease; }
+  tr:hover .action-arrow{ transform:translateX(3px); color:var(--action-primary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=learners" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Learners" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <!-- Header -->
+    <div class="page-head">
+      <div>
+        <h1>Learners</h1>
+        <div class="sub">Instructor directory for students enrolled in your assigned courses and live sessions. Monitor progress, attendance, and at-risk status.</div>
+      </div>
+      <div class="header-actions">
+        <select class="state-preview" id="statePreview" aria-label="Preview directory state" onchange="switchState(this.value)">
+          <option value="normal">State: Live Directory (28)</option>
+          <option value="empty">State: Empty Directory (0)</option>
+          <option value="no-results">State: No Search Results</option>
+          <option value="loading">State: Loading Skeleton</option>
+          <option value="error">State: Error Loading Data</option>
+          <option value="out-of-scope">State: Access Denied Test</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- KPI Cards Row (Homepage & Integrations Catalog component style) -->
+    <div class="kpi-row" id="kpiArea">
+      <!-- KPI 1 -->
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--brand-subtle); color:var(--action-primary);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <span>Assigned Learners</span>
+          </div>
+          <span class="pill neutral">Active Term</span>
+        </div>
+        <div class="kpi-value">28</div>
+        <div class="kpi-sub">Across 4 assigned courses</div>
+      </div>
+
+      <!-- KPI 2 -->
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--success-subtle); color:var(--success);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            </div>
+            <span>Active Enrolled</span>
+          </div>
+          <span class="pill up">85.7%</span>
+        </div>
+        <div class="kpi-value">24</div>
+        <div class="kpi-sub">Active in last 7 days</div>
+      </div>
+
+      <!-- KPI 3 -->
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--warning-subtle); color:var(--warning);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            </div>
+            <span>Flagged At-Risk</span>
+          </div>
+          <span class="pill warn">3 Flagged</span>
+        </div>
+        <div class="kpi-value">3</div>
+        <div class="kpi-sub">Requires instructor check</div>
+      </div>
+
+      <!-- KPI 4 -->
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--info-subtle); color:var(--info);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <span>Avg Attendance</span>
+          </div>
+          <span class="pill up">+2.4%</span>
+        </div>
+        <div class="kpi-value">91.4%</div>
+        <div class="kpi-sub">Across 22 live labs</div>
+      </div>
+    </div>
+
+    <!-- Main Content Card -->
+    <div class="card">
+      <!-- Toolbar -->
+      <div class="toolbar" id="toolbarArea">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search learner by name, email, or ID..." oninput="applyFilters()">
+        </div>
+
+        <select class="filter-select" id="courseFilter" onchange="applyFilters()">
+          <option value="">All Courses</option>
+          <option value="CS-301">CS-301: Advanced Data Structures</option>
+          <option value="UX-204">UX-204: Interaction Design</option>
+          <option value="AI-101">AI-101: Intro to Machine Learning</option>
+          <option value="WEB-202">WEB-202: Modern Frontend Frameworks</option>
+        </select>
+
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="at-risk">At-Risk</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+        <select class="filter-select" id="progressFilter" onchange="applyFilters()">
+          <option value="">All Progress Levels</option>
+          <option value="low">&lt; 40% Progress</option>
+          <option value="mid">40% - 75% Progress</option>
+          <option value="high">&gt; 75% Progress</option>
+        </select>
+
+        <select class="filter-select" id="activityFilter" onchange="applyFilters()">
+          <option value="">All Activity</option>
+          <option value="today">Active Today</option>
+          <option value="week">Active This Week</option>
+          <option value="inactive14">Inactive &gt; 14 Days</option>
+        </select>
+
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+
+        <div class="toolbar-spacer"></div>
+        <div class="result-count">Showing <b id="visibleCount">8</b> of 28 learners</div>
+      </div>
+
+      <!-- Table View Container -->
+      <div class="table-wrap" id="tableContainer">
+        <table id="learnersTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortTable('name')">
+                <span class="th-inner">Learner <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th>Email</th>
+              <th>Enrolled Courses</th>
+              <th class="sortable" onclick="sortTable('progress')">
+                <span class="th-inner">Progress <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th class="sortable" onclick="sortTable('activity')">
+                <span class="th-inner">Recent Activity <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th class="sortable" onclick="sortTable('attendance')">
+                <span class="th-inner">Attendance <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th>Status</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="learnersBody">
+            <!-- Dynamically populated rows -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- State Boxes -->
+      <div class="state-box" id="noResultsState">
+        <div class="state-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="state-title">No matching learners found</div>
+        <div class="state-desc">No learners in your assigned courses matched your current search filters. Try clearing filters or altering your search query.</div>
+        <button class="btn-primary" onclick="resetFilters()">Reset All Filters</button>
+      </div>
+
+      <div class="state-box" id="emptyState">
+        <div class="state-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+        </div>
+        <div class="state-title">No learners assigned to your courses yet</div>
+        <div class="state-desc">You do not currently have any learners enrolled in your active courses or live sessions for this term.</div>
+      </div>
+
+      <div class="state-box" id="errorState">
+        <div class="state-icon" style="background:var(--error-subtle); color:var(--error);">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        </div>
+        <div class="state-title" style="color:var(--error);">Failed to load learners directory</div>
+        <div class="state-desc">An error occurred while retrieving learner data from the server. Please verify network connectivity or try refreshing.</div>
+        <button class="btn-primary" onclick="switchState('normal')">Retry Loading</button>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar" id="paginationBar">
+        <div class="pagination-info">Showing <b id="pageStart">1</b> to <b id="pageEnd">8</b> of <b id="totalItems">28</b> learners</div>
+        <div class="pagination-controls">
+          <button class="page-btn" disabled>&laquo;</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">2</button>
+          <button class="page-btn">3</button>
+          <button class="page-btn">4</button>
+          <button class="page-btn">&raquo;</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // LMS Learners Dataset
+  const LEARNERS_DATA = [
+    {
+      id: "LNR-001",
+      name: "Marcus Vance",
+      email: "marcus.vance@university.edu",
+      courses: ["CS-301", "WEB-202"],
+      progress: 84,
+      recentActivity: "Completed Quiz: Trees & Graphs",
+      recentTime: "2 hours ago",
+      activityTimestamp: Date.now() - 2 * 3600 * 1000,
+      attendancePct: 95,
+      attendanceDetails: "19/20 sessions",
+      status: "active",
+      riskSignals: []
+    },
+    {
+      id: "LNR-002",
+      name: "Sophia Chen",
+      email: "sophia.chen@university.edu",
+      courses: ["AI-101", "CS-301", "UX-204"],
+      progress: 92,
+      recentActivity: "Attended Live Session: AI Ethics",
+      recentTime: "Yesterday",
+      activityTimestamp: Date.now() - 24 * 3600 * 1000,
+      attendancePct: 100,
+      attendanceDetails: "22/22 sessions",
+      status: "active",
+      riskSignals: []
+    },
+    {
+      id: "LNR-003",
+      name: "David O'Connor",
+      email: "david.oconnor@university.edu",
+      courses: ["CS-301"],
+      progress: 68,
+      recentActivity: "Submitted Assignment 2",
+      recentTime: "3 days ago",
+      activityTimestamp: Date.now() - 72 * 3600 * 1000,
+      attendancePct: 88,
+      attendanceDetails: "14/16 sessions",
+      status: "active",
+      riskSignals: []
+    },
+    {
+      id: "LNR-004",
+      name: "Elena Rostova",
+      email: "elena.rostova@university.edu",
+      courses: ["CS-301", "UX-204"],
+      progress: 28,
+      recentActivity: "No activity recorded",
+      recentTime: "16 days ago",
+      activityTimestamp: Date.now() - 16 * 86400 * 1000,
+      attendancePct: 62,
+      attendanceDetails: "8/13 sessions",
+      status: "at-risk",
+      riskSignals: ["Inactivity > 14 days", "Overall Progress < 30%", "2 Missed Deadlines"]
+    },
+    {
+      id: "LNR-005",
+      name: "James Wilson",
+      email: "james.wilson@university.edu",
+      courses: ["CS-301", "AI-101"],
+      progress: 42,
+      recentActivity: "Failed Quiz 2: Dynamic Prog",
+      recentTime: "4 days ago",
+      activityTimestamp: Date.now() - 4 * 86400 * 1000,
+      attendancePct: 75,
+      attendanceDetails: "12/16 sessions",
+      status: "at-risk",
+      riskSignals: ["Failed 2 Assessments", "Low Quiz Average (48%)"]
+    },
+    {
+      id: "LNR-006",
+      name: "Amara Okafor",
+      email: "amara.okafor@university.edu",
+      courses: ["UX-204"],
+      progress: 96,
+      recentActivity: "Graded: Portfolio Project (A)",
+      recentTime: "5 hours ago",
+      activityTimestamp: Date.now() - 5 * 3600 * 1000,
+      attendancePct: 96,
+      attendanceDetails: "24/25 sessions",
+      status: "active",
+      riskSignals: []
+    },
+    {
+      id: "LNR-007",
+      name: "Lucas Miller",
+      email: "lucas.miller@university.edu",
+      courses: ["WEB-202"],
+      progress: 0,
+      recentActivity: "Enrolled - Not started",
+      recentTime: "3 days ago",
+      activityTimestamp: Date.now() - 3 * 86400 * 1000,
+      attendancePct: 0,
+      attendanceDetails: "0/0 sessions",
+      status: "active",
+      riskSignals: []
+    },
+    {
+      id: "LNR-008",
+      name: "Priya Patel",
+      email: "priya.patel@university.edu",
+      courses: ["AI-101", "WEB-202"],
+      progress: 15,
+      recentActivity: "No activity recorded",
+      recentTime: "24 days ago",
+      activityTimestamp: Date.now() - 24 * 86400 * 1000,
+      attendancePct: 50,
+      attendanceDetails: "5/10 sessions",
+      status: "inactive",
+      riskSignals: ["Inactivity > 20 days", "Missed 3 Live Sessions"]
+    }
+  ];
+
+  let currentSort = { field: 'name', dir: 'asc' };
+
+  function renderTable(data) {
+    const tbody = document.getElementById('learnersBody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+      document.getElementById('tableContainer').style.display = 'none';
+      document.getElementById('noResultsState').classList.add('show');
+      document.getElementById('visibleCount').textContent = '0';
+      return;
+    }
+
+    document.getElementById('tableContainer').style.display = 'block';
+    document.getElementById('noResultsState').classList.remove('show');
+    document.getElementById('visibleCount').textContent = data.length;
+
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.onclick = function() {
+        window.location.href = `learner-detail.html?id=${item.id}`;
+      };
+
+      const initials = item.name.split(' ').map(n=>n[0]).join('');
+      const isAtRisk = item.status === 'at-risk';
+      
+      let progressClass = item.progress > 75 ? 'high' : (item.progress < 40 ? 'low' : '');
+      let statusBadgeHtml = '';
+
+      if (item.status === 'active') {
+        statusBadgeHtml = `<span class="status-badge active"><i></i>Active</span>`;
+      } else if (item.status === 'inactive') {
+        statusBadgeHtml = `<span class="status-badge inactive"><i></i>Inactive</span>`;
+      } else if (item.status === 'at-risk') {
+        // Tranquilized At-Risk Badge with Hover Popover
+        const popoverListItems = item.riskSignals.map(s => `<li class="popover-item">${s}</li>`).join('');
+        statusBadgeHtml = `
+          <div class="risk-badge-wrap" onclick="event.stopPropagation(); window.location.href='learner-detail.html?id=${item.id}'">
+            <span class="status-badge at-risk"><i></i>At-Risk</span>
+            <div class="risk-popover">
+              <div class="popover-head">
+                <span>⚠️ Risk Signals (${item.riskSignals.length})</span>
+              </div>
+              <ul class="popover-list">
+                ${popoverListItems}
+              </ul>
+              <div class="popover-footer">
+                Click to open learner details &rarr;
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // Course Pills (Tranquilized to avoid row clutter)
+      let coursePillsHtml = '';
+      if (item.courses.length > 0) {
+        coursePillsHtml = `<span class="course-pill">${item.courses[0]}</span>`;
+        if (item.courses.length > 1) {
+          coursePillsHtml += `<span class="course-more">+${item.courses.length - 1} more</span>`;
+        }
+      }
+
+      tr.innerHTML = `
+        <td>
+          <div class="learner-cell">
+            <div class="avatar ${isAtRisk ? 'at-risk-avatar' : ''}">${initials}</div>
+            <div class="learner-info">
+              <a href="learner-detail.html?id=${item.id}" class="learner-name" onclick="event.stopPropagation()">${item.name}</a>
+              <span class="learner-id">${item.id}</span>
+            </div>
+          </div>
+        </td>
+        <td style="color:var(--text-secondary); font-size:13px;">${item.email}</td>
+        <td>${coursePillsHtml}</td>
+        <td>
+          <div class="progress-wrap">
+            <div class="progress-bar-bg">
+              <div class="progress-bar-fill ${progressClass}" style="width:${item.progress}%;"></div>
+            </div>
+            <span class="progress-val">${item.progress}%</span>
+          </div>
+        </td>
+        <td>
+          <div style="font-weight:600; font-size:13px; color:var(--text-primary);">${item.recentActivity}</div>
+          <div style="font-size:11.5px; color:var(--text-tertiary);">${item.recentTime}</div>
+        </td>
+        <td>
+          <div style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;">${item.attendancePct}%</div>
+        </td>
+        <td>
+          ${statusBadgeHtml}
+        </td>
+        <td style="text-align:right;">
+          <span class="action-arrow">&rarr;</span>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const course = document.getElementById('courseFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const progress = document.getElementById('progressFilter').value;
+    const activity = document.getElementById('activityFilter').value;
+
+    let filtered = LEARNERS_DATA.filter(item => {
+      if (search && !item.name.toLowerCase().includes(search) && !item.email.toLowerCase().includes(search) && !item.id.toLowerCase().includes(search)) {
+        return false;
+      }
+      if (course && !item.courses.includes(course)) {
+        return false;
+      }
+      if (status && item.status !== status) {
+        return false;
+      }
+      if (progress === 'low' && item.progress >= 40) return false;
+      if (progress === 'mid' && (item.progress < 40 || item.progress > 75)) return false;
+      if (progress === 'high' && item.progress <= 75) return false;
+
+      const now = Date.now();
+      const diffDays = (now - item.activityTimestamp) / (86400 * 1000);
+      if (activity === 'today' && diffDays > 1) return false;
+      if (activity === 'week' && diffDays > 7) return false;
+      if (activity === 'inactive14' && diffDays <= 14) return false;
+
+      return true;
+    });
+
+    filtered.sort((a, b) => {
+      let vA = a[currentSort.field];
+      let vB = b[currentSort.field];
+      if (typeof vA === 'string') {
+        return currentSort.dir === 'asc' ? vA.localeCompare(vB) : vB.localeCompare(vA);
+      }
+      return currentSort.dir === 'asc' ? vA - vB : vB - vA;
+    });
+
+    renderTable(filtered);
+  }
+
+  function sortTable(field) {
+    if (currentSort.field === field) {
+      currentSort.dir = currentSort.dir === 'asc' ? 'desc' : 'asc';
+    } else {
+      currentSort.field = field;
+      currentSort.dir = 'asc';
+    }
+
+    document.querySelectorAll('th.sortable').forEach(th => {
+      th.classList.remove('sort-asc', 'sort-desc');
+    });
+    applyFilters();
+  }
+
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('courseFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('progressFilter').value = '';
+    document.getElementById('activityFilter').value = '';
+    applyFilters();
+  }
+
+  function switchState(state) {
+    const tableContainer = document.getElementById('tableContainer');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+    const errorState = document.getElementById('errorState');
+    const paginationBar = document.getElementById('paginationBar');
+    const toolbarArea = document.getElementById('toolbarArea');
+    const kpiArea = document.getElementById('kpiArea');
+
+    tableContainer.style.display = 'none';
+    emptyState.classList.remove('show');
+    noResultsState.classList.remove('show');
+    errorState.classList.remove('show');
+    paginationBar.style.display = 'flex';
+    toolbarArea.style.display = 'flex';
+    kpiArea.style.display = 'grid';
+
+    if (state === 'normal') {
+      applyFilters();
+    } else if (state === 'empty') {
+      emptyState.classList.add('show');
+      paginationBar.style.display = 'none';
+      toolbarArea.style.display = 'none';
+      document.getElementById('visibleCount').textContent = '0';
+    } else if (state === 'no-results') {
+      noResultsState.classList.add('show');
+      document.getElementById('visibleCount').textContent = '0';
+    } else if (state === 'loading') {
+      tableContainer.style.display = 'block';
+      const tbody = document.getElementById('learnersBody');
+      tbody.innerHTML = Array(5).fill(0).map(() => `
+        <tr class="skeleton-row">
+          <td colspan="8"><div class="skeleton"></div></td>
+        </tr>
+      `).join('');
+    } else if (state === 'error') {
+      errorState.classList.add('show');
+      paginationBar.style.display = 'none';
+      toolbarArea.style.display = 'none';
+      kpiArea.style.display = 'none';
+    } else if (state === 'out-of-scope') {
+      window.location.href = 'learner-access-denied.html';
+    }
+  }
+
+  // Initialize
+  applyFilters();
+</script>
+</body>
+</html>

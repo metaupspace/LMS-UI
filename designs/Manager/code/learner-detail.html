@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Manager - Learner Performance Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     UpSpace Manager — Dedicated Learner Performance Detail (RPT-002, USR-002)
+     Design System Baseline: UpSpaceDESIGN.md & LEARNER-UI-COMPONENT-REFERENCE.md
+     Full page dedicated workspace for individual learner performance tracking.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5; --surface-modal:#ffffff;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --purple:#7c3aed; --purple-subtle:#f5f3ff; --purple-border:#ddd6fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --shadow-sm:0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; min-height:100vh; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button, input, select, textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  /* App Shell */
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; width:100%; overflow:hidden; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; overflow-x:hidden; min-width:0; }
+  .main-inner{ width:100%; max-width:1280px; margin:0 auto; padding:24px clamp(16px, 2.4vw, 40px) 64px; }
+
+  /* Navigation Header & Back Button */
+  .nav-header{ display:flex; align-items:center; justify-space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+  .back-link{ display:inline-flex; align-items:center; gap:8px; font-size:13.5px; font-weight:600; color:var(--action-primary); text-decoration:none; transition:color 0.15s ease; }
+  .back-link:hover{ color:var(--action-primary-hover); text-decoration:underline; }
+
+  .learner-select-wrap{ display:flex; align-items:center; gap:10px; }
+  .select-input{ height:38px; padding:0 12px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:13.5px; color:var(--text-strong); font-weight:600; outline:none; cursor:pointer; }
+  .select-input:focus{ border-color:var(--focus-ring); }
+
+  /* Learner Hero Profile Card (`LearnerProfileCard`) */
+  .hero-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); padding:24px; margin-bottom:24px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:20px; }
+  .hero-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+  .hero-identity{ display:flex; align-items:center; gap:16px; }
+  .hero-avatar{ width:56px; height:56px; border-radius:50%; background:#e0e7ff; color:#4f46e5; font-size:20px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .hero-info{ display:flex; flex-direction:column; gap:4px; }
+  .hero-name{ font-size:22px; font-weight:700; color:var(--text-primary); margin:0; line-height:1.2; display:flex; align-items:center; gap:10px; }
+  .hero-sub{ font-size:13.5px; color:var(--text-secondary); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+  .hero-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; border:1px solid transparent; transition:all 0.15s ease; white-space:nowrap; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); border-color:var(--border-strong); }
+  .btn-warning{ background:#d97706; color:#fff; }
+  .btn-warning:hover{ background:#b45309; }
+  .btn-sm{ height:32px; padding:0 12px; font-size:12.5px; }
+
+  /* Badges */
+  .badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:var(--radius-full); font-size:12px; font-weight:600; line-height:1; }
+  .badge-dot{ width:6px; height:6px; border-radius:50%; }
+  .badge-ontrack{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .badge-ontrack .badge-dot{ background:var(--success); }
+  .badge-attention{ background:var(--warning-subtle); color:var(--warning); border:1px solid var(--warning-border); }
+  .badge-attention .badge-dot{ background:var(--warning); }
+  .badge-atrisk{ background:var(--error-subtle); color:var(--error); border:1px solid var(--error-border); }
+  .badge-atrisk .badge-dot{ background:var(--error); }
+  .badge-inactive{ background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .badge-inactive .badge-dot{ background:var(--text-tertiary); }
+  .badge-track{ background:var(--action-primary-subtle); color:var(--action-primary); border:1px solid #c7d2fe; }
+
+  /* Metadata Strip */
+  .hero-meta-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; padding-top:16px; border-top:1px solid var(--border-subtle); }
+  .meta-item{ display:flex; flex-direction:column; gap:2px; }
+  .meta-label{ font-size:12px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.3px; }
+  .meta-value{ font-size:14px; font-weight:700; color:var(--text-primary); }
+
+  /* KPI Summary Grid */
+  .metrics-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px; }
+  .metric-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:18px 20px; display:flex; flex-direction:column; gap:6px; box-shadow:var(--shadow-sm); }
+  .metric-card .label{ font-size:12.5px; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+  .metric-card .value{ font-size:28px; font-weight:700; letter-spacing:-0.5px; color:var(--text-primary); line-height:1; }
+  .metric-card .subtext{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* Risk / Attention Callout Banner */
+  .risk-banner{ background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-xl); padding:16px 20px; margin-bottom:24px; display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; box-shadow:var(--shadow-sm); }
+  .risk-content{ display:flex; align-items:center; gap:14px; }
+  .risk-icon{ width:36px; height:36px; border-radius:50%; background:#fef3c7; color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .risk-text{ font-size:13.5px; color:#92400e; font-weight:500; }
+
+  /* Tabbed Workspace (`LearnerTabs`) */
+  .tab-nav{ display:flex; align-items:center; gap:8px; border-bottom:1px solid var(--border-default); margin-bottom:24px; }
+  .nav-tab-btn{ height:40px; padding:0 16px; border:none; background:transparent; font-size:13.5px; font-weight:600; color:var(--text-secondary); border-bottom:2px solid transparent; transition:all 0.15s ease; display:flex; align-items:center; gap:8px; cursor:pointer; }
+  .nav-tab-btn:hover{ color:var(--text-primary); }
+  .nav-tab-btn.active{ color:var(--action-primary); border-bottom-color:var(--action-primary); font-weight:700; }
+  .nav-tab-badge{ display:inline-flex; align-items:center; justify-content:center; padding:1px 6px; border-radius:999px; background:var(--surface-overlay); font-size:11px; font-weight:700; color:var(--text-strong); }
+  .nav-tab-btn.active .nav-tab-badge{ background:var(--action-primary-subtle); color:var(--action-primary); }
+
+  /* Section Panels */
+  .panel-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); padding:24px; margin-bottom:24px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:20px; }
+  .panel-title-area{ display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:14px; margin:0; }
+  .panel-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0; }
+  .panel-subtitle{ font-size:12.5px; color:var(--text-secondary); margin:2px 0 0; }
+
+  /* Enrolled Course Cards */
+  .course-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:16px; }
+  .course-card{ background:var(--surface-canvas); border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:18px; display:flex; flex-direction:column; gap:12px; transition:border-color 0.15s ease; }
+  .course-card:hover{ border-color:var(--border-strong); }
+  .course-card-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .course-card-title{ font-size:14.5px; font-weight:700; color:var(--text-primary); text-decoration:none; }
+  .course-card-title:hover{ color:var(--action-primary); }
+
+  .progress-bar-wrap{ width:100%; height:7px; background:var(--surface-overlay); border-radius:999px; overflow:hidden; }
+  .progress-bar-fill{ height:100%; background:var(--action-primary); border-radius:999px; }
+  .progress-bar-fill.warning{ background:var(--warning); }
+
+  /* Audit Tables */
+  .audit-table{ width:100%; border-collapse:collapse; text-align:left; }
+  .audit-table th{ background:var(--surface-canvas); padding:12px 18px; font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border-default); }
+  .audit-table td{ padding:14px 18px; border-bottom:1px solid var(--border-subtle); vertical-align:middle; font-size:13.5px; }
+  .audit-table tr:last-child td{ border-bottom:none; }
+  .audit-table tr:hover td{ background:#fafafa; }
+
+  /* Activity Timeline */
+  .timeline{ display:flex; flex-direction:column; gap:16px; position:relative; }
+  .timeline-item{ display:flex; gap:16px; position:relative; }
+  .timeline-item:not(:last-child)::after{ content:''; position:absolute; top:28px; left:15px; bottom:-16px; width:2px; background:var(--border-default); }
+  .timeline-icon{ width:32px; height:32px; border-radius:50%; background:var(--surface-raised); border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:13px; color:var(--text-secondary); z-index:2; }
+  .timeline-icon.completed{ background:var(--success-subtle); color:var(--success); border-color:var(--success-border); }
+  .timeline-icon.quiz{ background:var(--purple-subtle); color:var(--purple); border-color:var(--purple-border); }
+  .timeline-icon.submit{ background:var(--info-subtle); color:var(--info); border-color:var(--info-border); }
+
+  .timeline-content{ background:var(--surface-canvas); border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:12px 16px; flex:1; }
+  .timeline-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px; }
+  .timeline-title{ font-size:13.5px; font-weight:700; color:var(--text-primary); }
+  .timeline-date{ font-size:12px; color:var(--text-tertiary); }
+  .timeline-sub{ font-size:12.5px; color:var(--text-secondary); }
+
+  /* Certificates Cards */
+  .cert-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(280px, 1fr)); gap:16px; }
+  .cert-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:18px; display:flex; items-center; gap:14px; box-shadow:var(--shadow-sm); }
+  .cert-icon{ width:44px; height:44px; border-radius:var(--radius-lg); background:#fef3c7; color:#d97706; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+
+  /* Toast Notification */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-lg); z-index:300; transform:translateY(100px); opacity:0; transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  .toast.active{ transform:translateY(0); opacity:1; }
+
+  /* Modals */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(2px); z-index:200; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
+  .modal-overlay.active{ opacity:1; pointer-events:auto; }
+  .modal{ background:#fff; border-radius:var(--radius-2xl); width:min(90vw, 520px); box-shadow:var(--shadow-lg); overflow:hidden; transform:scale(0.95); transition:transform 0.2s ease; }
+  .modal-overlay.active .modal{ transform:scale(1); }
+  .modal-header{ padding:20px 24px; border-bottom:1px solid var(--border-default); display:flex; align-items:center; justify-content:space-between; }
+  .modal-header h3{ margin:0; font-size:17px; font-weight:700; color:var(--text-primary); }
+  .modal-body{ padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .modal-footer{ padding:16px 24px; border-top:1px solid var(--border-default); background:var(--surface-canvas); display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+  .textarea-input{ width:100%; min-height:100px; padding:12px; border-radius:var(--radius-lg); border:1px solid var(--border-default); font-size:13.5px; color:var(--text-primary); resize:vertical; outline:none; }
+  .textarea-input:focus{ border-color:var(--focus-ring); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Shared Sidebar Frame -->
+  <iframe src="../component/sidebar.html?active=team-reports" class="sidebar-frame" title="Manager Sidebar"></iframe>
+
+  <!-- Shared Topbar Frame -->
+  <iframe src="../component/topnavbar.html?current=Learner+Performance+Detail" class="topbar-frame" title="Manager Topbar"></iframe>
+
+  <!-- Main Content Workspace -->
+  <main class="main" id="main-content">
+    <div class="main-inner">
+
+      <!-- Navigation Header & Learner Switcher -->
+      <div class="nav-header">
+        <a href="team-performance.html" class="back-link">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>
+          Back to Team Performance
+        </a>
+
+        <div class="learner-select-wrap">
+          <span style="font-size:13px; color:var(--text-tertiary); font-weight:600;">Switch Learner:</span>
+          <select id="learner-selector" class="select-input" onchange="switchLearner(this.value)">
+            <!-- Options populated by JS -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Learner Hero Profile Card (`LearnerProfileCard`) -->
+      <section class="hero-card" id="hero-card">
+        <div class="hero-top">
+          <div class="hero-identity">
+            <div class="hero-avatar" id="l-avatar">RD</div>
+            <div class="hero-info">
+              <h1 class="hero-name">
+                <span id="l-name">Rohan Das</span>
+                <span id="l-status-badge"><span class="badge badge-attention"><span class="badge-dot"></span>Needs attention</span></span>
+              </h1>
+              <div class="hero-sub">
+                <span id="l-email">rohan.das@upspace.io</span>
+                <span>•</span>
+                <span id="l-dept" style="font-weight:600;">Engineering Department</span>
+                <span>•</span>
+                <span class="badge badge-track" id="l-track">Distributed Systems & Go</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="hero-actions">
+            <button class="btn btn-secondary" onclick="openNudgeModal('support')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              Assign Tutor Support
+            </button>
+            <button class="btn btn-primary" onclick="openNudgeModal('encouragement')">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 2L11 13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+              Send Progress Nudge
+            </button>
+          </div>
+        </div>
+
+        <div class="hero-meta-grid">
+          <div class="meta-item">
+            <span class="meta-label">Direct Manager</span>
+            <span class="meta-value">Maria Lopez</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Date Joined</span>
+            <span class="meta-value">Jan 15, 2026</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Last Active</span>
+            <span class="meta-value" id="l-lastactive">3 days ago (Sep 25, 2026)</span>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Total Time Spent</span>
+            <span class="meta-value">42.5 hours</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Risk / Attention Flag Banner -->
+      <section class="risk-banner" id="risk-banner">
+        <div class="risk-content">
+          <div class="risk-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+          </div>
+          <div class="risk-text">
+            <b>Manager Action Needed:</b> <span id="l-risk-desc">Rohan has been stuck on Module 2 quiz (Concurrency Patterns) for 5 days with 1 failed attempt (62% score, passing mark 75%).</span>
+          </div>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-warning btn-sm" onclick="openNudgeModal('support')">Assign Peer Support</button>
+          <button class="btn btn-secondary btn-sm" onclick="dismissRiskBanner()">Mark Reviewed</button>
+        </div>
+      </section>
+
+      <!-- Overall Performance Metrics KPI Grid -->
+      <section class="metrics-grid">
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--action-primary);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Assigned Track Completion
+          </span>
+          <span class="value" id="kpi-progress">51%</span>
+          <span class="subtext">12 of 24 lessons complete • <span style="color:var(--warning); font-weight:700;">40% behind pace</span></span>
+        </div>
+
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--purple);"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+            Average Assessment Score
+          </span>
+          <span class="value" id="kpi-score" style="color:var(--warning);">62%</span>
+          <span class="subtext">Target baseline: 75% • <span style="color:var(--error); font-weight:700;">Needs improvement</span></span>
+        </div>
+
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--info);"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+            Assignments & Quizzes
+          </span>
+          <span class="value">3 / 4</span>
+          <span class="subtext">1 Graded (88%) • 1 Pending Grade • 1 Failed</span>
+        </div>
+
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#d97706;"><path d="M12 15l-2 5l9-9l-9-9l2 5l-7 4z"/></svg>
+            Earned Certificates
+          </span>
+          <span class="value">1</span>
+          <span class="subtext">Docker & Container Basics Certified</span>
+        </div>
+      </section>
+
+      <!-- Workspace Tabs (`LearnerTabs`) -->
+      <div class="tab-nav" role="tablist">
+        <button class="nav-tab-btn active" data-tab="courses" onclick="switchWorkspaceTab('courses', this)">
+          Enrolled Courses <span class="nav-tab-badge" id="badge-courses-count">2</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="assignments" onclick="switchWorkspaceTab('assignments', this)">
+          Assignments & Assessments <span class="nav-tab-badge" id="badge-assessments-count">4</span>
+        </button>
+        <button class="nav-tab-btn" data-tab="activity" onclick="switchWorkspaceTab('activity', this)">
+          Learning Activity Timeline
+        </button>
+        <button class="nav-tab-btn" data-tab="certificates" onclick="switchWorkspaceTab('certificates', this)">
+          Certificates & Achievements <span class="nav-tab-badge">1</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: Enrolled Courses -->
+      <div id="tab-courses-panel" class="tab-panel">
+        <div class="panel-card">
+          <div class="panel-title-area">
+            <div>
+              <h3 class="panel-title">Active Course Enrollments</h3>
+              <p class="panel-subtitle">Current courses assigned to this learner as part of their learning path.</p>
+            </div>
+          </div>
+          <div class="course-grid" id="courses-grid-container">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 2: Assignments & Assessments Audit -->
+      <div id="tab-assignments-panel" class="tab-panel" hidden>
+        <div class="panel-card">
+          <div class="panel-title-area">
+            <div>
+              <h3 class="panel-title">Assignments & Assessment History</h3>
+              <p class="panel-subtitle">Audit of all quiz attempts, code submissions, and instructor feedback.</p>
+            </div>
+          </div>
+          <table class="audit-table">
+            <thead>
+              <tr>
+                <th style="width:30%;">Submission / Title</th>
+                <th style="width:16%;">Type</th>
+                <th style="width:14%;">Score</th>
+                <th style="width:14%;">Status</th>
+                <th style="width:14%;">Date</th>
+                <th style="width:12%;">Feedback</th>
+              </tr>
+            </thead>
+            <tbody id="assessments-table-body">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 3: Activity Timeline -->
+      <div id="tab-activity-panel" class="tab-panel" hidden>
+        <div class="panel-card">
+          <div class="panel-title-area">
+            <div>
+              <h3 class="panel-title">Recent Learning Activity Log</h3>
+              <p class="panel-subtitle">Chronological record of logins, completed lessons, and quiz attempts.</p>
+            </div>
+          </div>
+          <div class="timeline" id="activity-timeline">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB 4: Certificates & Achievements -->
+      <div id="tab-certificates-panel" class="tab-panel" hidden>
+        <div class="panel-card">
+          <div class="panel-title-area">
+            <div>
+              <h3 class="panel-title">Earned Credentials & Certifications</h3>
+              <p class="panel-subtitle">Verified LMS certificates awarded for course completions.</p>
+            </div>
+          </div>
+          <div class="cert-grid">
+            <div class="cert-card">
+              <div class="cert-icon">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>
+              </div>
+              <div style="display:flex; flex-direction:column; gap:4px;">
+                <b style="font-size:14.5px; color:var(--text-primary);">Docker & Container Basics Accreditation</b>
+                <span style="font-size:12px; color:var(--text-tertiary);">Issued Aug 14, 2026 • Code: CERT-UPS-88421</span>
+                <span class="badge badge-ontrack" style="width:fit-content; margin-top:4px;">Valid Credential</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<!-- Reusable Nudge / Action Modal -->
+<div class="modal-overlay" id="nudge-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="modal-action-title">Send Progress Nudge</h3>
+      <button class="drawer-close" onclick="closeNudgeModal()" aria-label="Close modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="modal-body">
+      <div style="font-size:13.5px; color:var(--text-secondary);" id="modal-desc-prompt">
+        Send a direct reminder message to the learner encouraging them to complete their pending modules.
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:13px; font-weight:700; color:var(--text-primary);">Message Note</label>
+        <textarea id="modal-message-input" class="textarea-input" placeholder="Hi Rohan, checking in to see if you need any support on Module 2..."></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeNudgeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="submitNudgeAction()">Send Message</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div id="toast" class="toast">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#4ade80;"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-message">Message sent to learner successfully.</span>
+</div>
+
+<script>
+  /* ---------------------------------------------------------------
+     Learners Repository (Derived from mockTeamData)
+  ----------------------------------------------------------------*/
+  const learnersData = [
+    {
+      id: 'L03', name: 'Rohan Das', email: 'rohan.das@upspace.io', avatar: 'RD', dept: 'Engineering',
+      track: 'Distributed Systems & Go Architecture', progress: 51, score: 62, lastActive: '3 days ago (Sep 25, 2026)', status: 'attention',
+      riskReason: 'Rohan has been stuck on Module 2 quiz (Concurrency Patterns) for 5 days with 1 failed attempt (62% score, passing mark 75%).',
+      courses: [
+        { title: 'Go Concurrency Patterns & Channels', progress: 48, status: 'Needs Attention', completedLessons: 6, totalLessons: 12, lastLesson: 'Lesson 2.3: Channels & Mutexes' },
+        { title: 'Distributed Cache & Redis Integration', progress: 54, status: 'On Track', completedLessons: 8, totalLessons: 14, lastLesson: 'Lesson 3.1: Redis Sentinel Clustering' }
+      ],
+      assessments: [
+        { title: 'Concurrency Patterns Assessment', type: 'Quiz', score: '62%', passMark: '75%', status: 'Failed (Attempt 1)', date: 'Sep 22, 2026', feedback: 'Struggled with channel deadlock scenario question #4.' },
+        { title: 'Distributed Cache Assignment #1', type: 'Assignment', score: '88%', passMark: '70%', status: 'Graded (Passed)', date: 'Sep 18, 2026', feedback: 'Excellent cache invalidation strategy explanation.' },
+        { title: 'gRPC Services Implementation', type: 'Assignment', score: '--', passMark: '75%', status: 'Submitted (Pending Grade)', date: 'Sep 25, 2026', feedback: 'Submitted on time. Awaiting instructor evaluation.' },
+        { title: 'Go Memory Management Quiz', type: 'Quiz', score: '85%', passMark: '75%', status: 'Passed', date: 'Sep 10, 2026', feedback: 'Passed on first attempt.' }
+      ],
+      timeline: [
+        { icon: 'submit', title: 'Submitted Assignment', sub: 'Submitted gRPC Services Implementation for grading', date: 'Sep 25, 02:45 PM' },
+        { icon: 'completed', title: 'Completed Reading Lesson', sub: 'Completed Lesson 2.2 Go Channels & Select Statement (18 mins)', date: 'Sep 23, 04:10 PM' },
+        { icon: 'quiz', title: 'Attempted Assessment', sub: 'Scored 62% on Concurrency Patterns Assessment', date: 'Sep 22, 11:30 AM' },
+        { icon: 'completed', title: 'Watched Video Lesson', sub: 'Watched Lesson 2.1 Goroutines Deep Dive (14 mins)', date: 'Sep 20, 03:15 PM' }
+      ]
+    },
+    {
+      id: 'L05', name: 'Vikram Malhotra', email: 'vikram.malhotra@upspace.io', avatar: 'VM', dept: 'Management',
+      track: 'Manager Essentials & Strategic Planning', progress: 35, score: 55, lastActive: '7 days ago (Sep 21, 2026)', status: 'atrisk',
+      riskReason: 'No logins recorded for 7 days. Progress is 40% behind scheduled cohort completion deadline.',
+      courses: [
+        { title: 'Strategic Goal Alignment & OKRs', progress: 35, status: 'At Risk', completedLessons: 4, totalLessons: 12, lastLesson: 'Lesson 1.4: OKR Cascading' }
+      ],
+      assessments: [
+        { title: 'Mid-term Management Exam', type: 'Exam', score: '55%', passMark: '75%', status: 'Failed (Retake required)', date: 'Sep 19, 2026', feedback: 'Below passing threshold.' }
+      ],
+      timeline: [
+        { icon: 'quiz', title: 'Attempted Exam', sub: 'Scored 55% on Mid-term Management Exam', date: 'Sep 19, 04:00 PM' }
+      ]
+    },
+    {
+      id: 'L01', name: 'Aarav Sharma', email: 'aarav.sharma@upspace.io', avatar: 'AS', dept: 'Engineering',
+      track: 'Advanced Microservices & Kubernetes', progress: 82, score: 88, lastActive: 'Today (Sep 28, 2026)', status: 'ontrack',
+      riskReason: '',
+      courses: [
+        { title: 'Kubernetes Orchestration', progress: 90, status: 'On Track', completedLessons: 10, totalLessons: 11, lastLesson: 'Lesson 3.2: Ingress Controllers' },
+        { title: 'gRPC Microservices', progress: 74, status: 'On Track', completedLessons: 8, totalLessons: 11, lastLesson: 'Lesson 2.4: Protobuf Compilation' }
+      ],
+      assessments: [
+        { title: 'Kubernetes Architecture Quiz', type: 'Quiz', score: '92%', passMark: '75%', status: 'Passed', date: 'Sep 26, 2026', feedback: 'Excellent score.' }
+      ],
+      timeline: [
+        { icon: 'completed', title: 'Completed Lesson', sub: 'Completed Ingress Controllers video lesson', date: 'Today 09:30 AM' }
+      ]
+    },
+    {
+      id: 'L04', name: 'Ananya Singh', email: 'ananya.singh@upspace.io', avatar: 'AS', dept: 'Sales',
+      track: 'Enterprise Consultative Selling', progress: 91, score: 94, lastActive: 'Today (Sep 28, 2026)', status: 'ontrack',
+      riskReason: '',
+      courses: [
+        { title: 'Discovery & ROI Pitching', progress: 95, status: 'On Track', completedLessons: 12, totalLessons: 13, lastLesson: 'Lesson 4.1: Financial Business Cases' }
+      ],
+      assessments: [
+        { title: 'Discovery Qualification Exam', type: 'Exam', score: '94%', passMark: '80%', status: 'Passed', date: 'Sep 27, 2026', feedback: 'Outstanding performance.' }
+      ],
+      timeline: [
+        { icon: 'completed', title: 'Completed Final Quiz', sub: 'Scored 94% on Discovery Qualification Exam', date: 'Sep 27, 03:20 PM' }
+      ]
+    }
+  ];
+
+  let currentLearner = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    populateLearnerSelector();
+    // Parse URL param ?id=
+    const params = new URLSearchParams(window.location.search);
+    const learnerId = params.get('id') || 'L03';
+    loadLearnerProfile(learnerId);
+  });
+
+  function populateLearnerSelector() {
+    const selector = document.getElementById('learner-selector');
+    selector.innerHTML = learnersData.map(l => `
+      <option value="${l.id}">${l.name} (${l.dept}) - ${l.status.toUpperCase()}</option>
+    `).join('');
+  }
+
+  function switchLearner(id) {
+    loadLearnerProfile(id);
+    window.history.replaceState({}, '', `learner-detail.html?id=${id}`);
+  }
+
+  function loadLearnerProfile(id) {
+    currentLearner = learnersData.find(l => l.id === id) || learnersData[0];
+    document.getElementById('learner-selector').value = currentLearner.id;
+
+    document.getElementById('l-avatar').textContent = currentLearner.avatar;
+    document.getElementById('l-name').textContent = currentLearner.name;
+    document.getElementById('l-email').textContent = currentLearner.email;
+    document.getElementById('l-dept').textContent = `${currentLearner.dept} Department`;
+    document.getElementById('l-track').textContent = currentLearner.track;
+    document.getElementById('l-lastactive').textContent = currentLearner.lastActive;
+    document.getElementById('kpi-progress').textContent = `${currentLearner.progress}%`;
+    document.getElementById('kpi-score').textContent = `${currentLearner.score}%`;
+
+    // Status Badge
+    document.getElementById('l-status-badge').innerHTML = getStatusBadge(currentLearner.status);
+
+    // Risk Banner
+    const riskBanner = document.getElementById('risk-banner');
+    if (currentLearner.status === 'atrisk' || currentLearner.status === 'attention') {
+      riskBanner.hidden = false;
+      document.getElementById('l-risk-desc').textContent = currentLearner.riskReason;
+    } else {
+      riskBanner.hidden = true;
+    }
+
+    // Counts Badges
+    document.getElementById('badge-courses-count').textContent = currentLearner.courses.length;
+    document.getElementById('badge-assessments-count').textContent = currentLearner.assessments.length;
+
+    // Render Courses Grid
+    renderCoursesGrid();
+
+    // Render Assessments Table
+    renderAssessmentsTable();
+
+    // Render Timeline
+    renderTimeline();
+  }
+
+  function getStatusBadge(status) {
+    if (status === 'ontrack') return `<span class="badge badge-ontrack"><span class="badge-dot"></span>On track</span>`;
+    if (status === 'attention') return `<span class="badge badge-attention"><span class="badge-dot"></span>Needs attention</span>`;
+    if (status === 'atrisk') return `<span class="badge badge-atrisk"><span class="badge-dot"></span>At risk</span>`;
+    if (status === 'inactive') return `<span class="badge badge-inactive"><span class="badge-dot"></span>Inactive</span>`;
+    return '';
+  }
+
+  function renderCoursesGrid() {
+    const container = document.getElementById('courses-grid-container');
+    container.innerHTML = currentLearner.courses.map(c => `
+      <div class="course-card">
+        <div class="course-card-top">
+          <a href="#" class="course-card-title">${c.title}</a>
+          ${getStatusBadge(c.status === 'Needs Attention' ? 'attention' : (c.status === 'At Risk' ? 'atrisk' : 'ontrack'))}
+        </div>
+        <div style="font-size:12.5px; color:var(--text-secondary);">
+          Completed <b>${c.completedLessons} of ${c.totalLessons} lessons</b> • Current: ${c.lastLesson}
+        </div>
+        <div style="display:flex; flex-direction:column; gap:4px; margin-top:4px;">
+          <div style="display:flex; justify-content:space-between; font-size:12px; font-weight:700; color:var(--text-primary);">
+            <span>Course Progress</span>
+            <span>${c.progress}%</span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill ${c.progress < 50 ? 'warning' : ''}" style="width:${c.progress}%;"></div>
+          </div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderAssessmentsTable() {
+    const tbody = document.getElementById('assessments-table-body');
+    tbody.innerHTML = currentLearner.assessments.map(a => `
+      <tr>
+        <td><b>${a.title}</b></td>
+        <td><span class="badge badge-track">${a.type}</span></td>
+        <td><b style="color:${a.score.includes('Failed') || parseFloat(a.score) < 70 ? 'var(--error)' : 'var(--text-primary)'};">${a.score}</b></td>
+        <td>
+          <span class="badge ${a.status.includes('Passed') ? 'badge-ontrack' : (a.status.includes('Failed') ? 'badge-atrisk' : 'badge-attention')}">
+            ${a.status}
+          </span>
+        </td>
+        <td><span style="font-size:12.5px; color:var(--text-tertiary);">${a.date}</span></td>
+        <td><span style="font-size:12.5px; color:var(--text-secondary);">${a.feedback}</span></td>
+      </tr>
+    `).join('');
+  }
+
+  function renderTimeline() {
+    const timeline = document.getElementById('activity-timeline');
+    timeline.innerHTML = currentLearner.timeline.map(t => `
+      <div class="timeline-item">
+        <div class="timeline-icon ${t.icon}">
+          ${t.icon === 'submit' ? '⬆' : (t.icon === 'completed' ? '✓' : '✎')}
+        </div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <span class="timeline-title">${t.title}</span>
+            <span class="timeline-date">${t.date}</span>
+          </div>
+          <div class="timeline-sub">${t.sub}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function switchWorkspaceTab(tab, btn) {
+    document.querySelectorAll('.tab-nav .nav-tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    document.querySelectorAll('.tab-panel').forEach(p => p.hidden = true);
+    document.getElementById(`tab-${tab}-panel`).hidden = false;
+  }
+
+  function dismissRiskBanner() {
+    document.getElementById('risk-banner').hidden = true;
+    showToast('Marked risk alert as reviewed.');
+  }
+
+  function openNudgeModal(type) {
+    const modalTitle = document.getElementById('modal-action-title');
+    const prompt = document.getElementById('modal-desc-prompt');
+    const input = document.getElementById('modal-message-input');
+
+    if (type === 'support') {
+      modalTitle.textContent = 'Assign Tutor / Peer Support';
+      prompt.textContent = `Assign a senior peer mentor to assist ${currentLearner.name} on stuck modules.`;
+      input.value = `Hi ${currentLearner.name}, I noticed you've been working hard on ${currentLearner.track}. I've assigned senior engineer Sarah Chen to pair-review Module 2 with you.`;
+    } else {
+      modalTitle.textContent = 'Send Progress Nudge';
+      prompt.textContent = `Send an automated reminder to ${currentLearner.name} encouraging course completion.`;
+      input.value = `Hi ${currentLearner.name}, quick check-in from your manager! You're 51% through ${currentLearner.track}. Let me know if you need any support clearing the next module.`;
+    }
+
+    document.getElementById('nudge-modal').classList.add('active');
+  }
+
+  function closeNudgeModal() {
+    document.getElementById('nudge-modal').classList.remove('active');
+  }
+
+  function submitNudgeAction() {
+    closeNudgeModal();
+    showToast(`Action submitted for ${currentLearner.name}.`);
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toast-message').textContent = msg;
+    toast.classList.add('active');
+    setTimeout(() => {
+      toast.classList.remove('active');
+    }, 3500);
+  }
+</script>
+</body>
+</html>

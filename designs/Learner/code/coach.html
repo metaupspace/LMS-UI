@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Your Coach</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Your Coach (AI-013 Learning Coach), sidebar item.
+     One chat box, ChatGPT/Claude style (user decision 2026-09-23):
+     the learner types anything and gets an answer.
+       · Planning (goals, study plans, revision, routines) → structured
+         plan built from the learner's courses, deadlines, progress.
+       · Questions about course material → answered ONLY from the
+         learner's course content, with the source lesson. If nothing
+         matches, the coach says so instead of guessing.
+       · Revision notes / flashcards → point to the course page, where
+         those tools live (per module / per course).
+       · Outside learning (personal, health) → declines (AI-013-NFR-02).
+     NOTE: AI-013 describes a goal/check-in coach. Answering content
+     questions overlaps AI-006 (Tutor in course-player.html); done on
+     user request, grounded the same way.
+     Mock "today" = Wed, Sep 23 2026 (matches deadlines elsewhere).
+     Store: localStorage "upspace-study-v2" (plans[]).
+     Demo: ?state=fail
+     Library: Message (sent), Buttons, Input (date), Toast. Hand-built
+     (approved): Chat composer, AI generation progress, Study plan block,
+     Date tile.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626;
+    --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:0 14px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary:disabled{ color:var(--text-tertiary); cursor:default; background:#fff; }
+
+  /* Stage: empty = centered hero + composer; active = thread + docked composer */
+  .stage{ min-height:100%; display:flex; flex-direction:column; width:100%; max-width:800px; margin:0 auto; padding:0 clamp(16px, 3vw, 32px); }
+  .stage.empty{ justify-content:center; padding-top:24px; padding-bottom:10vh; }
+  .hero{ text-align:center; margin-bottom:24px; }
+  .hero .ai-mark{ margin:0 auto 16px; width:40px; height:40px; }
+  .hero h1{ margin:0 0 8px; font-size:clamp(24px, 2.6vw, 30px); font-weight:700; letter-spacing:-.6px; }
+  .hero p{ margin:0 auto; font-size:15.5px; color:var(--text-secondary); line-height:1.55; max-width:520px; }
+  .ai-mark{ width:32px; height:32px; border-radius:var(--radius-lg); background:linear-gradient(135deg, #6366f1, #4338ca); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ai-mark svg{ width:16px; height:16px; }
+  .hero .ai-mark svg{ width:19px; height:19px; }
+
+  .thread{ flex:1; display:flex; flex-direction:column; gap:26px; padding:32px 0 24px; }
+  .stage.empty .thread{ display:none; }
+  .stage:not(.empty) .hero, .stage:not(.empty) .sugg{ display:none; }
+
+  /* Message — sent (library pattern) */
+  .you{ align-self:flex-end; max-width:min(560px, 86%); padding:10px 14px; background:var(--action-primary-soft); border-radius:var(--radius-lg) 0 var(--radius-lg) var(--radius-lg); font-size:15px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; }
+  /* Coach turn — plain text next to the mark, no bubble */
+  .coach{ display:grid; grid-template-columns:32px minmax(0,1fr); gap:14px; animation:rise .3s ease both; }
+  @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .coach-body{ min-width:0; padding-top:5px; }
+  .coach-body > p{ margin:0 0 12px; font-size:15.5px; line-height:1.65; }
+  .coach-body > p:last-child{ margin-bottom:0; }
+  .answer{ margin:0 0 12px; padding:14px 16px; border-left:3px solid var(--action-primary-soft); background:#fff; border-radius:0 var(--radius-lg) var(--radius-lg) 0; }
+  .answer b{ display:block; font-size:15.5px; margin-bottom:4px; }
+  .answer span{ font-size:15px; line-height:1.6; color:var(--text-strong); }
+  .answer + .answer{ margin-top:-4px; }
+  .source{ font-size:13px; color:var(--text-tertiary); margin:0 0 12px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; }
+  .chips button, .chips a{ border:1px solid var(--border-default); background:#fff; border-radius:var(--radius-full); padding:7px 12px; font-size:13.5px; font-weight:500; color:var(--text-strong); display:inline-flex; align-items:center; gap:6px; }
+  .chips button:hover, .chips a:hover{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+  .chips svg{ width:14px; height:14px; }
+  .fine{ margin-top:10px; font-size:12.5px; color:var(--text-tertiary); }
+
+  /* AI generation progress (hand-built, approved) */
+  .steps{ list-style:none; margin:4px 0 0; padding:0; display:grid; gap:10px; }
+  .steps li{ display:flex; align-items:center; gap:12px; font-size:14.5px; color:var(--text-tertiary); }
+  .steps li.active{ color:var(--text-primary); font-weight:500; }
+  .steps li.done{ color:var(--text-secondary); }
+  .steps .dot{ width:18px; height:18px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .steps li.active .dot{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:spin .8s linear infinite; }
+  .steps li.done .dot{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .steps li.failed .dot{ border-color:var(--error); background:var(--error); color:#fff; }
+  .steps .dot svg{ width:11px; height:11px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .gen-error{ margin-top:14px; }
+  .gen-error b{ display:block; font-size:15px; margin-bottom:4px; }
+  .gen-error p{ margin:0 0 12px; font-size:14px; color:var(--text-secondary); }
+
+  /* Study plan block (hand-built, approved) */
+  .plan{ border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; overflow:hidden; }
+  .plan-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; padding:18px 20px 16px; border-bottom:1px solid var(--border-subtle); }
+  .plan-kicker{ font-size:12.5px; font-weight:600; color:var(--action-primary); }
+  .plan-head h3{ margin:2px 0 4px; font-size:18px; font-weight:700; letter-spacing:-.2px; }
+  .plan-head p{ margin:0; font-size:14px; color:var(--text-secondary); line-height:1.5; max-width:440px; }
+  .date-field{ display:flex; flex-direction:column; gap:4px; font-size:13px; font-weight:500; color:var(--text-strong); }
+  .date-field input{ height:38px; padding:0 10px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; background:#fff; outline:none; }
+  .date-field input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .plan-stats{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); margin:0; border-bottom:1px solid var(--border-subtle); }
+  .plan-stats div{ padding:12px 20px; }
+  .plan-stats div + div{ border-left:1px solid var(--border-subtle); }
+  .plan-stats dt{ font-size:12.5px; color:var(--text-tertiary); }
+  .plan-stats dd{ margin:2px 0 0; font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .plan-note{ margin:0; padding:10px 20px; font-size:13.5px; line-height:1.5; color:var(--text-strong); background:var(--warning-subtle); border-bottom:1px solid var(--warning-border); }
+  .plan-days{ list-style:none; margin:0; padding:4px 0; }
+  .plan-days li{ display:grid; grid-template-columns:52px minmax(0,1fr) auto; gap:14px; align-items:start; padding:12px 20px; }
+  .plan-days li + li{ border-top:1px solid var(--border-subtle); }
+  .tile{ width:52px; padding:6px 0; border:1px solid var(--border-default); border-radius:var(--radius-lg); text-align:center; line-height:1.1; }
+  .tile b{ display:block; font-size:12px; font-weight:600; color:var(--text-tertiary); }
+  .tile span{ display:block; font-size:14px; font-weight:700; margin-top:2px; }
+  .tile.word span{ font-size:12.5px; }
+  .tasks{ display:flex; flex-direction:column; gap:4px; min-width:0; padding-top:2px; }
+  .tasks a{ font-size:14.5px; line-height:1.45; }
+  .tasks a:hover{ color:var(--action-primary); text-decoration:underline; }
+  .mins{ font-size:13px; color:var(--text-tertiary); white-space:nowrap; padding-top:3px; }
+  .tips{ margin:0; padding:14px 20px 4px 38px; font-size:14px; line-height:1.55; color:var(--text-secondary); border-top:1px solid var(--border-subtle); }
+  .tips li{ margin-bottom:8px; }
+  .plan-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px 16px; flex-wrap:wrap; padding:14px 20px; border-top:1px solid var(--border-subtle); background:var(--surface-canvas); }
+  .plan-foot small{ font-size:12.5px; color:var(--text-tertiary); max-width:340px; line-height:1.45; }
+
+  /* Dock + Chat composer (hand-built, approved — same as course-player.html) */
+  .dock{ padding:0 0 16px; }
+  .stage:not(.empty) .dock{ position:sticky; bottom:0; padding-top:12px; background:linear-gradient(to bottom, rgba(250,250,250,0), var(--surface-canvas) 30%); }
+  .composer-box{ display:flex; align-items:flex-end; gap:8px; padding:8px 8px 8px 16px; border:1px solid var(--border-default); border-radius:var(--radius-2xl); background:#fff; box-shadow:0 2px 8px rgba(10,10,10,.04); transition:border-color .15s ease, box-shadow .15s ease; }
+  .composer-box:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .composer textarea{ flex:1; border:0; outline:none; resize:none; font-size:15.5px; line-height:1.5; padding:8px 0; max-height:160px; color:var(--text-primary); background:transparent; }
+  .stage.empty .composer textarea{ min-height:56px; }
+  .composer textarea::placeholder{ color:var(--text-tertiary); }
+  .send{ width:40px; height:40px; border:0; border-radius:var(--radius-lg); background:var(--action-primary); color:#fff; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .send:hover{ background:var(--action-primary-hover); }
+  .send:disabled{ opacity:.35; cursor:default; }
+  .send svg{ width:17px; height:17px; }
+  .composer small{ display:block; margin-top:8px; font-size:12px; color:var(--text-tertiary); text-align:center; }
+  .sugg{ display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:16px; }
+  .sugg button{ display:inline-flex; align-items:center; gap:8px; border:1px solid var(--border-default); background:#fff; border-radius:var(--radius-full); padding:8px 14px; font-size:14px; font-weight:500; color:var(--text-strong); transition:border-color .15s ease, background-color .15s ease, color .15s ease; }
+  .sugg button:hover{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+  .sugg svg{ width:15px; height:15px; color:var(--text-tertiary); }
+  .sugg button:hover svg{ color:var(--action-primary); }
+
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:70; display:flex; align-items:center; gap:12px; padding:10px 14px; min-width:200px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .toast .ic{ width:28px; height:28px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:14px; height:14px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:640px){
+    .coach{ grid-template-columns:1fr; gap:6px; }
+    .coach > .ai-mark{ width:26px; height:26px; }
+    .plan-days li{ grid-template-columns:52px minmax(0,1fr); }
+    .mins{ grid-column:2; padding-top:0; }
+    .plan-head, .plan-days li, .plan-foot{ padding-left:14px; padding-right:14px; }
+    .plan-stats div{ padding:10px 14px; }
+    .toast{ left:16px; right:16px; bottom:16px; }
+    .sugg{ justify-content:flex-start; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=coach" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Your+Coach" title="Top bar"></iframe>
+
+  <main class="main" id="main">
+    <div class="stage empty" id="stage">
+      <div class="hero">
+        <span class="ai-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg></span>
+        <h1>What are you trying to accomplish?</h1>
+        <p>Ask about anything in your courses, or tell me a goal or deadline and I'll plan it with you.</p>
+      </div>
+
+      <div class="thread" id="thread" aria-live="polite"></div>
+
+      <div class="dock">
+        <form class="composer" id="composer">
+          <div class="composer-box">
+            <label for="input" class="sr">Message Your Coach</label>
+            <textarea id="input" rows="1" placeholder="e.g. I have an exam next Friday and need to revise Data Structures."></textarea>
+            <button class="send" id="send" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+          </div>
+          <small>Answers come from your courses and progress. Check important details against the lesson.</small>
+        </form>
+        <div class="sugg" id="sugg">
+          <button type="button" data-say="Help me set a weekly learning goal."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>Set a learning goal</button>
+          <button type="button" data-say="Create a study plan for this week."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/></svg>Create a study plan</button>
+          <button type="button" data-say="Plan my revision for Advanced Data Structures."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>Plan my revision</button>
+          <button type="button" data-say="Help me improve my study routine."><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Improve my study routine</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---- Shared study store (same key as course-overview / revision-notes / flashcard-study) ---- */
+  var KEY = 'upspace-study-v2';
+  function seed(){ return { notes:{ 'CS-301:2':{ createdAt:Date.now() - 2 * 36e5, focus:'' } }, decks:{}, plans:[] }; }
+  function load(){ try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.notes) return s; } catch(e){} return seed(); }
+  function save(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+
+  /* ---- Learner context: progress + deadlines (same as my-courses.html) ---- */
+  var TODAY = new Date(2026, 8, 23); // ponytail: fixed mock "today" so plans line up with mock deadlines
+  var COURSES = [
+    { id:'CS-301', title:'Advanced Data Structures', keys:['data structure','binary tree','hash','heap','cs-301'], deadline:'2026-09-30', progress:68,
+      remaining:[['Finish “Tree traversals” (in progress)',6],['Level-order traversal with a queue',9],['Traversal practice quiz',5],['BST insert & search',10],['Deleting nodes',11],['Balancing: AVL rotations',14],['Graph representations',9],['BFS & DFS',12],['Final assessment',20]],
+      done:[{ mod:0, t:'Foundations & Complexity' },{ mod:1, t:'Arrays, Lists & Hashing', focus:true },{ mod:2, t:'Stacks, Queues & Heaps' }] },
+    { id:'DS-210', title:'Data Visualization Techniques', keys:['visuali','chart','dashboard','ds-210'], deadline:'2026-10-03', progress:77,
+      remaining:[['Dashboards · Lesson 2',12],['Dashboards · Lesson 3',10],['Wrap-up · Final check',25]], done:[{ mod:0, t:'Getting started' },{ mod:1, t:'Core concepts' }] },
+    { id:'WEB-303', title:'Modern Web Architecture', keys:['web','architecture','edge'], progress:52, remaining:[['Applying it · part 2',12],['Applying it · part 3',12],['Wrap-up · part 1',14]], done:[] },
+    { id:'AI-101', title:'Intro to Machine Learning', keys:['machine learning',' ml ','supervised'], progress:34, remaining:[['Core concepts · part 2',14],['Core concepts · part 3',14]], done:[] },
+    { id:'MOB-201', title:'iOS App Development Basics', keys:['ios','swift','mobile'], progress:18, remaining:[['Getting started · part 2',10],['Core concepts · part 1',10]], done:[] }
+  ];
+  /* Course material the coach may quote (lesson text/transcripts, CS-301 — same as revision-notes.html) */
+  var KNOW = [
+    ['Big-O','An upper bound on how running time or memory grows as the input size n grows.','Big-O refresher'],
+    ['Amortized cost','The average cost per operation over a worst-case sequence of operations — not a probability average. Dynamic array appends are O(1) amortized.','Amortized analysis'],
+    ['Dynamic array','A resizable array that grows by allocating a larger block (often 2×) and copying the elements across.','Dynamic arrays'],
+    ['Linked list','A sequence of nodes where each node points to the next. Insert/delete at a known node is O(1); finding a node is O(n).','Linked lists in practice'],
+    ['Hash function','Maps a key to a bucket index; a good one spreads keys evenly across buckets.','Hash tables & collisions'],
+    ['Collision','When two different keys map to the same bucket. Handled by chaining or open addressing.','Hash tables & collisions'],
+    ['Chaining','Each bucket holds a small list of all entries that hash to it.','Hash tables & collisions'],
+    ['Open addressing','On a collision, probe other slots in the array until a free one is found — e.g. linear probing.','Hash tables & collisions'],
+    ['Load factor','Entries ÷ buckets. When it gets too high the table resizes to keep operations close to O(1).','Hash tables & collisions'],
+    ['Stack','A last-in, first-out (LIFO) collection: push and pop both happen at the top.','Stacks and the call stack'],
+    ['Call stack','The stack of active function calls; each call pushes a frame holding its locals and return address.','Stacks and the call stack'],
+    ['Queue','A first-in, first-out (FIFO) collection: add at the back, remove from the front.','Queues & deques'],
+    ['Deque','A double-ended queue: add or remove at both ends in O(1).','Queues & deques'],
+    ['Binary heap','A complete binary tree where every parent is ≤ its children (a min-heap). Insert and remove-min are O(log n).','Binary heaps & priority queues'],
+    ['Priority queue','Removes the highest-priority item first; usually built on a binary heap.','Binary heaps & priority queues'],
+    ['Leaf','A node with no children.','Tree vocabulary'],
+    ['Height','The number of edges on the longest path from the root down to a leaf.','Tree vocabulary'],
+    ['Binary tree','A tree where each node has at most two children, called left and right.','Building a binary tree'],
+    ['In-order traversal','Visit the left subtree, then the node, then the right subtree. On a BST this gives keys in sorted order.','Tree traversals'],
+    ['Pre-order traversal','Visit the node first, then the left and right subtrees. Useful for copying a tree.','Tree traversals'],
+    ['Post-order traversal','Visit both subtrees before the node. Useful for deleting a tree or evaluating an expression tree.','Tree traversals']
+  ];
+
+  var I = {
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    mark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 9a2 2 0 0 1-2 2H6l-4 4V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2z"/><path d="M18 9h2a2 2 0 0 1 2 2v11l-4-4h-6a2 2 0 0 1-2-2v-1"/></svg>',
+    save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>',
+    book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
+    cards:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>',
+    notes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>'
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var demo = new URLSearchParams(location.search).get('state') || 'normal';
+
+  /* ---- Dates ---- */
+  function addDays(d, n){ var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+  function fmt(d){ return d.toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' }); }
+  function iso(d){ return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+  function fromIso(s){ var p = s.split('-'); return new Date(+p[0], +p[1] - 1, +p[2]); }
+  function daysBetween(a, b){ return Math.round((b - a) / 864e5); }
+  function mins(m){ var h = Math.floor(m / 60), r = m % 60; return h ? h + 'h' + (r ? ' ' + r + 'm' : '') : r + ' min'; }
+  var WEEKDAYS = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+  var MONTHS = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+  function parseDate(t){
+    var m;
+    if (/\btomorrow\b/.test(t)) return { date:addDays(TODAY, 1) };
+    if ((m = t.match(/\bin (\d+) days?\b/))) return { date:addDays(TODAY, +m[1]) };
+    if ((m = t.match(/\bin (a|one|two|three|\d+) weeks?\b/))) return { date:addDays(TODAY, 7 * ({ a:1, one:1, two:2, three:3 }[m[1]] || +m[1])) };
+    if ((m = t.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2})\b/))){
+      var d = new Date(TODAY.getFullYear(), MONTHS.indexOf(m[1]), +m[2]);
+      if (d <= TODAY) d.setFullYear(d.getFullYear() + 1);
+      return { date:d };
+    }
+    if ((m = t.match(/\b(next\s+|this\s+)?(sunday|monday|tuesday|wednesday|thursday|friday|saturday)\b/))){
+      var diff = (WEEKDAYS.indexOf(m[2]) - TODAY.getDay() + 7) % 7 || 7;
+      if (m[1] && m[1].trim() === 'next') diff += 7;
+      return { date:addDays(TODAY, diff), phrase:(m[1] || '') + m[2] };
+    }
+    return null;
+  }
+  function findCourse(t){ for (var i = 0; i < COURSES.length; i++) if (COURSES[i].keys.some(function(k){ return t.indexOf(k) > -1; })) return COURSES[i]; return null; }
+  function byDeadline(){ return COURSES.filter(function(c){ return c.remaining.length; }).sort(function(a, b){ return (a.deadline || '9999') < (b.deadline || '9999') ? -1 : 1; }); }
+  function coursePage(c, hash){ return 'course-overview.html?id=' + c.id + (hash || ''); }
+
+  /* ---- Plan builders (learner's own courses, lessons, deadlines only) ---- */
+  function chunk(list, cap){
+    var out = [], cur = null;
+    list.forEach(function(l){
+      if (!cur || cur.mins + l[1] > cap){ cur = { tasks:[], mins:0 }; out.push(cur); }
+      cur.tasks.push({ t:l[0], href:'course-player.html' }); cur.mins += l[1];
+    });
+    return out;
+  }
+  function spread(sessions, dayCount){
+    var slots = [], tight = sessions.length > dayCount;
+    if (!tight) sessions.forEach(function(s, i){ slots.push({ idx:sessions.length === 1 ? dayCount - 1 : Math.round(i * (dayCount - 1) / (sessions.length - 1)), s:s }); });
+    else { var per = Math.ceil(sessions.length / dayCount); sessions.forEach(function(s, i){ slots.push({ idx:Math.floor(i / per), s:s }); }); }
+    var byDay = {};
+    slots.forEach(function(x){ var d = byDay[x.idx] = byDay[x.idx] || { tasks:[], mins:0 }; d.tasks = d.tasks.concat(x.s.tasks); d.mins += x.s.mins; });
+    return { tight:tight, days:Object.keys(byDay).map(Number).sort(function(a, b){ return a - b; }).map(function(i){ return { d:fmt(addDays(TODAY, i + 1)), mins:byDay[i].mins, tasks:byDay[i].tasks }; }) };
+  }
+  function total(days){ return days.reduce(function(a, d){ return a + d.mins; }, 0); }
+  function buildRevision(c, target, dated){
+    var n = Math.max(1, daysBetween(TODAY, target) - 1), notes = [];
+    var sessions = chunk(c.remaining, 30).concat(c.done.map(function(m){
+      return { mins:m.focus ? 40 : 30, tasks:[{ t:'Revision notes: ' + m.t + (m.focus ? ' — review Focus Areas' : ''), href:'revision-notes.html?course=' + c.id + '&mod=' + m.mod }] };
+    }));
+    sessions.push({ mins:25, tasks:[{ t:'Flashcards: ' + c.title, href:coursePage(c, '#flashcards') }] });
+    var r = spread(sessions, n);
+    if (c.deadline && fromIso(c.deadline) < target && c.remaining.length) notes.push('Your course deadline is ' + fmt(fromIso(c.deadline)) + ', so the remaining lessons come first.');
+    if (r.tight) notes.push('This is a tight schedule — about ' + mins(Math.round(total(r.days) / r.days.length)) + ' a day. If that\'s too much, start with the Focus Areas.');
+    return { kind:'exam', courseId:c.id, target:iso(target), dated:dated, title:c.title + (dated ? ' exam' : ' revision'),
+      goal:(c.remaining.length ? 'Finish the remaining ' + c.remaining.length + ' lessons and revise ' : 'Revise ') + c.done.length + ' completed modules before ' + (dated ? 'your exam on ' : '') + fmt(target) + '.',
+      stats:[['Days', String(daysBetween(TODAY, target))], ['Study time', '~' + mins(total(r.days))], ['Sessions', String(r.days.length)]], note:notes.join(' '), days:r.days };
+  }
+  function buildWeek(){
+    var picked = byDeadline().filter(function(c){ return c.deadline; }), sessions = [];
+    picked.forEach(function(c){ chunk(c.remaining, 30).forEach(function(s){ s.tasks.forEach(function(t){ t.t += ' · ' + c.title; }); sessions.push(s); }); });
+    var r = spread(sessions, 7);
+    return { kind:'week', title:'This week\'s study plan',
+      goal:'Finish ' + picked.map(function(c){ return c.title + ' (due ' + fmt(fromIso(c.deadline)) + ')'; }).join(' and ') + ' — deadline courses first.',
+      stats:[['Days','7'], ['Study time', '~' + mins(total(r.days))], ['Sessions', String(r.days.length)]], note:'', days:r.days };
+  }
+  function buildGoal(hours){
+    var cs = byDeadline().slice(0, 3);
+    var needed = cs.reduce(function(a, c){ return a + c.remaining.reduce(function(x, l){ return x + l[1]; }, 0); }, 0);
+    var lo = Math.max(1, Math.round(needed / 60 / 2)), hi = lo + 2;
+    var note = hours && hours >= 30 ? 'That\'s a big commitment! Based on your enrolled courses, ' + lo + '–' + hi + ' hours a week might be more realistic. I\'ve used ' + hi + ' hours — change it anytime.' : '';
+    var h = hours && hours < 30 ? hours : hi;
+    return { kind:'goal', title:'Weekly goal: ' + h + (h === 1 ? ' hour' : ' hours'),
+      goal:'Spend ' + h + (h === 1 ? ' hour' : ' hours') + ' a week, starting with the courses that have deadlines.',
+      stats:[['Hours a week', String(h)], ['Courses', String(cs.length)], ['Deadlines', String(cs.filter(function(c){ return c.deadline; }).length)]], note:note,
+      days:cs.map(function(c){ return { d:c.deadline ? 'Due, ' + fmt(fromIso(c.deadline)).split(', ')[1] : 'Next', label:true, mins:c.remaining.reduce(function(x, l){ return x + l[1]; }, 0),
+        tasks:[{ t:c.title + ' — ' + c.remaining.length + ' lessons left (' + c.progress + '% done)', href:coursePage(c) }] }; }) };
+  }
+  function buildRoutine(){
+    var c = byDeadline()[0];
+    return { kind:'routine', title:'Study routine', goal:'Short, regular sessions: two lessons at a time, with review between them.',
+      stats:[['Sessions a week','4'], ['Per session','15–25 min'], ['Weekly total','~1h 25m']],
+      days:[
+        { d:'Mon', label:true, mins:25, tasks:[{ t:'Two new lessons — start with ' + c.title, href:'course-player.html' }] },
+        { d:'Wed', label:true, mins:25, tasks:[{ t:'Two new lessons', href:'course-player.html' }] },
+        { d:'Fri', label:true, mins:15, tasks:[{ t:'Flashcards for ' + c.title, href:coursePage(c, '#flashcards') }] },
+        { d:'Sun', label:true, mins:20, tasks:[{ t:'Weekly check-in and revision notes', href:coursePage(c) }] } ],
+      tips:[ 'Your lessons are mostly 5–14 minutes, so a 25-minute session fits two of them.',
+             c.title + ' is due ' + fmt(fromIso(c.deadline)) + ' — put it first in each session until it\'s done.',
+             'Review with flashcards on days you don\'t start new lessons, so earlier material stays fresh.' ] };
+  }
+
+  /* ---- Answers grounded in course content ---- */
+  function lookup(t){
+    var hits = KNOW.filter(function(k){
+      var term = k[0].toLowerCase(), stem = term.replace(/s$/, '');
+      return t.indexOf(term) > -1 || t.indexOf(stem) > -1 || t.indexOf(stem + 's') > -1;
+    });
+    // prefer the most specific terms (e.g. "in-order traversal" over "binary tree")
+    return hits.sort(function(a, b){ return b[0].length - a[0].length; }).slice(0, 2);
+  }
+
+  /* ---- Intent (mock) ---- */
+  function respond(text){
+    var t = ' ' + text.toLowerCase().replace(/[?!.]/g, ' ') + ' ';
+    var planWords = /(plan|schedule|revis|goal|exam|test |routine|habit|hours|this week|deadline|prepare|catch up|behind|study time)/;
+    if (/(stress|anxious|anxiety|depress|lonely|sad |mental health|relationship)/.test(t))
+      return say('<p>I can only help with your learning — your courses, goals and study plans. If you\'re having a hard time, please reach out to someone you trust or your organization\'s support team.</p>');
+    var c = findCourse(t), when = parseDate(t);
+    if (/flash ?cards?/.test(t)){
+      c = c || COURSES[0];
+      return say('<p>Flashcards are made per course, from that course\'s lessons. Open ' + esc(c.title) + ' and use the Flashcards section to generate a set and study it.</p><div class="chips"><a href="' + coursePage(c, '#flashcards') + '">' + I.cards + 'Flashcards for ' + esc(c.title) + '</a></div>');
+    }
+    if (/(revision notes?|summary|summari[sz]e|notes? for)/.test(t) && !/(plan|exam)/.test(t)){
+      c = c || COURSES[0];
+      return say('<p>Revision notes are made per module, once you\'ve completed it. Open ' + esc(c.title) + ' and pick a completed module in Course content — you can create notes there and download them as a PDF.</p><div class="chips"><a href="' + coursePage(c) + '">' + I.notes + 'Open ' + esc(c.title) + '</a></div>');
+    }
+    if (/(exam|test |revis|prepare for)/.test(t)){
+      c = c || COURSES[0];
+      var target = when ? when.date : addDays(TODAY, 7);
+      var intro = when ? 'Here\'s a revision plan for ' + esc(c.title) + '.' + (when.phrase ? ' I\'ve taken “' + esc(when.phrase) + '” as ' + fmt(target) + ' — change the date if that\'s wrong.' : '')
+                       : 'Here\'s a week of revision for ' + esc(c.title) + '. If you have an exam date, set it below and I\'ll re-plan.';
+      return think(['Checking your progress in ' + c.title, 'Finding what\'s left and what to revise', 'Building your schedule'], function(){ return { intro:intro, plan:buildRevision(c, target, !!when) }; });
+    }
+    var hm = t.match(/(\d+)\s*(h|hr|hrs|hour|hours)\b/);
+    if (/goal/.test(t) || hm)
+      return think(['Checking your enrolled courses', 'Estimating the time you need', 'Setting your weekly goal'], function(){
+        var p = buildGoal(hm ? +hm[1] : 0);
+        return { intro:p.note ? 'Let\'s set a goal you can keep.' : 'Here\'s a weekly goal based on what\'s left in your courses and when it\'s due.', plan:p };
+      });
+    if (/(routine|habit|consisten|motivat|procrastin|focus better)/.test(t))
+      return think(['Looking at your lesson lengths', 'Checking your deadlines', 'Suggesting a routine'], function(){ return { intro:'Here\'s a simple routine that fits your courses. Small, regular sessions are easier to keep than long ones.', plan:buildRoutine() }; });
+    if (planWords.test(t) || /\bstudy\b/.test(t))
+      return think(['Checking your courses and deadlines', 'Finding the time you need', 'Building your schedule'], function(){ return { intro:'Here\'s a plan for the next 7 days, starting with the courses that are due soonest.', plan:buildWeek() }; });
+    var hits = lookup(t);
+    if (hits.length){
+      return say('<p>From your course material:</p>' + hits.map(function(k){ return '<div class="answer"><b>' + esc(k[0]) + '</b><span>' + esc(k[1]) + '</span></div>'; }).join('') +
+        '<p class="source">Source: “' + esc(hits[0][2]) + '” · Advanced Data Structures</p>' +
+        '<div class="chips"><a href="course-player.html">' + I.book + 'Open the lesson</a><a href="' + coursePage(COURSES[0], '#flashcards') + '">' + I.cards + 'Practise with flashcards</a></div>');
+    }
+    if (/\b(what|why|how|when|which|explain|define|difference)\b/.test(t))
+      return say('<p>I couldn\'t find that in your courses, so I won\'t guess. Try asking about something from a lesson you\'re taking — or ask the AI Tutor inside the lesson itself.</p><div class="chips"><a href="my-courses.html">' + I.book + 'My Courses</a></div>');
+    return say('<p>I can answer questions about your course material, or help you plan. For example:</p><div class="chips">' +
+      '<button type="button" data-say="What is open addressing?">What is open addressing?</button><button type="button" data-say="Create a study plan for this week.">Create a study plan</button>' +
+      '<button type="button" data-say="Help me set a weekly learning goal.">Set a learning goal</button></div>');
+  }
+
+  /* ---- Thread ---- */
+  function scrollDown(){ var m = $('main'); m.scrollTop = m.scrollHeight; }
+  function coachEl(inner){
+    var el = document.createElement('div');
+    el.className = 'coach';
+    el.innerHTML = '<span class="ai-mark">' + I.mark + '</span><div class="coach-body">' + inner + '</div>';
+    $('thread').appendChild(el); scrollDown();
+    return el;
+  }
+  function say(html){ coachEl(html); busy(false); }
+  var run = 0;
+  function think(steps, make){
+    var id = ++run;
+    var el = coachEl('<p>Building your plan…</p><ol class="steps">' + steps.map(function(s){ return '<li><span class="dot"></span>' + esc(s) + '</li>'; }).join('') + '</ol>');
+    var lis = el.querySelectorAll('.steps li'), i = 0, failAt = demo === 'fail' ? 1 : -1;
+    (function tick(){
+      if (id !== run) return;
+      if (i > 0){ lis[i - 1].className = 'done'; lis[i - 1].firstChild.innerHTML = I.check; }
+      if (i === failAt){
+        lis[i].className = 'failed'; lis[i].firstChild.innerHTML = I.x;
+        var err = document.createElement('div'); err.className = 'gen-error'; err.setAttribute('role', 'alert');
+        err.innerHTML = '<b>Couldn\'t generate this right now.</b><p>Nothing was saved.</p><button class="btn btn-secondary" type="button">Try again</button>';
+        el.querySelector('.coach-body').appendChild(err);
+        err.querySelector('button').onclick = function(){ el.remove(); busy(true); think(steps, make); };
+        busy(false); return;
+      }
+      if (i === lis.length) return setTimeout(function(){
+        if (id !== run) return;
+        var r = make();
+        el.querySelector('.coach-body').innerHTML = '<p>' + r.intro + '</p>' + planHtml(r.plan);
+        wirePlan(el, r.plan); busy(false); scrollDown();
+      }, 250);
+      lis[i].className = 'active'; i++;
+      setTimeout(tick, 800);
+    })();
+  }
+
+  /* ---- Study plan block ---- */
+  function tile(d){ var p = d.d.split(', '); return '<span class="tile' + (d.label ? ' word' : '') + '"><b>' + esc(p[0]) + '</b>' + (p[1] ? '<span>' + esc(p[1]) + '</span>' : '') + '</span>'; }
+  function planHtml(p){
+    var kicker = { exam:'Revision plan', week:'Study plan', goal:'Weekly goal', routine:'Study routine' }[p.kind];
+    return '<div class="plan">' +
+      '<div class="plan-head"><div><div class="plan-kicker">' + kicker + '</div><h3>' + esc(p.title) + '</h3><p>' + esc(p.goal) + '</p></div>' +
+        (p.kind === 'exam' ? '<label class="date-field">' + (p.dated ? 'Exam date' : 'Finish by') + '<input type="date" class="plan-date" value="' + p.target + '" min="' + iso(addDays(TODAY, 2)) + '"></label>' : '') + '</div>' +
+      '<dl class="plan-stats">' + p.stats.map(function(s){ return '<div><dt>' + esc(s[0]) + '</dt><dd>' + esc(s[1]) + '</dd></div>'; }).join('') + '</dl>' +
+      (p.note ? '<p class="plan-note">' + esc(p.note) + '</p>' : '') +
+      '<ol class="plan-days">' + p.days.map(function(d){
+        return '<li>' + tile(d) + '<div class="tasks">' + d.tasks.map(function(t){ return '<a href="' + t.href + '">' + esc(t.t) + '</a>'; }).join('') + '</div><span class="mins">' + mins(d.mins) + '</span></li>';
+      }).join('') + '</ol>' +
+      (p.tips ? '<ul class="tips">' + p.tips.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul>' : '') +
+      '<div class="plan-foot"><button class="btn btn-primary plan-save" type="button">' + I.save + 'Save plan</button>' +
+        '<small>Saved plans get a weekly check-in, and a nudge if you fall behind.</small></div>' +
+    '</div>';
+  }
+  function wirePlan(el, p){
+    var body = el.querySelector('.coach-body'), dateIn = el.querySelector('.plan-date');
+    if (dateIn) dateIn.onchange = function(){
+      if (!dateIn.value) return;
+      var c = COURSES.find(function(x){ return x.id === p.courseId; });
+      var np = buildRevision(c, fromIso(dateIn.value), p.dated);
+      body.innerHTML = body.querySelector('p').outerHTML + planHtml(np);
+      wirePlan(el, np); toast('Plan updated for ' + fmt(fromIso(dateIn.value)));
+    };
+    el.querySelector('.plan-save').onclick = function(){
+      var s = load(), rec = JSON.parse(JSON.stringify(p));
+      rec.id = 'p' + Date.now(); rec.createdAt = Date.now();
+      s.plans.push(rec); save(s);
+      this.outerHTML = '<button class="btn btn-secondary" type="button" disabled>' + I.check + 'Saved</button>';
+      if (dateIn) dateIn.disabled = true;
+      toast('Plan saved — check-ins are on');
+    };
+  }
+
+  /* ---- Composer ---- */
+  var isBusy = false;
+  function busy(b){ isBusy = b; $('send').disabled = b || !$('input').value.trim(); }
+  function autosize(){ var ta = $('input'); ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight, 160) + 'px'; $('send').disabled = isBusy || !ta.value.trim(); }
+  $('input').addEventListener('input', autosize);
+  $('input').addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); $('composer').requestSubmit(); } });
+  function ask(text){
+    if (isBusy || !text) return;
+    $('stage').classList.remove('empty');
+    var el = document.createElement('div'); el.className = 'you'; el.textContent = text;
+    $('thread').appendChild(el); scrollDown();
+    busy(true);
+    setTimeout(function(){ respond(text); }, 350);
+  }
+  $('composer').addEventListener('submit', function(e){
+    e.preventDefault();
+    var v = $('input').value.trim(); if (!v) return;
+    $('input').value = ''; autosize(); ask(v);
+  });
+  document.addEventListener('click', function(e){ var b = e.target.closest('[data-say]'); if (b) ask(b.getAttribute('data-say')); });
+
+  var toastTimer;
+  function toast(msg){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic">' + I.check + '</span>' + esc(msg);
+    t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 2600);
+  }
+  $('input').focus();
+</script>
+</body>
+</html>

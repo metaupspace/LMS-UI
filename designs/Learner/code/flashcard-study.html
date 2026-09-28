@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Study Flashcards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Flashcard study session (AI-007-FR-03) for one course's
+     set, opened with ?course=ID from the Flashcards section of
+     course-overview.html (user decision 2026-09-23: flashcards are
+     course-specific, one set per course).
+     One card at a time: flip, previous, next, shuffle, restart,
+     "Card 4 of 12". Keyboard: Space/Enter flips, ←/→ move.
+     Touch (NFR-02): tap to flip, swipe left/right to move.
+     Breadcrumb (My Courses › course › Flashcards) links back; no Exit button. Got it / Still learning
+     (FR-05) not built — user decision 2026-09-23.
+     Library: Buttons, Progress bar, Toast. Hand-built (approved):
+     Flashcard (two-sided flip card), Empty state.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --success:#15803d; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:var(--font); cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:28px clamp(16px, 2.6vw, 48px) 48px; } /* fluid, same gutters as other learner pages */
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary:disabled{ color:var(--text-disabled); background:#fff; cursor:default; }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); padding:0 10px; }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+
+  /* Header */
+  .head{ display:flex; align-items:flex-start; gap:12px; margin-bottom:18px; }
+  /* Breadcrumbs — same pattern as course-overview.html */
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:16px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); flex-shrink:0; }
+  .crumbs span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .crumbs a.course{ overflow:hidden; text-overflow:ellipsis; min-width:0; }
+  .head-text{ min-width:0; flex:1; }
+  .head h1{ margin:0; font-size:22px; font-weight:700; letter-spacing:-.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .head .meta{ font-size:14px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* Progress bar (library) */
+  .progress{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .progress .count{ font-size:14px; font-weight:600; color:var(--text-strong); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .bar{ flex:1; height:8px; border-radius:var(--radius-full); background:var(--surface-overlay); overflow:hidden; }
+  .bar i{ display:block; height:100%; border-radius:inherit; background:var(--action-primary); transition:width .25s ease; }
+
+  /* Flashcard — two-sided flip card (hand-built, approved) */
+  .card-stage{ perspective:1400px; }
+  .flash{ position:relative; display:block; width:100%; height:clamp(260px, 56vh, 640px); padding:0; border:0; background:transparent; text-align:center; touch-action:pan-y; }
+  .flash-inner{ position:absolute; inset:0; transition:transform .45s cubic-bezier(.2,.7,.2,1); transform-style:preserve-3d; }
+  .flash.flipped .flash-inner{ transform:rotateY(180deg); }
+  .face{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; padding:32px clamp(20px, 5vw, 56px); background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); backface-visibility:hidden; -webkit-backface-visibility:hidden; box-shadow:0 1px 2px rgba(10,10,10,.04); overflow:auto; }
+  .face.back{ transform:rotateY(180deg); background:#fff; border-color:var(--action-primary-soft); }
+  .flash:hover .face{ border-color:#d4d4d4; }
+  .flash:hover .face.back{ border-color:var(--action-primary-soft); }
+  .flash:focus-visible{ outline:none; }
+  .flash:focus-visible .face{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  .face-label{ font-size:12.5px; font-weight:600; color:var(--text-tertiary); letter-spacing:.2px; }
+  .face.back .face-label{ color:var(--action-primary); }
+  .face-text{ font-size:clamp(22px, 1.2vw + 14px, 40px); font-weight:700; letter-spacing:-.4px; line-height:1.3; color:var(--text-primary); max-width:min(760px, 90%); overflow-wrap:anywhere; }
+  .face.back .face-text{ font-size:clamp(17px, .6vw + 12px, 24px); font-weight:500; letter-spacing:0; line-height:1.6; color:var(--text-strong); }
+  .face-hint{ position:absolute; bottom:16px; left:0; right:0; font-size:12.5px; color:var(--text-tertiary); }
+
+  /* Controls */
+  .controls{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:10px; margin-top:18px; }
+  .controls .prev{ justify-self:start; }
+  .controls .next{ justify-self:end; }
+  .controls .flip{ min-width:120px; }
+  .tools{ display:flex; justify-content:center; gap:4px; margin-top:14px; }
+  .keys{ margin-top:18px; text-align:center; font-size:12.5px; color:var(--text-tertiary); }
+  kbd{ font-family:var(--font); font-size:11.5px; font-weight:600; padding:1px 6px; border:1px solid var(--border-default); border-bottom-width:2px; border-radius:4px; background:#fff; color:var(--text-secondary); }
+
+  /* Finished / not found */
+  .panel{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); padding:40px 28px; text-align:center; }
+  .panel .ic{ width:44px; height:44px; margin:0 auto 14px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .panel .ic svg{ width:20px; height:20px; }
+  .panel b{ display:block; font-size:18px; margin-bottom:6px; }
+  .panel p{ margin:0 0 20px; font-size:14.5px; color:var(--text-secondary); line-height:1.5; }
+  .panel .acts{ display:flex; justify-content:center; flex-wrap:wrap; gap:8px; }
+
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:70; display:flex; align-items:center; gap:12px; padding:10px 14px; min-width:200px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .toast .ic{ width:28px; height:28px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:14px; height:14px; }
+
+
+  /* Fluid study layout: card column + sticky side panel */
+  .head{ align-items:center; flex-wrap:wrap; }
+  .head-acts{ display:flex; gap:4px; margin-left:auto; }
+  .study{ display:grid; grid-template-columns:minmax(0,1fr) clamp(280px, 22vw, 360px); gap:clamp(20px, 2vw, 36px); align-items:start; }
+  .srail{ position:sticky; top:20px; display:flex; flex-direction:column; gap:14px; max-height:calc(100vh - 250px); }
+  .srail > .rc:not(.list){ flex-shrink:0; }
+  .rc{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:16px 16px 12px; min-height:0; }
+  .rc h2{ margin:0 0 10px; font-size:13px; font-weight:600; color:var(--text-tertiary); display:flex; justify-content:space-between; }
+  .rc h2 span{ font-weight:500; }
+  .stats{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px; }
+  .stats div{ padding:10px; border-radius:var(--radius-lg); background:var(--surface-canvas); }
+  .stats b{ display:block; font-size:18px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stats small{ font-size:12px; color:var(--text-tertiary); }
+  .rc.list{ display:flex; flex-direction:column; flex:1; }
+  .clist{ position:relative; list-style:none; margin:0 -8px; padding:0; overflow-y:auto; flex:1; min-height:0; scrollbar-width:thin; }
+  .clist button{ width:100%; display:grid; grid-template-columns:24px minmax(0,1fr) 16px; gap:10px; align-items:center; padding:8px; border:0; border-radius:var(--radius-lg); background:transparent; text-align:left; font-size:14px; color:var(--text-secondary); }
+  .clist button:hover{ background:var(--surface-canvas); color:var(--text-primary); }
+  .clist .n{ width:24px; height:24px; border-radius:var(--radius-md); background:var(--surface-raised); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .clist .t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .clist .s svg{ width:14px; height:14px; color:var(--success); }
+  .clist .on button{ background:var(--action-primary-subtle); color:var(--action-primary); font-weight:600; }
+  .clist .on .n{ background:#fff; color:var(--action-primary); }
+  .rc.keys-card ul{ list-style:none; margin:0; padding:0; display:grid; gap:8px; font-size:13.5px; color:var(--text-secondary); }
+  .rc.keys-card li{ display:flex; justify-content:space-between; gap:10px; }
+  .study .keys{ display:none; }
+  @media (max-width:1100px){
+    .study{ grid-template-columns:1fr; }
+    .srail{ position:static; max-height:none; display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); align-items:start; }
+    .clist{ max-height:300px; }
+    .study .keys{ display:block; }
+    .rc.keys-card{ display:none; }
+  }
+  @media (max-width:640px){
+    .head-acts .lbl{ display:none; }
+    .head-acts .btn{ padding:0 10px; }
+    .flash{ height:clamp(240px, 52vh, 460px); }
+  }
+  @media (hover:none){ .rc.keys-card, .study .keys{ display:none; } }
+  @media (max-width:640px){ .study .keys{ display:none; } }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  @media (max-width:640px){
+    .controls .lbl{ display:none; }
+    .controls .prev, .controls .next{ width:44px; padding:0; }
+    .keys{ display:none; }
+    .head h1{ font-size:19px; white-space:normal; }
+    .toast{ left:16px; right:16px; bottom:16px; }
+  }
+  @media (hover:none){ .face-hint .kb{ display:none; } }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 36px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" id="topbar" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner" id="root"></div></main>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---- Shared study store (same block in course-overview, revision-notes, coach) ---- */
+  var KEY = 'upspace-study-v2';
+  function seed(){ return { notes:{ 'CS-301:2':{ createdAt:Date.now() - 2 * 36e5, focus:'' } }, decks:{}, plans:[] }; }
+  function load(){ try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.notes) return s; } catch(e){} var s0 = seed(); save(s0); return s0; }
+  function save(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+
+  var I = {
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    next:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+    flip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>',
+    shuffle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m18 14 4 4-4 4"/><path d="m18 2 4 4-4 4"/><path d="M2 18h1.973a4 4 0 0 0 3.3-1.7l5.454-7.6a4 4 0 0 1 3.3-1.7H22"/><path d="M2 6h1.972a4 4 0 0 1 3.6 2.2"/><path d="M22 18h-6.041a4 4 0 0 1-3.3-1.8l-.359-.45"/></svg>',
+    restart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var courseId = new URLSearchParams(location.search).get('course') || 'CS-301';
+  var deck = load().decks[courseId];
+  var courseHref = 'course-overview.html?id=' + encodeURIComponent(courseId);
+  $('topbar').src = '../component/topnavbar.html?parent=' + encodeURIComponent(deck ? deck.course : 'Course') + '&parentHref=' + encodeURIComponent('../code/' + courseHref + '#flashcards') + '&current=Flashcards';
+
+  var order = [], pos = 0, flipped = false, seen = {};
+
+  function renderNotFound(){
+    $('root').innerHTML = '<div class="panel" role="status" style="margin-top:24px"><b>No flashcards for this course yet.</b><p>Generate a set from the Flashcards section on the course page.</p>' +
+      '<div class="acts"><a class="btn btn-primary" href="' + courseHref + '#flashcards">Back to course</a></div></div>';
+  }
+
+  function renderShell(){
+    var created = new Date(deck.createdAt).toLocaleDateString('en-US', { month:'short', day:'numeric' });
+    $('root').innerHTML =
+      '<nav class="crumbs" aria-label="Breadcrumb"><a href="my-courses.html">My Courses</a>' + I.next + '<a class="course" href="' + courseHref + '">' + esc(deck.course) + '</a>' + I.next + '<span aria-current="page">Flashcards</span></nav>' +
+      '<div class="head">' +
+        '<div class="head-text"><h1>Flashcards</h1><div class="meta">' + esc(deck.course) + ' · ' + deck.cards.length + ' cards</div></div>' +
+        '<div class="head-acts"><button class="btn btn-ghost" id="shuffle" type="button">' + I.shuffle + '<span class="lbl">Shuffle</span></button><button class="btn btn-ghost" id="restart" type="button">' + I.restart + '<span class="lbl">Restart</span></button></div></div>' +
+      '<div class="study"><div>' +
+        '<div id="session">' +
+          '<div class="progress"><span class="count" id="count" aria-live="polite"></span><div class="bar" role="progressbar" aria-label="Study progress" aria-valuemin="1" id="bar"><i id="barFill"></i></div></div>' +
+          '<div class="card-stage"><button class="flash" id="flash" type="button" aria-describedby="flipHint">' +
+            '<span class="flash-inner">' +
+              '<span class="face front"><span class="face-label">Term</span><span class="face-text" id="front"></span><span class="face-hint" id="flipHint">Tap to flip<span class="kb"> · or press Space</span></span></span>' +
+              '<span class="face back" aria-hidden="true"><span class="face-label">Answer</span><span class="face-text" id="backText"></span></span>' +
+            '</span></button></div>' +
+          '<div class="controls">' +
+            '<button class="btn btn-secondary prev" id="prev" type="button" aria-label="Previous card">' + I.back + '<span class="lbl">Previous</span></button>' +
+            '<button class="btn btn-primary flip" id="flipBtn" type="button">' + I.flip + '<span>Flip</span></button>' +
+            '<button class="btn btn-secondary next" id="next" type="button" aria-label="Next card"><span class="lbl">Next</span>' + I.next + '</button>' +
+          '</div>' +
+          '<div class="keys"><kbd>Space</kbd> flip · <kbd>←</kbd> <kbd>→</kbd> move between cards</div>' +
+        '</div>' +
+        '<div id="done" hidden></div>' +
+      '</div>' +
+      '<aside class="srail" aria-label="Set details">' +
+        '<section class="rc"><h2>This set <span>Created ' + created + '</span></h2><div class="stats">' +
+          '<div><b>' + deck.cards.length + '</b><small>Cards</small></div><div><b id="stSeen">0</b><small>Seen</small></div><div><b id="stLeft">' + deck.cards.length + '</b><small>Left</small></div></div></section>' +
+        '<section class="rc list"><h2>All cards <span id="listPos"></span></h2><ol class="clist" id="clist"></ol></section>' +
+        '<section class="rc keys-card"><h2>Shortcuts</h2><ul><li><span>Flip card</span><kbd>Space</kbd></li><li><span>Next / previous</span><span><kbd>→</kbd> <kbd>←</kbd></span></li></ul></section>' +
+      '</aside></div>';
+
+    $('clist').onclick = function(e){
+      var b = e.target.closest('[data-i]'); if (!b) return;
+      pos = +b.getAttribute('data-i'); flipped = false; paint();
+    };
+
+    $('flash').onclick = flip;
+    $('flipBtn').onclick = flip;
+    $('prev').onclick = function(){ go(-1); };
+    $('next').onclick = function(){ go(1); };
+    $('shuffle').onclick = function(){ shuffle(); toast('Cards shuffled'); };
+    $('restart').onclick = function(){ restart(); toast('Back to the first card'); };
+
+    // Touch: swipe left/right to move (tap still flips via click)
+    var x0 = null, y0 = null, swiped = false;
+    $('flash').addEventListener('touchstart', function(e){ x0 = e.touches[0].clientX; y0 = e.touches[0].clientY; swiped = false; }, { passive:true });
+    $('flash').addEventListener('touchend', function(e){
+      if (x0 === null) return;
+      var dx = e.changedTouches[0].clientX - x0, dy = e.changedTouches[0].clientY - y0;
+      if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy)){ swiped = true; go(dx < 0 ? 1 : -1); }
+      x0 = null;
+    });
+    $('flash').addEventListener('click', function(e){ if (swiped){ e.stopImmediatePropagation(); swiped = false; } }, true);
+  }
+
+  function paint(){
+    var card = deck.cards[order[pos]], n = deck.cards.length;
+    $('session').hidden = false; $('done').hidden = true;
+    $('front').textContent = card.f;
+    $('backText').textContent = card.b;
+    $('flash').classList.toggle('flipped', flipped);
+    $('flash').setAttribute('aria-label', flipped ? 'Answer: ' + card.b + '. Activate to see the term.' : 'Term: ' + card.f + '. Activate to show the answer.');
+    $('flash').querySelector('.front').setAttribute('aria-hidden', String(flipped));
+    $('flash').querySelector('.back').setAttribute('aria-hidden', String(!flipped));
+    $('count').textContent = 'Card ' + (pos + 1) + ' of ' + n;
+    $('bar').setAttribute('aria-valuemax', n); $('bar').setAttribute('aria-valuenow', pos + 1);
+    $('barFill').style.width = ((pos + 1) / n * 100) + '%';
+    $('prev').disabled = pos === 0;
+    $('next').querySelector('.lbl').textContent = pos === n - 1 ? 'Finish' : 'Next';
+    seen[order[pos]] = true;
+    var seenN = Object.keys(seen).length;
+    $('stSeen').textContent = seenN; $('stLeft').textContent = n - seenN;
+    $('listPos').textContent = (pos + 1) + ' / ' + n;
+    $('clist').innerHTML = order.map(function(ci, i){
+      return '<li' + (i === pos ? ' class="on"' : '') + '><button type="button" data-i="' + i + '"' + (i === pos ? ' aria-current="true"' : '') + '><span class="n">' + (i + 1) + '</span><span class="t">' + esc(deck.cards[ci].f) + '</span><span class="s">' + (seen[ci] && i !== pos ? I.check : '') + '</span></button></li>';
+    }).join('');
+    var l = $('clist'), on = l.querySelector('.on');
+    if (on && (on.offsetTop < l.scrollTop || on.offsetTop + on.offsetHeight > l.scrollTop + l.clientHeight)) l.scrollTop = on.offsetTop - l.clientHeight / 2;
+  }
+  function flip(){ flipped = !flipped; paint(); }
+  function go(d){
+    var n = deck.cards.length;
+    if (d > 0 && pos === n - 1) return finish();
+    if (pos + d < 0 || pos + d >= n) return;
+    pos += d; flipped = false; paint();
+  }
+  function restart(){ pos = 0; flipped = false; seen = {}; paint(); }
+  function shuffle(){
+    for (var i = order.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)); var t = order[i]; order[i] = order[j]; order[j] = t; }
+    restart();
+  }
+  function finish(){
+    $('session').hidden = true;
+    var d = $('done');
+    d.hidden = false;
+    d.innerHTML = '<div class="panel" role="status"><span class="ic">' + I.check + '</span><b>You\'ve gone through all ' + deck.cards.length + ' cards.</b><p>Go again, shuffle for a different order, or come back to this set later.</p>' +
+      '<div class="acts"><button class="btn btn-primary" type="button" id="again">' + I.restart + 'Study again</button><button class="btn btn-secondary" type="button" id="againShuffle">' + I.shuffle + 'Shuffle and restart</button><a class="btn btn-secondary" href="' + courseHref + '#flashcards">Back to course</a></div></div>';
+    $('again').onclick = restart;
+    $('againShuffle').onclick = shuffle;
+    $('again').focus();
+  }
+
+  document.addEventListener('keydown', function(e){
+    if (!deck || $('session').hidden) return;
+    if (e.target.closest('a, button:not(#flash)') && (e.key === ' ' || e.key === 'Enter')) return;
+    if (e.key === ' ' || e.key === 'Enter'){ e.preventDefault(); flip(); }
+    else if (e.key === 'ArrowRight'){ e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft'){ e.preventDefault(); go(-1); }
+  });
+
+  var toastTimer;
+  function toast(msg){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic">' + I.check + '</span>' + esc(msg);
+    t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 2000);
+  }
+
+  if (!deck || !deck.cards.length) renderNotFound();
+  else {
+    order = deck.cards.map(function(_, i){ return i; });
+    renderShell(); paint();
+  }
+</script>
+</body>
+</html>

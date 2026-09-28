@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Create with AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Create with AI (CRS-004 / AI-001).
+     Not a workspace: one way of STARTING a course. Output always lands
+     in the single Course Builder (course-builder.html?id=&generated=1).
+     Entry: My Courses → Create Course → "Generate with AI", or from an
+     empty/partial course in the builder (?id=) — then lessons are
+     appended, nothing overwritten (CRS-004 edge case).
+     Inputs per AI-001-FR-01/02: up to 5 files (PDF, DOCX, TXT, PPTX),
+     100MB combined, and/or a prompt up to 2,000 chars. (CRS-004-FR-01
+     omits TXT; AI-001 is the more specific spec and matches the brief.)
+     Confirm step shows estimated time (CRS-004-FR-04). Progress = named
+     steps, no percentages (backend reports none).
+     No AI service exists in this repo: generateDraft() builds a
+     structured draft locally. Replace it with the real API call.
+     Library: Buttons, Input field, Textarea, File Dropper, Alerts,
+     Modal. Approved hand-built: AI generation progress steps.
+     Demo states: ?state=fail | timeout | unreadable, or Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 56px; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .ib{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-tertiary); flex-shrink:0; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:16px; height:16px; }
+
+  .back{ display:inline-flex; align-items:center; gap:6px; font-size:13.5px; font-weight:600; color:var(--text-secondary); margin-bottom:14px; }
+  .back:hover{ color:var(--text-primary); }
+  .back svg{ width:15px; height:15px; }
+  .page-h{ margin-bottom:22px; }
+  .page-h h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .page-h p{ margin:0; font-size:15px; color:var(--text-secondary); max-width:640px; line-height:1.5; }
+
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) clamp(260px, 22vw, 320px); gap:clamp(20px, 2.4vw, 36px); align-items:start; }
+  .panel{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .form{ padding:clamp(20px, 2vw, 28px); }
+  .sec + .sec{ margin-top:24px; padding-top:24px; border-top:1px solid var(--border-subtle); }
+  .sec-h{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; margin-bottom:10px; }
+  .sec-h label, .sec-h h2{ margin:0; font-size:15px; font-weight:700; }
+  .sec-h .opt{ font-size:13px; color:var(--text-tertiary); font-weight:500; }
+  .sec > p{ margin:-4px 0 12px; font-size:13.5px; color:var(--text-secondary); line-height:1.5; }
+  .req{ color:var(--error); }
+
+  /* Input field / Textarea (library) */
+  .input{ width:100%; height:42px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  textarea.input{ height:auto; min-height:120px; padding:10px 12px; line-height:1.55; resize:vertical; }
+  .input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .input.invalid{ border-color:var(--error); }
+  .hint-row{ display:flex; justify-content:space-between; gap:12px; margin-top:6px; }
+  .hint{ font-size:12.5px; color:var(--text-tertiary); line-height:1.45; }
+  .hint.error{ color:var(--error); font-weight:600; margin-top:6px; }
+  .hint.warn{ color:#a16207; }
+  .count{ font-size:12.5px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; white-space:nowrap; margin-left:auto; }
+
+  /* File Dropper (library: Vertical Stack, Empty / Filled / Overflow) */
+  .dropzone{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; padding:24px 16px; border:1.5px dashed var(--border-default); border-radius:var(--radius-xl); background:var(--surface-canvas); transition:border-color .15s ease, background-color .15s ease; cursor:pointer; }
+  .dropzone:hover, .dropzone.over{ border-color:var(--action-primary); background:var(--action-primary-subtle); }
+  .dropzone.disabled{ cursor:not-allowed; opacity:.6; }
+  .dropzone svg{ width:28px; height:28px; color:var(--text-tertiary); margin-bottom:6px; }
+  .dropzone b{ font-size:14px; }
+  .dropzone b span{ color:var(--action-primary); }
+  .dropzone small{ font-size:12.5px; color:var(--text-tertiary); }
+  .files{ list-style:none; margin:10px 0 0; padding:0; display:grid; gap:8px; }
+  .files:empty{ display:none; }
+  .file{ display:grid; grid-template-columns:36px minmax(0,1fr) auto; gap:12px; align-items:center; padding:10px 10px 10px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .file .ext{ width:36px; height:36px; border-radius:var(--radius-md); background:var(--action-primary-subtle); color:var(--action-primary); font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; text-transform:uppercase; }
+  .file b{ display:block; font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file small{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:1px; }
+  .file.bad{ border-color:var(--error-border); background:var(--error-subtle); }
+  .file.bad .ext{ background:#fff; color:var(--error); }
+  .file.bad small{ color:var(--error); font-weight:600; }
+  .files-meta{ margin-top:8px; }
+
+  .foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:26px; padding-top:20px; border-top:1px solid var(--border-subtle); }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); margin-bottom:18px; }
+  .alert svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); } .alert.error svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning svg{ color:var(--warning); }
+  .alert.info{ background:var(--info-subtle); border-color:var(--info-border); } .alert.info svg{ color:var(--info); }
+
+  /* Aside */
+  .aside{ padding:20px; }
+  .aside h2{ margin:0 0 14px; font-size:15px; font-weight:700; }
+  .how{ list-style:none; margin:0; padding:0; display:grid; gap:14px; counter-reset:h; }
+  .how li{ counter-increment:h; display:grid; grid-template-columns:24px minmax(0,1fr); gap:10px; font-size:13.5px; line-height:1.5; color:var(--text-secondary); }
+  .how li::before{ content:counter(h); width:24px; height:24px; border-radius:50%; background:var(--surface-raised); color:var(--text-strong); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .how b{ display:block; color:var(--text-primary); font-weight:600; }
+  .aside .note{ margin:16px 0 0; padding-top:14px; border-top:1px solid var(--border-subtle); font-size:12.5px; line-height:1.5; color:var(--text-tertiary); }
+
+  /* AI generation progress (hand-built, approved) */
+  .gen{ padding:clamp(24px, 2.6vw, 40px); }
+  .gen h2{ margin:0; font-size:19px; font-weight:700; letter-spacing:-.2px; }
+  .gen > p{ margin:6px 0 26px; font-size:14px; line-height:1.5; color:var(--text-secondary); max-width:520px; }
+  .gen > p:empty{ margin-bottom:20px; }
+  .steps{ list-style:none; margin:0; padding:0; display:grid; gap:16px; }
+  .steps li{ display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text-tertiary); transition:color .2s ease; }
+  .steps li.active{ color:var(--text-primary); font-weight:500; }
+  .steps li.done{ color:var(--text-secondary); }
+  .steps li.failed{ color:var(--error); font-weight:500; }
+  .steps .dot{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .steps li.active .dot{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:spin .8s linear infinite; }
+  .steps li.done .dot{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .steps li.failed .dot{ border-color:var(--error); background:var(--error); color:#fff; }
+  .steps .dot svg{ width:12px; height:12px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .gen-foot{ display:flex; gap:10px; flex-wrap:wrap; margin-top:28px; }
+  .gen .alert{ margin:26px 0 0; max-width:620px; }
+
+  /* Modal (library) */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:460px; max-width:100%; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal > p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .est{ display:flex; align-items:center; gap:10px; margin-top:16px; padding:12px 14px; border-radius:var(--radius-lg); background:var(--surface-canvas); font-size:14px; color:var(--text-strong); }
+  .est svg{ width:18px; height:18px; color:var(--text-tertiary); flex-shrink:0; }
+  .modal .alert{ margin:12px 0 0; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:1100px){ .layout{ grid-template-columns:1fr; } .aside-wrap{ display:none; } }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 48px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Course Designer navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?parent=My+Courses&amp;parentHref=../code/my-courses.html&amp;current=Create+with+AI" title="Top bar"></iframe>
+  <main class="main"><div class="main-inner">
+    <a class="back" href="my-courses.html" id="backLink"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>My Courses</span></a>
+    <header class="page-h">
+      <h1>Create with AI</h1>
+      <p>Generate a first draft from your documents or a course description. You'll review and edit everything in the Course Builder before anything is submitted.</p>
+    </header>
+
+    <div class="layout">
+      <div class="panel">
+        <form class="form" id="form" novalidate>
+          <div class="alert info" id="appendNote" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg><div><b>Adding to <span id="appendTitle"></span></b>Generated lessons will be added alongside the existing ones. Nothing will be overwritten.</div></div>
+          <div class="alert error" id="formErr" role="alert" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg><div id="formErrText"></div></div>
+
+          <div class="sec" id="titleSec">
+            <div class="sec-h"><label for="title">Course title <span class="req">*</span></label></div>
+            <input class="input" id="title" maxlength="120" autocomplete="off" placeholder="e.g. Sales Fundamentals">
+            <div class="hint" id="titleHint"></div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><h2>Source documents</h2><span class="opt">Optional</span></div>
+            <p>AI builds modules and lessons from your material. Up to 5 files, 100 MB in total.</p>
+            <label class="dropzone" id="drop" for="fileInput">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 13v8"/><path d="M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242"/><path d="m8 17 4-4 4 4"/></svg>
+              <b><span>Click to upload</span> or drag and drop</b>
+              <small>PDF, DOCX, TXT or PPTX</small>
+            </label>
+            <input type="file" id="fileInput" multiple accept=".pdf,.docx,.txt,.pptx" hidden>
+            <ul class="files" id="files"></ul>
+            <div class="hint files-meta" id="filesMeta" hidden></div>
+          </div>
+
+          <div class="sec">
+            <div class="sec-h"><label for="prompt">Describe the course</label><span class="opt">Optional with documents</span></div>
+            <p>Who it's for, the key topics and how deep to go. Use it alone or to guide how your documents are structured.</p>
+            <textarea class="input" id="prompt" maxlength="2000" placeholder="e.g. A 2-hour course for new account executives covering prospecting, discovery calls, objection handling and closing. Keep examples B2B."></textarea>
+            <div class="hint-row"><span class="hint" id="promptHint"></span><span class="count" id="promptCount">0 / 2,000</span></div>
+          </div>
+
+          <div class="foot">
+            <a class="btn btn-secondary" href="my-courses.html" id="cancelLink">Cancel</a>
+            <button class="btn btn-primary" type="submit"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>Generate draft</button>
+          </div>
+        </form>
+
+        <section class="gen" id="gen" hidden aria-live="polite">
+          <h2 id="genTitle">Generating your draft</h2>
+          <p id="genSub"></p>
+          <ol class="steps" id="steps"></ol>
+          <div id="genErr"></div>
+          <div class="gen-foot" id="genFoot"></div>
+        </section>
+      </div>
+
+      <div class="aside-wrap">
+        <aside class="panel aside" aria-label="How it works">
+          <h2>How it works</h2>
+          <ol class="how">
+            <li><div><b>Add your material</b>Documents, a description, or both.</div></li>
+            <li><div><b>AI drafts the structure</b>Modules, lessons and draft lesson content.</div></li>
+            <li><div><b>You edit in the Course Builder</b>Change, reorder, delete, add, or regenerate any lesson.</div></li>
+          </ol>
+          <p class="note">AI-generated lessons are marked for you and your approvers. Learners won't see the mark. Your files are used only to generate this draft and aren't used for training.</p>
+        </aside>
+      </div>
+    </div>
+  </div></main>
+</div>
+
+<div class="overlay" id="confirm" role="dialog" aria-modal="true" aria-labelledby="confirmTitle">
+  <div class="modal">
+    <h3 id="confirmTitle">Generate your draft?</h3>
+    <p id="confirmText"></p>
+    <div class="est"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg><span id="estText"></span></div>
+    <div id="confirmWarn"></div>
+    <div class="modal-foot"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="button" id="doGenerate">Generate</button></div>
+  </div>
+</div>
+
+<label class="preview" title="Design-only: preview failure states. Not shown to users.">Preview
+  <select id="previewState">
+    <option value="normal">Normal</option>
+    <option value="fail">Generation fails</option>
+    <option value="timeout">Generation times out</option>
+    <option value="unreadable">Unreadable file</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Store (same key + seed as my-courses.html) ---------------- */
+  var KEY = 'upspace.cd.courses.v1', ME = 'Maya Reed';
+  var H = 3600e3, D = 24 * H;
+  function ago(ms){ return new Date(Date.now() - ms).toISOString(); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function L(title, html, ai){ return { id:uid('l'), title:title, content:html || '', ai:!!ai, edited:false }; }
+  function M(title, lessons){ return { id:uid('m'), title:title, lessons:lessons }; }
+  function P(t){ return '<p>' + t + '</p>'; }
+  function SEED(){
+    return [
+      { id:'c-sales', title:'Sales Fundamentals', category:'Sales', description:'Core selling skills for new account executives.', status:'draft', rel:'assigned', owner:'Daniel Kim', updated:ago(2 * H), created:ago(3 * D), modules:[] },
+      { id:'c-onboard', title:'Customer Onboarding Playbook', category:'Customer Success', description:'Run a smooth first 90 days for new customers.', status:'draft', rel:'owned', owner:ME, updated:ago(26 * H), created:ago(9 * D), modules:[
+        M('Kickoff', [ L('Why onboarding matters', P('Customers decide in their first weeks whether a product is worth the effort. A structured onboarding reduces early churn.'), true), L('Running the kickoff call', P('Set goals, confirm stakeholders and agree on a success plan before the call ends.'), true) ]),
+        M('First 30 days', [ L('Building the success plan', P('Translate the customer’s goals into three measurable milestones.')), L('Weekly check-ins', '') ]),
+        M('Handover', [ L('Handing over to account management', '') ]) ] },
+      { id:'c-privacy', title:'Data Privacy Essentials', category:'Compliance', description:'GDPR basics every employee needs to know.', status:'review', rel:'owned', owner:ME, approval:{ step:2, of:3, approver:'Priya Shah' }, updated:ago(3 * D), created:ago(20 * D), modules:[ M('Foundations', [ L('What counts as personal data', P('Any information that identifies a person directly or indirectly.')) ]) ] },
+      { id:'c-lead', title:'Leadership Communication', category:'Leadership', description:'Give feedback and run 1:1s that build trust.', status:'changes', rel:'owned', owner:ME, feedback:'Module 2 needs a practical example.', updated:ago(5 * D), created:ago(30 * D), modules:[ M('Feedback', [ L('The SBI model', P('Situation, Behavior, Impact: a simple structure for specific feedback.')) ]) ] },
+      { id:'c-atlas', title:'Product Knowledge: Atlas Platform', category:'Product', description:'Everything customer-facing teams need to know about Atlas.', status:'published', rel:'owned', owner:ME, updated:ago(14 * D), created:ago(60 * D), modules:[ M('Overview', [ L('What Atlas does', P('Atlas centralises reporting for operations teams.')) ]) ] },
+      { id:'c-safety', title:'Workplace Safety Refresher', category:'Safety', description:'Annual refresher on hazards, reporting and first aid.', status:'published', rel:'assigned', owner:'Daniel Kim', updated:ago(32 * D), created:ago(90 * D), modules:[ M('Hazards', [ L('Spotting hazards', P('Walk the space with fresh eyes once a month.')) ]) ] },
+      { id:'c-negotiate', title:'Negotiation Skills', category:'Sales', description:'Prepare, anchor and close with confidence.', status:'approved', rel:'delegated-to', owner:'Aisha Rahman', permission:'Edit + Submit', updated:ago(6 * D), created:ago(40 * D), modules:[ M('Preparation', [ L('Know your BATNA', P('Your best alternative sets your walk-away point.')) ]) ] },
+      { id:'c-finance', title:'Intro to Financial Planning', category:'Finance', description:'Budgets, forecasts and reading a P&L.', status:'draft', rel:'delegated-by', owner:ME, delegate:'Tom Becker', permission:'Edit', delegateActive:ago(20 * H), updated:ago(4 * D), created:ago(15 * D), modules:[ M('Budgets', [ L('Building a simple budget', '') ]) ] },
+      { id:'c-managers', title:'Onboarding for New Managers', category:'Management', description:'The first 100 days as a people manager.', status:'review', rel:'assigned', owner:'Daniel Kim', approval:{ step:1, of:2, approver:'Maria Lopez' }, updated:ago(2 * D), created:ago(25 * D), modules:[ M('Getting started', [ L('Your first week', P('Meet every direct report one-on-one.')) ]) ] },
+      { id:'c-excel', title:'Legacy Excel Training', category:'Productivity', description:'Replaced by the Sheets course in 2026.', status:'archived', rel:'owned', owner:ME, updated:ago(240 * D), created:ago(400 * D), modules:[] }
+    ];
+  }
+  var MEM = null;
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(s)) return s; } catch (e) {}
+    if (MEM) return MEM;
+    var seed = SEED(); save(seed); return seed;
+  }
+  function save(list){ MEM = list; try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+
+  /* ---------------- Helpers ---------------- */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function mb(bytes){ return bytes < 1048576 ? Math.max(1, Math.round(bytes / 1024)) + ' KB' : (bytes / 1048576).toFixed(1) + ' MB'; }
+  var OK_EXT = ['pdf', 'docx', 'txt', 'pptx'], MAX_FILES = 5, MAX_BYTES = 100 * 1048576;
+  var I = {
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>'
+  };
+
+  var ps = $('previewState'), params = new URLSearchParams(location.search);
+  ps.value = params.get('state') || 'normal';
+  var target = params.get('id') ? load().find(function(c){ return c.id === params.get('id'); }) : null;
+  var files = []; // { name, size, ext, error }
+
+  if (target){
+    $('appendNote').hidden = false; $('appendTitle').textContent = target.title; $('titleSec').hidden = true;
+    $('backLink').href = $('cancelLink').href = 'course-builder.html?id=' + target.id;
+    $('backLink').querySelector('span').textContent = 'Back to Course Builder';
+  }
+
+  /* ---------------- Files (File Dropper) ---------------- */
+  function validFiles(){ return files.filter(function(f){ return !f.error; }); }
+  function addFiles(list){
+    Array.prototype.forEach.call(list, function(file){
+      var ext = file.name.indexOf('.') > -1 ? file.name.split('.').pop().toLowerCase() : '';
+      var entry = { name:file.name, size:file.size, ext:ext, error:'' };
+      if (OK_EXT.indexOf(ext) < 0) entry.error = 'Unsupported file type. Use PDF, DOCX, TXT or PPTX.';
+      else if (validFiles().length >= MAX_FILES) entry.error = 'You can add up to 5 files.';
+      else if (validFiles().reduce(function(s, f){ return s + f.size; }, 0) + file.size > MAX_BYTES) entry.error = 'Files can total up to 100 MB.';
+      else if (!file.size) entry.error = 'This file is empty.';
+      files.push(entry);
+    });
+    renderFiles(); clearErr();
+  }
+  function renderFiles(){
+    $('files').innerHTML = files.map(function(f, i){
+      return '<li class="file' + (f.error ? ' bad' : '') + '"><span class="ext">' + esc((f.ext || '?').slice(0, 4)) + '</span><div style="min-width:0"><b title="' + esc(f.name) + '">' + esc(f.name) + '</b><small>' + (f.error ? esc(f.error) : mb(f.size)) + '</small></div><button class="ib" type="button" data-remove="' + i + '" aria-label="Remove ' + esc(f.name) + '">' + I.x + '</button></li>';
+    }).join('');
+    var ok = validFiles(), total = ok.reduce(function(s, f){ return s + f.size; }, 0), meta = $('filesMeta');
+    meta.hidden = !files.length;
+    meta.textContent = ok.length + ' of ' + MAX_FILES + ' files · ' + mb(total) + ' of 100 MB';
+    $('drop').classList.toggle('disabled', ok.length >= MAX_FILES);
+    promptHint();
+  }
+  $('fileInput').addEventListener('change', function(e){ addFiles(e.target.files); e.target.value = ''; });
+  $('files').addEventListener('click', function(e){
+    var b = e.target.closest('[data-remove]'); if (!b) return;
+    files.splice(+b.dataset.remove, 1); renderFiles();
+  });
+  var drop = $('drop');
+  ['dragenter', 'dragover'].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function(t){ drop.addEventListener(t, function(e){ e.preventDefault(); drop.classList.remove('over'); }); });
+  drop.addEventListener('drop', function(e){ if (e.dataTransfer && e.dataTransfer.files.length) addFiles(e.dataTransfer.files); });
+  drop.addEventListener('click', function(e){ if (validFiles().length >= MAX_FILES) e.preventDefault(); });
+
+  /* ---------------- Prompt ---------------- */
+  function promptHint(){
+    var v = $('prompt').value.trim(), h = $('promptHint');
+    $('promptCount').textContent = $('prompt').value.length.toLocaleString() + ' / 2,000';
+    // CRS-004 edge case: vague prompt → tip, never a block
+    var vague = v && v.split(/\s+/).length < 8 && !validFiles().length;
+    h.className = 'hint' + (vague ? ' warn' : '');
+    h.textContent = vague ? 'Tip: more specific descriptions produce better drafts. Try including the audience, key topics and how deep to go.' : '';
+  }
+  $('prompt').addEventListener('input', function(){ promptHint(); clearErr(); });
+  $('title').addEventListener('input', function(){ $('title').classList.remove('invalid'); $('titleHint').textContent = ''; $('titleHint').className = 'hint'; });
+
+  /* ---------------- Validate → confirm (CRS-004-FR-04) ---------------- */
+  function showErr(html){ $('formErrText').innerHTML = html; $('formErr').hidden = false; $('formErr').scrollIntoView({ block:'nearest', behavior:'smooth' }); }
+  function clearErr(){ $('formErr').hidden = true; }
+  $('form').addEventListener('submit', function(e){
+    e.preventDefault(); clearErr();
+    var title = $('title').value.trim(), prompt = $('prompt').value.trim();
+    if (!target && !title){ $('title').classList.add('invalid'); $('titleHint').className = 'hint error'; $('titleHint').textContent = 'Enter a course title.'; $('title').focus(); return; }
+    if (files.some(function(f){ return f.error; })){ showErr('<b>Remove the files marked in red to continue.</b>Only PDF, DOCX, TXT and PPTX files are supported.'); return; }
+    if (!validFiles().length && !prompt){ showErr('<b>Add a document or describe your course.</b>AI needs at least one of them to build a draft.'); return; }
+    var n = validFiles().length, total = validFiles().reduce(function(s, f){ return s + f.size; }, 0);
+    $('confirmText').textContent = 'AI will build modules, lessons and draft content from ' +
+      (n ? n + (n === 1 ? ' document' : ' documents') + (prompt ? ' and your description' : '') : 'your description') +
+      (target ? ', then add them to ' + target.title + '.' : '. You can edit everything afterwards.');
+    $('estText').textContent = n > 1 ? 'Estimated time: up to 2 minutes' : n === 1 ? 'Estimated time: about 1 minute' : 'Estimated time: under a minute';
+    // CRS-004 edge case: very large source → warn, proceed on confirm
+    $('confirmWarn').innerHTML = total > 40 * 1048576 ? '<div class="alert warning">' + I.alert + '<div><b>This is a lot of material.</b>Generation may take longer. Consider focusing your description on specific sections.</div></div>' : '';
+    $('confirm').classList.add('open'); setTimeout(function(){ $('doGenerate').focus(); }, 30);
+  });
+  $('confirm').addEventListener('click', function(e){ if (e.target === $('confirm') || e.target.closest('[data-close]')) $('confirm').classList.remove('open'); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') $('confirm').classList.remove('open'); });
+
+  /* ---------------- Generation ---------------- */
+  var run = 0;
+  $('doGenerate').addEventListener('click', function(){ $('confirm').classList.remove('open'); start(); });
+
+  function start(){
+    var myRun = ++run, mode = ps.value, hasFiles = validFiles().length > 0;
+    var steps = [hasFiles ? 'Analyzing your materials…' : 'Reading your description…', 'Building course structure…', 'Generating lessons…', 'Preparing your draft…'];
+    $('form').hidden = true; $('gen').hidden = false;
+    $('genTitle').textContent = 'Generating your draft';
+    $('genSub').textContent = 'This usually takes ' + (validFiles().length > 1 ? 'up to 2 minutes' : 'about a minute') + '. You can leave this page. Your draft will appear in My Courses when it\'s ready.';
+    $('genErr').innerHTML = '';
+    $('steps').innerHTML = steps.map(function(s){ return '<li><span class="dot"></span>' + s + '</li>'; }).join('');
+    $('genFoot').innerHTML = '<button class="btn btn-secondary" type="button" id="cancelGen">Cancel</button>';
+    $('cancelGen').onclick = function(){ run++; backToForm(); };
+    var li = $('steps').children, i = 0;
+    // ponytail: step timing is simulated; a real backend would push step changes (polling/SSE)
+    (function next(){
+      if (myRun !== run) return;
+      if (i > 0){ li[i - 1].className = 'done'; li[i - 1].querySelector('.dot').innerHTML = I.check; }
+      if (mode === 'unreadable' && i === 1) return fail(li[0], 'unreadable');
+      if (mode === 'fail' && i === 3) return fail(li[2], 'fail');
+      if (mode === 'timeout' && i === 3){ li[2].className = 'active'; return setTimeout(function(){ if (myRun === run) fail(li[2], 'timeout'); }, 2600); }
+      if (i === li.length) return finish();
+      li[i].className = 'active'; i++;
+      setTimeout(next, 1300);
+    })();
+  }
+
+  function fail(li, kind){
+    li.className = 'failed'; li.querySelector('.dot').innerHTML = I.x;
+    var name = validFiles()[0] ? validFiles()[0].name : 'your file';
+    var copy = {
+      fail:['We couldn\'t generate your draft', 'Something went wrong on our side. Your documents and description are still here, so you can try again.'],
+      timeout:['This is taking longer than expected', 'Generation didn\'t finish in time. Try again, or use fewer or smaller documents.'],
+      unreadable:['One of your files can\'t be read', 'Make sure ' + esc(name) + ' isn\'t encrypted or password-protected, then upload it again.']
+    }[kind];
+    $('genTitle').textContent = 'Draft not generated';
+    $('genSub').textContent = '';
+    $('genErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>' + copy[0] + '</b>' + copy[1] + '</div></div>';
+    $('genFoot').innerHTML = (kind === 'unreadable' ? '' : '<button class="btn btn-primary" type="button" id="retryGen">Try again</button>') +
+      '<button class="btn btn-secondary" type="button" id="editGen">' + (kind === 'unreadable' ? 'Replace file' : 'Edit inputs') + '</button>';
+    if ($('retryGen')) $('retryGen').onclick = function(){ ps.value = 'normal'; start(); };
+    $('editGen').onclick = backToForm;
+    ($('retryGen') || $('editGen')).focus();
+  }
+  function backToForm(){ $('gen').hidden = true; $('form').hidden = false; }
+
+  function finish(){
+    var names = validFiles().map(function(f){ return f.name; }), prompt = $('prompt').value.trim();
+    var modules = generateDraft(target ? target.title : $('title').value.trim(), prompt, names);
+    var list = load(), now = new Date().toISOString(), id;
+    if (target){
+      var c = list.find(function(x){ return x.id === target.id; });
+      c.modules = (c.modules || []).concat(modules); c.updated = now; id = c.id; // appended, never overwritten
+    } else {
+      id = 'c-' + Date.now().toString(36);
+      list.unshift({ id:id, title:$('title').value.trim(), category:'Uncategorized', description:'', status:'draft', rel:'owned', owner:ME, updated:now, created:now, modules:modules, aiSource:{ files:names, prompt:prompt } });
+    }
+    save(list);
+    location.href = 'course-builder.html?id=' + id + '&generated=1';
+  }
+
+  // ponytail: local stand-in for the AI authoring service (AI-001). Builds a real Course → Modules → Lessons draft
+  // from the prompt's topics / file names so the builder has editable content. Replace with the API response.
+  function generateDraft(title, prompt, fileNames){
+    var topics = ((prompt.match(/(?:cover(?:ing|s)?|topics?:?|including)\s+(.+?)(?:\.|$)/i) || [])[1] || '')
+      .split(/,|;|\band\b/i).map(function(t){ return t.trim().replace(/^the\s+/i, ''); })
+      .filter(function(t){ return t && t.split(/\s+/).length <= 5; }).slice(0, 5);
+    if (topics.length < 2) topics = ['Foundations', 'Core concepts', 'Putting it into practice', 'Review and next steps'];
+    var src = fileNames.length ? '<p><em>Drafted from ' + fileNames.map(esc).join(', ') + '.</em></p>' : '';
+    function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+    // Block-based lessons (builder v2 contract): Lesson { id, title, ai, edited, blocks:[{ id, type, data, meta }] }
+    function B(type, data){ return { id:uid('b'), type:type, data:data, meta:{ ai:true, edited:false } }; }
+    function LB(t, blocks){ return { id:uid('l'), title:t, ai:true, edited:false, blocks:blocks }; }
+    return topics.map(function(t, mi){
+      var T = cap(t), lt = t.toLowerCase();
+      return M(T, [
+        LB((mi === 0 ? 'Introduction to ' : 'Understanding ') + lt, [
+          B('text', { html:'<p>This lesson introduces ' + esc(lt) + ' in the context of ' + esc(title) + ' and explains why it matters in day-to-day work.</p>' }),
+          B('heading', { text:'Key points', level:3 }),
+          B('text', { html:'<ul><li>The core idea behind ' + esc(lt) + '.</li><li>Where it shows up in real situations.</li><li>Common mistakes to avoid.</li></ul>' + src }),
+          B('callout', { variant:'tip', title:'Tip', html:'<p>Connect ' + esc(lt) + ' to one decision learners make every week.</p>' })
+        ]),
+        LB(T + ' in practice', [
+          B('text', { html:'<p>A worked example walks through ' + esc(lt) + ' step by step. Learners follow along, then try a similar scenario on their own.</p>' }),
+          B('quote', { variant:'example', html:'<p>Replace this example with one from your organization.</p>', attribution:'' })
+        ]),
+        LB('Check your understanding', [
+          B('text', { html:'<p>Three short reflection questions help learners confirm they can apply ' + esc(lt) + ' before moving on.</p><ol><li>What would you do first?</li><li>What signal tells you it’s working?</li><li>What would you change next time?</li></ol>' }),
+          B('quote', { variant:'takeaway', html:'<p>' + esc(T) + ' works best when it’s practised, not just read about.</p>', attribution:'' })
+        ])
+      ]);
+    });
+  }
+
+  ps.addEventListener('change', function(){ if (!$('gen').hidden){ run++; backToForm(); } });
+</script>
+</body>
+</html>

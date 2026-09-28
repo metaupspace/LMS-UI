@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Import Questions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Question Bank bulk import (ASM-003-FR-07).
+     Flow: upload CSV/XLSX → parse (no libraries: RFC4180 CSV, native
+     zip + DecompressionStream for XLSX) → row validation review →
+     Fix / Skip → "Import N valid questions" → question-bank.html?imported=N.
+     Nothing is written until the creator confirms (never silent).
+     Duplicates: user decision 2026-09-24 — warn only ("Possible
+     duplicate"), never block/merge/delete. Note: ASM-003 edge case
+     says the system doesn't auto-detect duplicates; see DECISIONS.md.
+     Store: localStorage `upspace.cd.qbank.v1` (shared with
+     question-bank.html). No seed here — an absent bank is empty.
+     Org scoping: rows stamped with SESSION.orgId by `api` (server
+     stand-in; the real API derives orgId from the auth session).
+     Library reused: Buttons, Badge, File Dropper, Table, Modal, Input,
+     Select, Textarea, Alerts, Toast. Approved hand-built: Tabs, AI/
+     progress step list, Empty state, Import validation row (2026-09-24).
+     Demo: ?state=import-fail or the dashed Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; display:flex; flex-direction:column; }
+  .main-inner{ width:100%; max-width:1080px; padding:24px clamp(20px, 2.6vw, 48px) 40px; flex:1; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-xs{ height:28px; padding:0 10px; font-size:12.5px; gap:6px; }
+  .btn-xs svg{ width:14px; height:14px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary[disabled]{ background:#a5b4fc; cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; border-radius:var(--radius-lg); background:transparent; color:var(--text-secondary); flex-shrink:0; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:18px; height:18px; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; flex-shrink:0; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Badge (library) */
+  .badge{ display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .badge svg{ width:12px; height:12px; }
+  .badge.sm{ height:20px; padding:0 7px; font-size:11.5px; }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.warning{ background:var(--warning-subtle); color:#a16207; }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+  .badge.error{ background:var(--error-subtle); color:var(--error); }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; margin-bottom:12px; font-size:13.5px; font-weight:600; color:var(--text-secondary); }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+  .page-h{ margin-bottom:20px; }
+  .page-h h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .page-h p{ margin:0; font-size:15px; color:var(--text-secondary); }
+  .panel{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .card{ padding:20px; }
+  .card + .card{ margin-top:16px; }
+  .card h2{ margin:0 0 4px; font-size:16px; font-weight:700; }
+  .card > p{ margin:0 0 14px; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .row-between{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+
+  /* File Dropper (library) */
+  .dropzone{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; padding:34px 16px; border:1.5px dashed var(--border-default); border-radius:var(--radius-xl); background:var(--surface-canvas); transition:border-color .15s ease, background-color .15s ease; cursor:pointer; }
+  .dropzone:hover, .dropzone.over{ border-color:var(--action-primary); background:var(--action-primary-subtle); }
+  .dropzone svg{ width:28px; height:28px; color:var(--text-tertiary); margin-bottom:6px; }
+  .dropzone b{ font-size:14px; }
+  .dropzone b span{ color:var(--action-primary); }
+  .dropzone small{ font-size:12.5px; color:var(--text-tertiary); }
+
+  /* Column guide (library Table) */
+  .guide{ width:100%; border-collapse:collapse; table-layout:fixed; font-size:13.5px; }
+  .guide th{ text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); background:var(--surface-canvas); padding:9px 12px; border-bottom:1px solid var(--border-default); }
+  .guide td{ padding:9px 12px; border-bottom:1px solid #f5f5f5; vertical-align:top; line-height:1.45; color:var(--text-secondary); }
+  .guide td:first-child{ color:var(--text-primary); font-weight:600; }
+  .guide tr:last-child td{ border-bottom:0; }
+  .guide th:first-child{ width:150px; } .guide th:nth-child(2){ width:96px; }
+  .guide-wrap{ border:1px solid var(--border-default); border-radius:var(--radius-lg); overflow:hidden; }
+
+  /* Progress step list (approved hand-built, from ai-course-generate.html) */
+  .steps{ list-style:none; margin:0; padding:0; display:grid; gap:16px; }
+  .steps li{ display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text-tertiary); transition:color .2s ease; }
+  .steps li.active{ color:var(--text-primary); font-weight:500; }
+  .steps li.done{ color:var(--text-secondary); }
+  .steps li.failed{ color:var(--error); font-weight:500; }
+  .steps .dot{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .steps li.active .dot{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:spin .8s linear infinite; }
+  .steps li.done .dot{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .steps li.failed .dot{ border-color:var(--error); background:var(--error); color:#fff; }
+  .steps .dot svg{ width:12px; height:12px; }
+
+  /* Tabs (approved hand-built) */
+  .tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); max-width:100%; overflow-x:auto; scrollbar-width:none; }
+  .tab{ height:32px; padding:0 12px; border:0; border-radius:var(--radius-md); background:transparent; font-size:13.5px; font-weight:600; color:var(--text-secondary); white-space:nowrap; }
+  .tab:hover{ color:var(--text-primary); }
+  .tab[aria-selected="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .tab .n{ margin-left:6px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+
+  /* Import validation row (hand-built, approved) */
+  .sum{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:14px; color:var(--text-secondary); }
+  .sum b{ color:var(--text-primary); }
+  .vrows{ list-style:none; margin:0; padding:0; }
+  .vrow{ display:grid; grid-template-columns:64px minmax(0,1fr) auto; gap:4px 14px; padding:14px 18px; border-bottom:1px solid #f5f5f5; }
+  .vrow:last-child{ border-bottom:0; }
+  .vrow.st-skip{ background:var(--surface-canvas); }
+  .vrow.st-skip .vb b{ color:var(--text-tertiary); text-decoration:line-through; }
+  .rn{ font-size:12.5px; font-weight:600; color:var(--text-tertiary); padding-top:2px; font-variant-numeric:tabular-nums; }
+  .vb{ min-width:0; }
+  .vb > b{ display:block; font-size:14.5px; font-weight:600; line-height:1.4; overflow-wrap:anywhere; }
+  .vb > b i{ font-weight:500; color:var(--text-tertiary); }
+  .vm{ display:flex; align-items:center; flex-wrap:wrap; gap:6px 10px; margin-top:5px; font-size:12.5px; color:var(--text-tertiary); }
+  .verr{ margin:8px 0 0; padding:0; list-style:none; display:grid; gap:4px; }
+  .verr li{ display:flex; gap:6px; font-size:13px; color:var(--error); line-height:1.4; }
+  .verr li svg{ width:14px; height:14px; flex-shrink:0; margin-top:2px; }
+  .verr li.dup{ color:#a16207; }
+  .vs{ display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+  .va{ display:flex; gap:6px; }
+  .more-row{ padding:12px 18px; border-top:1px solid var(--border-subtle); text-align:center; }
+  .empty{ padding:40px 24px; text-align:center; font-size:14px; color:var(--text-secondary); }
+
+  .foot{ position:sticky; bottom:0; background:#fff; border-top:1px solid var(--border-default); padding:12px clamp(20px, 2.6vw, 48px); display:flex; align-items:center; gap:12px; flex-wrap:wrap; z-index:5; }
+  .foot .grow{ flex:1; min-width:180px; font-size:13.5px; color:var(--text-secondary); }
+  .foot .grow b{ color:var(--text-primary); }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); margin-bottom:14px; }
+  .alert > svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); } .alert.error > svg{ color:var(--error); }
+  .alert.info{ background:var(--info-subtle); border-color:var(--info-border); } .alert.info > svg{ color:var(--info); }
+  .alert .acts{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+
+  /* Input / Select / Textarea (library) */
+  .field{ margin-bottom:14px; min-width:0; }
+  .field label{ display:block; font-size:13px; font-weight:600; color:var(--text-strong); margin-bottom:6px; }
+  .req{ color:var(--error); }
+  .input, .select{ width:100%; height:40px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; }
+  .select{ padding-right:34px; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/16px; appearance:none; }
+  textarea.input{ height:auto; min-height:64px; padding:10px 12px; line-height:1.5; resize:vertical; }
+  .input:focus, .select:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .hint{ font-size:12.5px; color:var(--text-tertiary); margin:6px 0 0; line-height:1.45; }
+  .grid2{ display:grid; grid-template-columns:1fr 1fr; gap:0 12px; }
+
+  /* Modal (library) */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:60; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:600px; max-width:100%; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal-h p{ margin:4px 0 0; font-size:14px; color:var(--text-secondary); }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:8px; }
+
+  .preview{ position:fixed; left:12px; bottom:70px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  @media (max-width:760px){
+    .vrow{ grid-template-columns:minmax(0,1fr); }
+    .vs{ align-items:flex-start; flex-direction:row; flex-wrap:wrap; }
+    .guide th:first-child{ width:110px; } .guide th:nth-child(2){ width:70px; }
+    .grid2{ grid-template-columns:1fr; }
+  }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame, .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 32px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" id="sideFrame" title="Navigation"></iframe>
+  <iframe class="topbar-frame" id="topFrame" title="Top bar"></iframe>
+  <main class="main">
+    <div class="main-inner">
+      <a class="back-link" id="backLink" href="question-bank.html"></a>
+      <header class="page-h">
+        <h1>Import questions</h1>
+        <p>Upload a CSV or XLSX file. You'll review every row before anything is added.</p>
+      </header>
+      <div id="view"></div>
+    </div>
+    <div class="foot" id="foot" hidden></div>
+  </main>
+</div>
+
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal" id="modalBody"></div></div>
+<input type="file" id="fileIn" accept=".csv,.xlsx" hidden>
+
+<label class="preview">Preview
+  <select id="ps" aria-label="Preview state">
+    <option value="normal">Normal</option>
+    <option value="import-fail">Import fails</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){ if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed'); });
+
+  /* ================= Helpers ================= */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function norm(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function plural(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function demo(){ return $('ps').value; }
+
+  /* ================= Session / persona ================= */
+  var params = new URLSearchParams(location.search);
+  var AS_INSTRUCTOR = params.get('as') === 'instructor';
+  // ponytail: session stand-in. The real session (and its orgId) comes from auth, server-side.
+  var SESSION = { name:'Maya Reed', orgId:'org-upspace', role:AS_INSTRUCTOR ? 'instructor' : 'creator' };
+  $('sideFrame').src = AS_INSTRUCTOR ? '../../instructor/component/sidebar.html?active=assessments' : '../component/sidebar.html?active=question-bank';
+  $('topFrame').src = (AS_INSTRUCTOR ? '../../instructor/component/topnavbar.html' : '../component/topnavbar.html') + '?current=Question+Bank';
+  var BANK_URL = 'question-bank.html' + (AS_INSTRUCTOR ? '?as=instructor' : '');
+
+  var sv = function(p){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  var I = {
+    x:sv('<path d="M18 6 6 18M6 6l12 12"/>'), left:sv('<path d="m15 18-6-6 6-6"/>'), check:sv('<path d="M20 6 9 17l-5-5"/>'),
+    upload:sv('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'), alert:sv('<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'),
+    download:sv('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/>'), edit:sv('<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>'),
+    copy:sv('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'), info:sv('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>')
+  };
+  $('backLink').href = BANK_URL; $('backLink').innerHTML = I.left + 'Question Bank';
+
+  /* ================= Question model (same as question-bank.html) ================= */
+  var KINDS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', fill:'Fill in the blank', short:'Short answer', long:'Long answer', image:'Image-based' };
+  var FORMATS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', short:'Short answer' };
+  var BLANK_RE = /_{3,}/g;
+  function effKind(q){ return q.kind === 'image' ? (q.format || 'mcq') : q.kind; }
+  function opt(text, correct){ return { id:uid('o'), text:text || '', correct:!!correct }; }
+  function validateQ(q){
+    var e = [], k = effKind(q);
+    if (!String(q.prompt).trim()) e.push('Write the question.');
+    if (q.kind === 'image' && !q.image) e.push('Add an image for this image-based question.');
+    if (k === 'mcq' || k === 'multi'){
+      if (q.options.length < 2) e.push('Add at least two options.');
+      if (q.options.some(function(o){ return !o.text.trim(); })) e.push('Fill in or remove empty options.');
+      var seen = {}; if (q.options.some(function(o){ var n = norm(o.text); if (n && seen[n]) return true; seen[n] = 1; return false; })) e.push('Options must be unique.');
+      if (!q.options.some(function(o){ return o.correct; })) e.push(k === 'multi' ? 'Mark at least one correct answer.' : 'Mark the correct answer.');
+    }
+    if (k === 'tf' && !q.options.some(function(o){ return o.correct; })) e.push('Choose whether the statement is true or false.');
+    if (k === 'fill'){ var n = (String(q.prompt).match(BLANK_RE) || []).length; if (n !== 1) e.push(n ? 'Use one blank per question.' : 'Mark the blank in the question with ____ (use Insert blank).'); if (!q.answer.trim()) e.push('Add the accepted answer for the blank.'); }
+    if (k === 'short' && !q.answer.trim()) e.push('Add the expected answer.');
+    if (k === 'long' && !q.answer.trim()) e.push('Add a rubric or marking guidance.');
+    if (!(q.points >= 0)) e.push('Points must be 0 or more.');
+    return e;
+  }
+
+  /* ================= Storage + API (server stand-in, org-scoped) ================= */
+  var QB_KEY = 'upspace.cd.qbank.v1', MEM = {};
+  function readJSON(k){ try { var s = JSON.parse(localStorage.getItem(k)); if (s) return s; } catch (e) {} return MEM[k] || null; }
+  function writeJSON(k, v){ MEM[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  // ponytail: mirrors the Question Bank API. The real server stamps orgId from the auth session (ASM-003-NFR-01).
+  var api = {
+    existing:function(){ var s = readJSON(QB_KEY); return Array.isArray(s) ? s.filter(function(q){ return q.orgId === SESSION.orgId; }) : []; },
+    importMany:function(list){
+      return wait(700).then(function(){
+        if (demo() === 'import-fail') throw new Error('import');
+        var bank = readJSON(QB_KEY); if (!Array.isArray(bank)) bank = []; // no seed here — an absent bank is empty
+        var now = new Date().toISOString();
+        var rows = list.map(function(q){ var r = clone(q); r.orgId = SESSION.orgId; r.createdBy = r.updatedBy = SESSION.name; r.createdAt = r.updatedAt = now; r.usage = []; return r; });
+        if (!writeJSON(QB_KEY, rows.concat(bank))) throw new Error('quota');
+        return rows.length;
+      });
+    }
+  };
+
+  /* ================= CSV (RFC 4180) ================= */
+  function parseCSV(text){
+    text = text.replace(/^﻿/, '');
+    var first = text.split(/\r?\n/, 1)[0] || '', d = (first.match(/;/g) || []).length > (first.match(/,/g) || []).length ? ';' : ',';
+    var rows = [], row = [], cell = '', q = false;
+    for (var i = 0; i < text.length; i++){
+      var c = text[i];
+      if (q){ if (c === '"'){ if (text[i + 1] === '"'){ cell += '"'; i++; } else q = false; } else cell += c; continue; }
+      if (c === '"') q = true;
+      else if (c === d){ row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r'){ if (c === '\r' && text[i + 1] === '\n') i++; row.push(cell); rows.push(row); row = []; cell = ''; }
+      else cell += c;
+    }
+    if (cell !== '' || row.length) { row.push(cell); rows.push(row); }
+    return rows;
+  }
+  function csvCell(v){ v = String(v == null ? '' : v); return /[",\n\r]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }
+
+  /* ================= XLSX (native zip reader + DecompressionStream) ================= */
+  function unzip(buf){
+    var dv = new DataView(buf), u8 = new Uint8Array(buf), eocd = -1;
+    for (var i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50){ eocd = i; break; }
+    if (eocd < 0) throw new Error('zip');
+    var n = dv.getUint16(eocd + 10, true), off = dv.getUint32(eocd + 16, true), files = {}, td = new TextDecoder();
+    for (var k = 0; k < n; k++){
+      if (dv.getUint32(off, true) !== 0x02014b50) throw new Error('zip');
+      var nlen = dv.getUint16(off + 28, true);
+      files[td.decode(u8.subarray(off + 46, off + 46 + nlen))] = { method:dv.getUint16(off + 10, true), size:dv.getUint32(off + 20, true), at:dv.getUint32(off + 42, true) };
+      off += 46 + nlen + dv.getUint16(off + 30, true) + dv.getUint16(off + 32, true);
+    }
+    return function text(name){
+      var f = files[name]; if (!f) return Promise.resolve(null);
+      if (dv.getUint32(f.at, true) !== 0x04034b50) return Promise.reject(new Error('zip'));
+      var start = f.at + 30 + dv.getUint16(f.at + 26, true) + dv.getUint16(f.at + 28, true), data = u8.subarray(start, start + f.size);
+      if (f.method === 0) return Promise.resolve(td.decode(data));
+      if (f.method !== 8) return Promise.reject(new Error('zip'));
+      return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    };
+  }
+  function xml(s){ var d = new DOMParser().parseFromString(s, 'application/xml'); if (d.getElementsByTagName('parsererror').length) throw new Error('xml'); return d; }
+  function colIndex(ref){ var m = /^[A-Z]+/.exec(ref || '') || ['A'], n = 0; for (var i = 0; i < m[0].length; i++) n = n * 26 + m[0].charCodeAt(i) - 64; return n - 1; }
+  function parseXLSX(buf){
+    var text = unzip(buf);
+    return Promise.all([text('xl/workbook.xml'), text('xl/_rels/workbook.xml.rels'), text('xl/sharedStrings.xml')]).then(function(r){
+      if (!r[0] || !r[1]) throw new Error('xlsx');
+      var sheet = xml(r[0]).getElementsByTagName('sheet')[0]; if (!sheet) throw new Error('xlsx');
+      var rid = sheet.getAttribute('r:id'), rel = Array.prototype.find.call(xml(r[1]).getElementsByTagName('Relationship'), function(x){ return x.getAttribute('Id') === rid; });
+      if (!rel) throw new Error('xlsx');
+      var t = rel.getAttribute('Target'), path = t.charAt(0) === '/' ? t.slice(1) : 'xl/' + t.replace(/^\.\//, '');
+      var strings = r[2] ? Array.prototype.map.call(xml(r[2]).getElementsByTagName('si'), function(si){ return Array.prototype.map.call(si.getElementsByTagName('t'), function(x){ return x.textContent; }).join(''); }) : [];
+      return text(path).then(function(s){
+        if (!s) throw new Error('xlsx');
+        return Array.prototype.map.call(xml(s).getElementsByTagName('row'), function(rowEl){
+          var out = [];
+          Array.prototype.forEach.call(rowEl.getElementsByTagName('c'), function(c){
+            var type = c.getAttribute('t'), v = c.getElementsByTagName('v')[0], val = v ? v.textContent : '';
+            if (type === 's') val = strings[+val] || '';
+            else if (type === 'inlineStr') val = Array.prototype.map.call(c.getElementsByTagName('t'), function(x){ return x.textContent; }).join('');
+            else if (type === 'b') val = val === '1' ? 'TRUE' : 'FALSE';
+            var ci = colIndex(c.getAttribute('r')); while (out.length < ci) out.push(''); out[ci] = val;
+          });
+          return out;
+        });
+      });
+    });
+  }
+
+  /* ================= Rows → bank questions ================= */
+  var COLS = { text:['question', 'questiontext', 'prompt', 'text'], type:['type', 'questiontype'], options:['options', 'choices', 'answeroptions', 'answersoptions'], correct:['correctanswer', 'answer', 'correct', 'correctanswers', 'answers'], tags:['tags', 'tag'], points:['points', 'score', 'marks', 'point'], explanation:['explanation'], image:['imageurl', 'image', 'imagelink'] };
+  var TYPES = { mcq:['multiplechoice', 'mcq', 'singlechoice'], multi:['multipleselect', 'multiselect', 'multipleresponse', 'msq', 'checkbox'], tf:['truefalse', 'tf', 'trueorfalse', 'boolean'], fill:['fillintheblank', 'fillintheblanks', 'fillblank', 'fill', 'blank'], short:['shortanswer', 'short'], long:['longanswer', 'long', 'essay'], image:['imagebased', 'image', 'imagequestion'] };
+  var TYPE_LABEL = { mcq:'Multiple Choice', multi:'Multiple Select', tf:'True/False', fill:'Fill in the Blank', short:'Short Answer', long:'Long Answer', image:'Image-based' };
+  var TYPE_HELP = 'Use Multiple Choice, Multiple Select, True/False, Fill in the Blank, Short Answer, Long Answer or Image-based.';
+  function key(s){ return String(s || '').toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function typeOf(s){ var k = key(s); for (var t in TYPES) if (TYPES[t].indexOf(k) > -1) return t; return null; }
+  function splitList(s){ s = String(s || ''); return (s.indexOf('|') > -1 ? s.split('|') : s.split(',')).map(function(x){ return x.trim(); }).filter(Boolean); }
+  function matchOpt(opts, a){
+    a = a.trim(); var n = norm(a), i = opts.findIndex(function(o){ return norm(o) === n; });
+    if (i > -1) return i;
+    if (/^[a-j]$/i.test(a) && a.toUpperCase().charCodeAt(0) - 65 < opts.length) return a.toUpperCase().charCodeAt(0) - 65;
+    if (/^\d+$/.test(a) && +a >= 1 && +a <= opts.length) return +a - 1;
+    return -1;
+  }
+  function findHeader(rows){
+    for (var r = 0; r < Math.min(rows.length, 5); r++){
+      var map = {};
+      rows[r].forEach(function(h, i){ var k = key(h); for (var c in COLS) if (map[c] == null && COLS[c].indexOf(k) > -1) map[c] = i; });
+      if (map.text != null && map.type != null) return { at:r, map:map };
+    }
+    return null;
+  }
+  function rawOf(cells, map){ var o = {}; Object.keys(COLS).forEach(function(c){ o[c] = map[c] != null ? String(cells[map[c]] == null ? '' : cells[map[c]]) : ''; }); return o; }
+
+  // One spreadsheet row → { q, errors }. Specific messages first; validateQ only as a final gate.
+  function buildRow(raw){
+    var e = [], text = raw.text.trim(), tRaw = raw.type.trim(), kind = typeOf(tRaw), correct = raw.correct.trim(), opts = splitList(raw.options);
+    var q = { id:uid('qb'), kind:kind || 'mcq', format:null, prompt:text, image:null, options:[], answer:'', alts:[], explanation:raw.explanation.trim(), points:1, tags:[], ai:false, aiSource:null };
+    var tagSeen = {}; splitList(raw.tags).forEach(function(t){ t = t.slice(0, 40); if (!tagSeen[t.toLowerCase()]){ tagSeen[t.toLowerCase()] = 1; q.tags.push(t); } });
+    if (!text) e.push('Question text is missing.');
+    if (!tRaw) e.push('Type is missing. ' + TYPE_HELP);
+    else if (!kind) e.push('Unknown type “' + tRaw + '”. ' + TYPE_HELP);
+    if (raw.points.trim()){ var p = Number(raw.points.trim()); if (!isFinite(p) || p < 0) e.push('Points must be a number.'); else q.points = Math.round(p); }
+    var eff = kind;
+    if (kind === 'image'){
+      var url = raw.image.trim();
+      if (!/^https?:\/\/\S+$/i.test(url)) e.push('Image-based question needs an Image URL (http or https).'); else q.image = { url:url, alt:'' };
+      if (opts.length){ var parts = splitList(correct); eff = parts.length > 1 && parts.every(function(x){ return matchOpt(opts, x) > -1; }) ? 'multi' : 'mcq'; }
+      else eff = /^(true|false|t|f|yes|no)$/i.test(correct) ? 'tf' : 'short';
+      q.format = eff;
+    }
+    if (eff === 'mcq' || eff === 'multi'){
+      var label = eff === 'mcq' ? 'Multiple Choice' : 'Multiple Select';
+      if (opts.length < 2) e.push(label + ' question requires at least two options.');
+      var seen = {}; if (opts.some(function(o){ var n = norm(o); if (seen[n]) return true; seen[n] = 1; return false; })) e.push('Options must be unique.');
+      q.options = opts.map(function(t){ return opt(t); });
+      if (!correct) e.push('Missing correct answer.');
+      else if (opts.length >= 2){
+        if (eff === 'mcq'){
+          var m = matchOpt(opts, correct);
+          if (m > -1) q.options[m].correct = true;
+          else { var sp = splitList(correct); e.push(sp.length > 1 && sp.every(function(x){ return matchOpt(opts, x) > -1; }) ? 'Multiple Choice allows one correct answer. Use Multiple Select for more than one.' : 'Correct answer “' + correct + '” doesn\'t match any option.'); }
+        } else splitList(correct).forEach(function(x){ var m = matchOpt(opts, x); if (m < 0) e.push('Correct answer “' + x + '” doesn\'t match any option.'); else q.options[m].correct = true; });
+      }
+    } else if (eff === 'tf'){
+      var b = /^(true|t|yes|y|1)$/i.test(correct) ? true : /^(false|f|no|n|0)$/i.test(correct) ? false : null;
+      if (!correct) e.push('Missing correct answer.'); else if (b === null) e.push('True/False answer must be True or False.');
+      q.options = [opt('True', b === true), opt('False', b === false)];
+    } else if (eff === 'fill'){
+      q.prompt = text.replace(/\[blank\]/gi, '____').replace(BLANK_RE, '____');
+      if ((q.prompt.match(BLANK_RE) || []).length !== 1) e.push('Mark the blank with ____ in the question text.');
+      var ans = correct.split('|').map(function(x){ return x.trim(); }).filter(Boolean);
+      if (!ans.length) e.push('Missing correct answer.');
+      q.answer = ans[0] || ''; q.alts = ans.slice(1);
+    } else if (eff === 'short'){ if (!correct) e.push('Missing correct answer.'); q.answer = correct; }
+    else if (eff === 'long'){ if (!correct) e.push('Long Answer needs a rubric or marking guidance in Correct answer.'); q.answer = correct; }
+    if (kind && !e.length) validateQ(q).forEach(function(x){ e.push(x); });
+    return { q:q, errors:e };
+  }
+
+  /* ================= State ================= */
+  var S = { file:null, rows:[], tab:'all', shown:100 };
+  function status(r){ return r.skip ? 'skip' : r.errors.length ? 'attention' : r.dup ? 'dup' : 'ready'; }
+  function importable(){ return S.rows.filter(function(r){ return !r.skip && !r.errors.length; }); }
+  function markDuplicates(){
+    var bank = {}, inFile = {};
+    api.existing().forEach(function(q){ var k = norm(q.prompt); if (k && !bank[k]) bank[k] = q.prompt; });
+    S.rows.forEach(function(r){
+      r.dup = null; var k = norm(r.q.prompt); if (!k) return;
+      if (bank[k]) r.dup = 'Matches an existing question: “' + bank[k] + '”';
+      else if (inFile[k]) r.dup = 'Same as row ' + inFile[k];
+      if (!inFile[k]) inFile[k] = r.n;
+    });
+  }
+
+  /* ================= Views ================= */
+  function showUpload(err){
+    S.rows = []; $('foot').hidden = true;
+    $('view').innerHTML = (err || '') +
+      '<section class="panel card"><div class="row-between" style="margin-bottom:14px"><div><h2>Upload file</h2><p style="margin:0;font-size:14px;color:var(--text-secondary)">One question per row. The first row must be the column headers.</p></div><button class="btn btn-secondary btn-sm" type="button" id="tpl">' + I.download + 'Download CSV template</button></div>' +
+      '<label class="dropzone" id="drop" for="fileIn">' + I.upload + '<b><span>Click to upload</span> or drag and drop</b><small>CSV or XLSX · up to 10 MB · up to 2,000 questions</small></label></section>' +
+      '<section class="panel card"><h2>Columns</h2><p>Headers aren\'t case sensitive and can be in any order.</p><div class="guide-wrap"><table class="guide"><thead><tr><th>Column</th><th>Required</th><th>Format</th></tr></thead><tbody>' +
+      [['Question text', 'Yes', 'The question. For Fill in the Blank, mark the blank with ____.'],
+       ['Type', 'Yes', 'Multiple Choice, Multiple Select, True/False, Fill in the Blank, Short Answer, Long Answer or Image-based.'],
+       ['Options', 'Objective types', 'Comma-separated. Use | between options if an option contains a comma.'],
+       ['Correct answer', 'Yes', 'Option text or letter (A–J). Multiple Select: several, separated by comma or |. True/False: True or False. Fill in the Blank: the answer, with | between accepted alternatives. Short Answer: expected answer. Long Answer: rubric or marking guidance.'],
+       ['Tags', 'No', 'Comma-separated, e.g. Leadership, Module 2.'],
+       ['Points', 'No', 'Whole number. Defaults to 1.'],
+       ['Explanation', 'No', 'Explains the correct answer.'],
+       ['Image URL', 'Image-based', 'A public http(s) link to the image.']].map(function(r){ return '<tr><td>' + r[0] + '</td><td>' + r[1] + '</td><td>' + r[2] + '</td></tr>'; }).join('') +
+      '</tbody></table></div></section>';
+    $('tpl').onclick = downloadTemplate;
+    var dz = $('drop');
+    ['dragenter', 'dragover'].forEach(function(t){ dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+    ['dragleave', 'drop'].forEach(function(t){ dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+    dz.addEventListener('drop', function(e){ if (e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  }
+  function fail(title, msg){
+    showUpload('<div class="alert error" role="alert">' + I.alert + '<div><b>' + esc(title) + '</b>' + esc(msg) + '<div class="acts">' + (S.file ? '<button class="btn btn-secondary btn-sm" type="button" id="retryFile">Try again</button>' : '') + '<label class="btn btn-secondary btn-sm" for="fileIn">Choose another file</label></div></div></div>');
+    if ($('retryFile')) $('retryFile').onclick = function(){ handleFile(S.file); };
+  }
+  function steps(list){
+    $('view').innerHTML = '<section class="panel card" aria-live="polite"><h2 style="margin-bottom:16px">' + esc(S.file.name) + '</h2><ol class="steps">' + list.map(function(s){ return '<li class="' + s[1] + '"><span class="dot">' + (s[1] === 'done' ? I.check : s[1] === 'failed' ? I.x : '') + '</span>' + esc(s[0]) + '</li>'; }).join('') + '</ol></section>';
+  }
+  function downloadTemplate(){
+    var img = 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=70';
+    var rows = [['Question text', 'Type', 'Options', 'Correct answer', 'Tags', 'Points', 'Explanation', 'Image URL'],
+      ['What is the primary purpose of the SBI feedback model?', 'Multiple Choice', 'To make feedback specific and focused on impact|To rank employees by performance|To replace annual reviews', 'A', 'Leadership, Feedback', '2', 'SBI keeps feedback specific and tied to its effect.', ''],
+      ['Which are good qualification criteria?', 'Multiple Select', 'Budget, Authority, Need, Favorite color', 'A|B|C', 'Sales', '2', '', ''],
+      ['Open-ended questions help uncover buyer needs.', 'True/False', '', 'True', 'Sales', '1', '', ''],
+      ['GDPR stands for General Data ____ Regulation.', 'Fill in the Blank', '', 'Protection', 'Compliance, Beginner', '1', '', ''],
+      ['Name one habit of effective 1:1 meetings.', 'Short Answer', '', 'The direct report sets the agenda.', 'Leadership', '1', '', ''],
+      ['Describe how you would run the first weekly check-in with a new customer.', 'Long Answer', '', 'Reviews milestones; surfaces blockers and owners; confirms next steps.', 'Customer Success, Module 2', '5', '', ''],
+      ['What type of chart is shown in the image?', 'Image-based', 'Line and bar chart, Pie chart, Gantt chart', 'Line and bar chart', 'Product', '1', '', img]];
+    var blob = new Blob(['﻿' + rows.map(function(r){ return r.map(csvCell).join(','); }).join('\r\n')], { type:'text/csv' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'question-bank-import-template.csv'; a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+  }
+
+  function handleFile(file){
+    S.file = file;
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (ext !== 'csv' && ext !== 'xlsx') return fail('Unsupported file format', 'Unsupported file format. Upload a .csv or .xlsx file.');
+    if (file.size > 10 * 1024 * 1024) return fail('File is too large', 'Files must be 10 MB or smaller. Split it into smaller files and import each one.');
+    if (!file.size) return fail('This file is empty', 'Add your questions below a header row, or download the template to get started.');
+    steps([['Reading file…', 'active'], ['Checking rows…', '']]);
+    var read = ext === 'csv' ? file.text().then(parseCSV) : file.arrayBuffer().then(parseXLSX);
+    // ponytail: parsing is instant for normal files; the short pause keeps each step readable, not fake progress
+    Promise.all([read, wait(250)]).then(function(r){
+      var grid = r[0].filter(function(row){ return row.some(function(c){ return String(c).trim(); }); });
+      if (!grid.length) return fail('This file is empty', 'Add your questions below a header row, or download the template to get started.');
+      var h = findHeader(grid);
+      if (!h) return fail('Header row not found', 'We couldn\'t find a header row with “Question text” and “Type” columns. Download the template to see the expected format.');
+      var body = grid.slice(h.at + 1);
+      if (!body.length) return fail('No questions found', 'The file has a header row but no questions below it.');
+      if (body.length > 2000) return fail('Too many rows', 'This file has ' + body.length.toLocaleString() + ' rows. Import up to 2,000 questions at a time — split the file and try again.');
+      steps([['Reading file…', 'done'], ['Checking ' + plural(body.length, 'row') + '…', 'active']]);
+      return wait(250).then(function(){
+        // n = 1-based position in the parsed sheet (blank rows included), so messages point at the real row
+        S.rows = body.map(function(cells){ var raw = rawOf(cells, h.map), b = buildRow(raw); return { n:r[0].indexOf(cells) + 1, raw:raw, q:b.q, errors:b.errors, skip:false, dup:null }; });
+        markDuplicates(); S.tab = 'all'; S.shown = 100; showReview();
+      });
+    }).catch(function(){ fail('Questions couldn\'t be imported.', 'This file couldn\'t be read. It may be damaged or password-protected — re-save it as .xlsx or .csv and try again.'); });
+  }
+
+  function counts(){ var c = { all:S.rows.length, attention:0, dup:0, ready:0, skip:0 }; S.rows.forEach(function(r){ c[status(r)]++; }); return c; }
+  function showReview(err){
+    var c = counts(), n = importable().length, list = S.rows.filter(function(r){ return S.tab === 'all' || status(r) === S.tab; });
+    var tabs = [['all', 'All'], ['attention', 'Needs attention'], ['dup', 'Possible duplicates'], ['ready', 'Ready'], ['skip', 'Skipped']];
+    $('view').innerHTML = (err || '') +
+      '<div class="row-between" style="margin-bottom:14px"><div><h2 style="margin:0 0 6px;font-size:18px">Import preview</h2><div class="sum"><span><b>' + plural(c.all, 'question') + '</b> found in ' + esc(S.file.name) + '</span>' +
+      '<span class="badge success">' + c.ready + ' ready</span>' + (c.attention ? '<span class="badge error">' + c.attention + ' need attention</span>' : '') + (c.dup ? '<span class="badge warning">' + plural(c.dup, 'possible duplicate') + '</span>' : '') + (c.skip ? '<span class="badge gray">' + c.skip + ' skipped</span>' : '') + '</div></div></div>' +
+      '<div class="tabs" role="tablist" aria-label="Filter rows" style="margin-bottom:12px">' + tabs.map(function(t){ return '<button class="tab" type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + t[1] + '<span class="n">' + c[t[0]] + '</span></button>'; }).join('') + '</div>' +
+      '<section class="panel">' + (list.length ? '<ul class="vrows">' + list.slice(0, S.shown).map(rowHTML).join('') + '</ul>' + (list.length > S.shown ? '<div class="more-row"><button class="btn btn-secondary btn-sm" type="button" id="more">Show ' + Math.min(100, list.length - S.shown) + ' more of ' + (list.length - S.shown) + '</button></div>' : '') : '<div class="empty">No rows in this view.</div>') + '</section>';
+    var f = $('foot'); f.hidden = false;
+    var left = c.all - n;
+    f.innerHTML = '<label class="btn btn-secondary" for="fileIn">Choose another file</label><span class="grow">' + (n ? '<b>' + plural(n, 'question') + '</b> will be imported' + (left ? ' · ' + left + ' ' + (left === 1 ? 'row' : 'rows') + ' won\'t be (' + [c.attention ? c.attention + ' need attention' : '', c.skip ? c.skip + ' skipped' : ''].filter(Boolean).join(', ') + ')' : '') : 'Fix or include at least one row to import.') + '</span><button class="btn btn-primary" type="button" id="doImport"' + (n ? '' : ' disabled') + '>Import ' + plural(n, 'valid question') + '</button>';
+    $('doImport').onclick = doImport;
+    if ($('more')) $('more').onclick = function(){ S.shown += 100; showReview(); };
+  }
+  function rowHTML(r){
+    var s = status(r), q = r.q, k = q.kind === 'image' ? 'image' : q.kind;
+    var badge = { ready:'<span class="badge success">Ready</span>', attention:'<span class="badge error">Needs attention</span>', dup:'<span class="badge warning">Possible duplicate</span>', skip:'<span class="badge gray">Skipped</span>' }[s];
+    var meta = [typeOf(r.raw.type) ? '<span class="badge gray sm">' + KINDS[k] + '</span>' : '<span class="badge gray sm">' + (r.raw.type.trim() ? esc(r.raw.type) : 'No type') + '</span>'];
+    if (q.options.length && effKind(q) !== 'tf') meta.push(plural(q.options.length, 'option'));
+    meta.push(plural(q.points, 'pt'));
+    if (q.tags.length) meta.push(esc(q.tags.join(' · ')));
+    var notes = r.errors.map(function(x){ return '<li>' + I.alert + '<span>' + esc(x) + '</span></li>'; }).join('') + (r.dup ? '<li class="dup">' + I.copy + '<span>' + esc(r.dup) + '. It will still be imported unless you skip it.</span></li>' : '');
+    return '<li class="vrow st-' + s + '" data-n="' + r.n + '"><span class="rn">Row ' + r.n + '</span><div class="vb"><b>' + (r.raw.text.trim() ? esc(r.raw.text) : '<i>Missing question text</i>') + '</b><div class="vm">' + meta.join('<span aria-hidden="true">·</span>') + '</div>' + (notes && !r.skip ? '<ul class="verr">' + notes + '</ul>' : '') + '</div>' +
+      '<div class="vs">' + badge + '<div class="va"><button class="btn btn-secondary btn-xs" type="button" data-fix="' + r.n + '">' + I.edit + 'Fix</button><button class="btn btn-ghost btn-xs" type="button" data-skip="' + r.n + '">' + (r.skip ? 'Include' : 'Skip row') + '</button></div></div></li>';
+  }
+  function rowByN(n){ return S.rows.find(function(r){ return r.n === +n; }); }
+
+  $('view').addEventListener('click', function(e){
+    var t;
+    if ((t = e.target.closest('[data-tab]'))){ S.tab = t.dataset.tab; S.shown = 100; showReview(); return; }
+    if ((t = e.target.closest('[data-skip]'))){ var r = rowByN(t.dataset.skip); r.skip = !r.skip; showReview(); var b = document.querySelector('[data-skip="' + r.n + '"]'); if (b) b.focus(); return; }
+    if ((t = e.target.closest('[data-fix]'))) openFix(rowByN(t.dataset.fix));
+  });
+  $('fileIn').addEventListener('change', function(){ var f = this.files[0]; this.value = ''; if (f) handleFile(f); });
+
+  /* ================= Fix row modal ================= */
+  function openFix(r){
+    var raw = r.raw, known = typeOf(raw.type);
+    var types = Object.keys(TYPE_LABEL).map(function(k){ return '<option value="' + TYPE_LABEL[k] + '"' + (known === k ? ' selected' : '') + '>' + TYPE_LABEL[k] + '</option>'; }).join('');
+    $('modalBody').innerHTML = '<div class="modal-h"><div><h3 id="modalTitle">Fix row ' + r.n + '</h3><p>Changes apply to this import only. Your file isn\'t changed.</p></div><button class="ib" type="button" data-close aria-label="Close">' + I.x + '</button></div><div id="fixErr"></div>' +
+      '<div class="field"><label for="fx-text">Question text <span class="req">*</span></label><textarea class="input" id="fx-text" rows="2">' + esc(raw.text) + '</textarea></div>' +
+      '<div class="grid2"><div class="field"><label for="fx-type">Type <span class="req">*</span></label><select class="select" id="fx-type">' + (known ? '' : '<option value="' + esc(raw.type) + '" selected>' + (raw.type.trim() ? esc(raw.type) + ' (not recognised)' : 'Choose a type') + '</option>') + types + '</select></div>' +
+      '<div class="field"><label for="fx-points">Points</label><input class="input" id="fx-points" value="' + esc(raw.points) + '" placeholder="1" inputmode="numeric"></div></div>' +
+      '<div class="field"><label for="fx-options">Options</label><input class="input" id="fx-options" value="' + esc(raw.options) + '" placeholder="Option A, Option B, Option C"><p class="hint">Comma-separated, or use | if an option contains a comma.</p></div>' +
+      '<div class="field"><label for="fx-correct">Correct answer <span class="req">*</span></label><input class="input" id="fx-correct" value="' + esc(raw.correct) + '" placeholder="Option text or letter, e.g. B"></div>' +
+      '<div class="field"><label for="fx-tags">Tags</label><input class="input" id="fx-tags" value="' + esc(raw.tags) + '" placeholder="Leadership, Module 2"></div>' +
+      '<div class="field"><label for="fx-explanation">Explanation</label><input class="input" id="fx-explanation" value="' + esc(raw.explanation) + '"></div>' +
+      '<div class="field"><label for="fx-image">Image URL</label><input class="input" id="fx-image" value="' + esc(raw.image) + '" placeholder="https://… (Image-based only)"></div>' +
+      '<div class="modal-foot"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="button" id="fxSave">Save row</button></div>';
+    $('modal').classList.add('open'); $('fx-text').focus();
+    $('fxSave').onclick = function(){
+      var nr = {}; Object.keys(COLS).forEach(function(c){ nr[c] = $('fx-' + c).value; });
+      var b = buildRow(nr);
+      if (b.errors.length){ $('fixErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>This row still needs attention</b><ul style="margin:2px 0 0;padding-left:18px">' + b.errors.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>'; return; }
+      r.raw = nr; r.q = b.q; r.errors = []; r.skip = false; markDuplicates(); closeModal(); showReview();
+    };
+  }
+  function closeModal(){ $('modal').classList.remove('open'); $('modalBody').innerHTML = ''; }
+  $('modal').addEventListener('click', function(e){ if (e.target === $('modal') || e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('modal').classList.contains('open')) closeModal(); });
+
+  /* ================= Import ================= */
+  function doImport(){
+    var list = importable().map(function(r){ return r.q; }), b = $('doImport');
+    b.disabled = true; b.innerHTML = '<span class="spin"></span>Importing…';
+    api.importMany(list).then(function(n){ leaving = true; location.href = 'question-bank.html?imported=' + n + (AS_INSTRUCTOR ? '&as=instructor' : ''); })
+      .catch(function(){ showReview('<div class="alert error" role="alert">' + I.alert + '<div><b>Questions couldn\'t be imported.</b>Nothing was added to your bank, and your review is still here.<div class="acts"><button class="btn btn-secondary btn-sm" type="button" id="retryImport">Try again</button></div></div></div>'); $('retryImport').onclick = function(){ if (demo() === 'import-fail') $('ps').value = 'normal'; doImport(); }; document.querySelector('.main').scrollTop = 0; });
+  }
+  var leaving = false;
+  window.addEventListener('beforeunload', function(e){ if (S.rows.length && !leaving){ e.preventDefault(); e.returnValue = ''; } });
+
+  (function boot(){ var s = params.get('state'); if (s && $('ps').querySelector('option[value="' + s + '"]')) $('ps').value = s; showUpload(); })();
+</script>
+</body>
+</html>

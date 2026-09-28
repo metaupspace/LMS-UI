@@ -1,0 +1,381 @@
+/<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Admin — Certificate workspace</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Admin — Dashboard (RPT-001, admin variant).
+     Standalone file, no shared/linked assets — see CLAUDE.md "designs/code/".
+     Recreated from designs/admin/inspo/image copy 2.png reference:
+     icon rail (logo top, nav below) + top header (search/bell/avatar) +
+     4 KPI cards + user-growth line chart / user-distribution dot map +
+     Recent Activities / Needs Attention two-card bottom row.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717;
+    --text-secondary:#525252;
+    --text-tertiary:#a3a3a3;
+    --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa;
+    --surface-raised:#f5f5f5;
+    --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5;
+    --border-subtle:#f0f0f0;
+    --border-strong:#a3a3a3;
+    --icon-muted:#a3a3a3;
+    --action-primary:#4f46e5;
+    --action-primary-hover:#4338ca;
+    --link:#4f46e5;
+    --focus-ring:#6366f1;
+    --error:#dc2626;
+    --error-subtle:#fef2f2;
+    --error-border:#fecaca;
+    --warning:#ca8a04;
+    --warning-subtle:#fefce8;
+    --warning-border:#fef08a;
+    --success:#15803d;
+    --success-subtle:#f0fdf4;
+    --success-border:#bbf7d0;
+    --info:#2563eb;
+    --info-subtle:#eff6ff;
+    --info-border:#bfdbfe;
+    --product-1:#9333ea;
+    --product-1-subtle:#faf5ff;
+    --product-4:#0284c7;
+    --product-4-subtle:#f0f9ff;
+
+    --radius-lg:8px;
+    --radius-xl:12px;
+    --radius-2xl:16px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --text-strong:#404040;
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  @media (prefers-reduced-motion: reduce){ *{ transition:none !important; animation:none !important; } }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:var(--font); }
+
+  /* ---------------- Main ---------------- */
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px clamp(20px, 2.6vw, 48px) 64px; }
+  .page-head{ margin-bottom:24px; }
+  .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; line-height:1.2; }
+  .page-head .sub{ font-size:14.5px; color:var(--text-secondary); }
+
+  .card{
+    background:#ffffff; border:1px solid var(--border-default); border-radius:var(--radius-xl);
+    padding:22px 24px;
+  }
+  /* C20 card compact padding + C27 table flush to card edges */
+  .card .table-wrap{ margin:0 -24px -22px; border-top:1px solid #e5e5e5; }
+  @media (max-width:640px){ .card{ padding:18px 16px; } .card .table-wrap{ margin:0 -16px -18px; } .certificate-table th:first-child,.certificate-table td:first-child{padding-left:16px} .certificate-table th:last-child,.certificate-table td:last-child{padding-right:16px} }
+  /* Shell Layout — standardized to billing-overview.html */
+  .shell { display: grid; grid-template-columns: 232px 1fr; grid-template-rows: 80px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    grid-column: 1; grid-row: 1 / -1;
+    background: #ffffff; border-right: 1px solid var(--border-default);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 15;
+  }
+  .sidebar-logo {
+    height: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .brand-link { display: flex; align-items: center; }
+  .brand-logo { height: 20px; width: auto; color: var(--text-primary); transition: opacity .15s ease; flex-shrink: 0; }
+  .brand-link:hover .brand-logo { opacity: .8; }
+
+  .nav-scroll { padding: 14px 12px 6px; display: flex; flex-direction: column; flex: 1; gap: 2px; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    border-radius: var(--radius-lg); color: var(--text-secondary);
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .nav-item span { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .nav-item svg { width: 19px; height: 19px; flex-shrink: 0; transition: transform .15s ease; }
+  .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .nav-item:hover svg { transform: translateY(-1px); }
+  .nav-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
+  .nav-item.active { background: var(--info-subtle); color: var(--info); font-weight: 700; }
+  .nav-item.active:hover { background: var(--info-subtle); }
+  .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
+  .nav-item.danger:hover { background: var(--error-subtle); color: var(--error); }
+
+  /* Topbar */
+  .topbar {
+    grid-column: 2; grid-row: 1;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 0 32px 0 20px; background: #ffffff; border-bottom: 1px solid var(--border-default); z-index: 10;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; overflow: hidden; }
+  .breadcrumb a { color: var(--text-tertiary); font-weight: 600; }
+  .breadcrumb a:hover { color: var(--text-primary); }
+  .breadcrumb .breadcrumb-sep { color: var(--text-disabled); }
+  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .topbar-actions { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface-raised); }
+  .icon-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 1px; }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .search-input-wrap { position: relative; width: 240px; }
+  .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--icon-muted); pointer-events: none; }
+  .search-input-wrap input {
+    width: 100%; height: 36px; padding: 0 12px 0 34px; border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default); background: var(--surface-raised); font-size: 13px; color: var(--text-primary); outline: none;
+  }
+  .search-input-wrap input::placeholder { color: var(--text-tertiary); }
+  .search-input-wrap input:focus { border-color: var(--focus-ring); }
+  .profile-menu { position: relative; flex-shrink: 0; margin-left: 6px; }
+  .avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .avatar-btn:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: 2px; }
+  .profile-dropdown {
+    position: absolute; top: 44px; right: 0; width: 200px; background: #ffffff;
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+  }
+  .profile-dropdown.show, .profile-dropdown.open { display: block; }
+  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .profile-dropdown a:hover { background: var(--surface-raised); }
+  .profile-dropdown hr { border: none; border-top: 1px solid var(--border-subtle); margin: 6px 2px; }
+  .profile-dropdown a.danger { color: var(--error); }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: 1fr; }
+    .topbar { grid-column: 1; padding: 0 20px; }
+    .main { grid-column:1; padding:20px 16px 36px; }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 260px;
+      z-index: 30;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-backdrop.show { display: block; }
+  }
+
+  /* Learner benchmark (LEARNER-UI-COMPONENT-REFERENCE.md C14 states, §28.1 focus) */
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  .btn:active:not(:disabled){ transform:scale(.98); }
+  .topbar .search-input-wrap input{ background:var(--surface-canvas); }
+  @media (max-width: 700px){ .topbar .search-input-wrap{ display:none; } }
+  .topbar, .topbar-left, .topbar .breadcrumb, .main{ min-width:0; }
+  @media (max-width: 640px){ .page-head-actions, .profile-actions, .header-actions, .panel-head-actions{ flex-wrap:wrap; max-width:100%; } .page-head-actions > .btn, .profile-actions > .btn, .header-actions > .btn{ flex:1 1 auto; } }
+  .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+</style>
+<style>
+  /* Certificate workspace composition */
+  .workspace-head{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px}.workspace-head h1{margin:0 0 6px;font-size:32px;letter-spacing:-.4px}.workspace-head p{margin:0;color:var(--text-tertiary);font-size:14.5px}.workspace-actions{display:flex;gap:8px;flex-shrink:0}
+  .activity-summary{display:grid;grid-template-columns:1fr 1fr 1fr 1.35fr;gap:0;overflow:hidden;margin-bottom:10px}.activity-intro{padding-right:24px}.activity-intro h2{margin:0 0 5px;font-size:17px;font-weight:700;letter-spacing:-.2px}.activity-intro p{margin:0;color:var(--text-tertiary);font-size:13.5px;line-height:1.5}.activity-stat{border-left:1px solid var(--border-subtle);padding:2px 20px}.activity-stat .label{font-size:13px;font-weight:600;color:#525252;margin-bottom:6px}.activity-stat .value{font-size:28px;font-weight:700;letter-spacing:-.4px;font-variant-numeric:tabular-nums}.activity-stat .detail{font-size:12.5px;color:#a3a3a3;margin-top:4px}.attention-callout{border-left:1px solid var(--border-subtle);padding:2px 0 2px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px}.attention-callout strong{display:block;font-size:13.5px;margin-bottom:4px}.attention-callout span{font-size:13px;color:var(--text-tertiary)}.attention-link{border:0;background:var(--warning-subtle);color:#7c5b06;border-radius:999px;padding:7px 11px;font-size:12px;font-weight:700;white-space:nowrap}
+  .workflow-switcher{display:flex;gap:8px;margin:20px 0 14px}.workflow-button{flex:1;text-align:left;background:#fff;border:1px solid var(--border-default);border-radius:var(--radius-xl);padding:16px 18px;cursor:pointer;color:var(--text-secondary);transition:border-color .15s,background .15s}.workflow-button:hover{border-color:var(--border-strong);background:#fff}.workflow-button.active{border-color:#4f46e5;background:#eef2ff;color:var(--text-primary);box-shadow:0 0 0 1px #4f46e5}.workflow-button .workflow-title{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:15px;font-weight:600;color:#171717;margin-bottom:5px}.workflow-button .workflow-desc{font-size:13.5px;color:#a3a3a3;line-height:1.45}.workflow-button .workflow-count{font-size:13px;color:var(--action-primary);font-weight:600;font-variant-numeric:tabular-nums}
+  .workspace-panel{display:none}.workspace-panel.active{display:block}.workspace-panel .panel-intro{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.workspace-panel h2{margin:0 0 4px;font-size:17px;font-weight:700;letter-spacing:-.2px}.workspace-panel .panel-copy{margin:0;color:var(--text-tertiary);font-size:13.5px}.workspace-panel .panel-actions{display:flex;gap:8px;flex-shrink:0}.workspace-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 0;border-top:1px solid var(--border-subtle);border-bottom:1px solid var(--border-subtle);margin-bottom:4px}.workspace-toolbar .search-input-wrap{position:relative;width:320px;min-width:240px;max-width:360px}.workspace-toolbar .search-input-wrap svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#a3a3a3;pointer-events:none}.workspace-toolbar .search-input-wrap input{width:100%;height:42px;padding:0 12px 0 38px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;font:14px var(--font);color:#171717;outline:none}.workspace-toolbar .search-input-wrap input::placeholder{color:#a3a3a3}.workspace-toolbar .search-input-wrap input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);outline:none}.workspace-toolbar .filter{min-width:144px}.workspace-note{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;margin:14px 0;background:var(--warning-subtle);border:1px solid var(--warning-border);border-radius:var(--radius-lg);font-size:12.5px;color:#7c5b06}.workspace-note button{border:0;background:transparent;color:#7c5b06;font-size:12px;font-weight:700;white-space:nowrap}.template-row-main{display:flex;align-items:center;gap:12px}.template-meta{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;color:#a3a3a3;font-size:13.5px}.template-meta span+span:before{content:"·";margin-right:10px;color:var(--text-disabled)}.action-cluster{display:flex;justify-content:flex-end;gap:4px;white-space:nowrap}.issued-status-filter{display:flex;gap:6px;align-items:center;margin-left:auto}.filter-chip{display:inline-flex;align-items:center;height:30px;padding:0 11px;border:1px solid #e5e5e5;border-radius:999px;background:#fff;color:#404040;font:500 13px var(--font);cursor:pointer}.filter-chip.active{background:#eef2ff;border-color:#e0e7ff;color:#4f46e5}
+  .confirm-copy{font-size:13.5px;color:var(--text-secondary);line-height:1.5;margin:0 0 16px}.confirm-impact{padding:12px 14px;background:var(--warning-subtle);border:1px solid var(--warning-border);border-radius:var(--radius-lg);font-size:12.5px;color:#7c5b06;margin-bottom:16px}
+  @media(max-width:1050px){.activity-summary{grid-template-columns:1fr 1fr}.activity-intro{grid-column:1/-1;padding:0 0 18px}.activity-stat:nth-child(2){border-left:0}.attention-callout{padding-left:20px}}@media(max-width:700px){.workspace-head{flex-direction:column}.workspace-actions{width:100%}.workspace-actions .btn{flex:1}.activity-summary{grid-template-columns:1fr}.activity-stat,.attention-callout{border-left:0;border-top:1px solid var(--border-subtle);padding:14px 0 0;margin-top:14px}.workflow-switcher{flex-direction:column}.workspace-panel .panel-intro{flex-direction:column}.workspace-toolbar .search-input-wrap{min-width:100%;width:100%;max-width:none}}
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; cursor:pointer; border:0; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease, transform .1s ease; }.btn-primary{background:var(--action-primary);color:#fff}.btn-primary:hover{background:var(--action-primary-hover)}.btn-danger{ background:var(--error); color:#fff; border:1px solid transparent; }.btn-danger:hover{ background:#b91c1c; }
+  .certificate-panel{margin-top:10px}.certificate-toolbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:20px}.certificate-search{position:relative;flex:1 1 240px;min-width:240px;max-width:360px}.certificate-search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);width:16px;height:16px;color:#a3a3a3;pointer-events:none}.certificate-search input{width:100%;height:42px;padding:0 12px 0 38px;border:1px solid #e5e5e5;border-radius:8px;background:#fff;font:14px var(--font);color:#171717}.certificate-search input:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);outline:none}.certificate-filter{min-width:132px;height:42px;padding:0 32px 0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center;font:600 13.5px var(--font);color:#404040;appearance:none;-webkit-appearance:none;cursor:pointer}.certificate-filter:focus{border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);outline:none}.certificate-table{width:100%;border-collapse:collapse;min-width:760px}.certificate-table th{text-align:left;background:#f5f5f5;font:600 12.5px var(--font);color:#525252;padding:11px 20px;border-bottom:1px solid #e5e5e5;text-transform:none;letter-spacing:0;white-space:nowrap}.certificate-table td{border-top:1px solid #e5e5e5;padding:16px 20px;font-size:14px;vertical-align:middle;font-variant-numeric:tabular-nums}.certificate-table th:first-child,.certificate-table td:first-child{padding-left:24px}.certificate-table th:last-child,.certificate-table td:last-child{text-align:right;padding-right:24px}.certificate-table tbody tr:hover{background:#fafafa}.workspace-panel .table-wrap{overflow-x:auto;border-radius:0 0 12px 12px}.workspace-toolbar+.table-wrap{border-top:0!important;margin-top:10px!important}.certificate-template{display:flex;align-items:center;gap:12px}.certificate-thumb{width:54px;height:38px;border:1px solid #c7d2fe;border-radius:5px;background:linear-gradient(135deg,#eef2ff 0 55%,#fff 55%);display:flex;align-items:center;justify-content:center;color:var(--action-primary);font-size:10px;font-weight:700}.certificate-name{font-size:15px;font-weight:600;color:#171717}.certificate-muted{font-size:13.5px;color:#a3a3a3;margin-top:3px}.certificate-actions{display:flex;justify-content:flex-end;gap:4px}.certificate-text-btn{border:0;background:transparent;color:var(--action-primary);font-size:12.5px;font-weight:600;padding:6px;border-radius:6px;cursor:pointer}.certificate-text-btn:hover{background:var(--info-subtle)}.certificate-text-btn.danger{color:var(--error)}.certificate-pill{display:inline-flex;align-items:center;gap:6px;height:24px;padding:0 10px;border-radius:999px;font:600 12px var(--font);white-space:nowrap}.certificate-pill.valid{background:#f0fdf4;color:#15803d}.certificate-pill.expired{background:#fefce8;color:#a16207}.certificate-pill.revoked{background:#fef2f2;color:#dc2626}.certificate-pill.archived{background:#f5f5f5;color:#525252}.certificate-modal-backdrop{position:fixed;inset:0;background:rgba(23,23,23,.32);display:none;align-items:center;justify-content:center;z-index:60;padding:20px}.certificate-modal-backdrop.open{display:flex}.certificate-modal{width:760px;max-width:100%;background:#fff;border-radius:var(--radius-xl);padding:24px;box-shadow:0 24px 64px -12px rgba(23,23,23,.28)}.certificate-modal-head{display:flex;justify-content:space-between;margin-bottom:20px}.certificate-modal h3{margin:0 0 5px;font-size: 16px; font-weight:700;}.certificate-modal-head p{margin:0;color:var(--text-tertiary);font-size:12.5px}.certificate-close{border:0;background:transparent;color:var(--text-tertiary)}.certificate-close svg{width:18px}.certificate-editor{display:grid;grid-template-columns:1.1fr .9fr;gap:20px}.certificate-preview{min-height:290px;border:1px solid var(--border-default);border-radius:var(--radius-lg);background:#fffdf8;box-shadow:inset 0 0 0 7px #f8f1dd;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative}.certificate-preview:before{content:"";position:absolute;inset:18px;border:1px solid #d9c58e}.certificate-preview small{font-size:9px;letter-spacing:.2em;text-transform:uppercase;color:#947b34;font-weight:700}.certificate-preview h4{font:24px Georgia,serif;margin:12px 0 7px}.certificate-preview strong{font-size:18px;color:var(--action-primary)}.certificate-preview p{font-size:13px;color:var(--text-secondary)}.certificate-preview em{position:absolute;bottom:26px;font-size:9px;color:var(--text-tertiary)}.certificate-field{margin-bottom:14px}.certificate-field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-secondary);margin-bottom:6px}.certificate-field input,.certificate-field select{width:100%;height:38px;border:1px solid var(--border-default);border-radius:var(--radius-lg);padding:0 11px;font-size:13px}.certificate-field-row{display:grid;grid-template-columns:1fr 1fr;gap:10px}.certificate-token-list{display:flex;flex-wrap:wrap;gap:6px}.certificate-token{border:1px solid var(--border-default);background:var(--surface-raised);border-radius:6px;color:var(--text-secondary);font-size:11.5px;padding:6px 8px}.certificate-modal-foot{display:flex;justify-content:flex-end;gap:8px;border-top:1px solid var(--border-subtle);padding-top:16px;margin-top:6px}.certificate-toast{position:fixed;right:24px;bottom:24px;background:#171717;color:#fff;padding:12px 16px;border-radius:var(--radius-lg);font-size:13px;display:none;z-index:80}.certificate-toast.show{display:block}@media(max-width:900px){.certificate-editor{grid-template-columns:1fr}}@media(max-width:640px){.certificate-field-row{grid-template-columns:1fr}}
+  .workspace-toolbar .filter{
+    height:42px;padding:0 32px 0 12px;border:1px solid #e5e5e5;border-radius:8px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 11px center;font:600 13.5px var(--font);color:#404040;appearance:none;-webkit-appearance:none;cursor:pointer; flex-shrink:0; min-width:144px;
+  }
+  .workspace-toolbar .filter:hover{ background-color:#fafafa; }
+  .workspace-toolbar .filter:focus{ border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.15);outline:none; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+    
+
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg>
+      </button>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="dashboard.html">Admin</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Certificates Overview</span>
+      </nav>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input type="text" placeholder="Search" aria-label="Search">
+      </div>
+      <button class="icon-btn" type="button" aria-label="Notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+      </button>
+      <div class="profile-menu">
+        <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false">AR</button>
+        <div class="profile-dropdown" id="profile-dropdown" role="menu">
+          <a href="#" role="menuitem">My Profile</a>
+          <a href="#" role="menuitem">Account Security</a>
+          <a href="#" role="menuitem">Preferences</a>
+          <hr>
+          <a href="../../Authentication/code/sign-in.html" role="menuitem" class="danger">Log Out</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+    <nav class="sidebar">
+    <div class="sidebar-logo">
+      <a href="dashboard.html" class="brand-link" aria-label="UpSpace">
+        <svg class="brand-logo" width="140" height="20" viewBox="0 0 148 21" fill="none">
+          <g clip-path="url(#brandClip)">
+          <path d="M4.29108 16.0632C4.29108 16.5008 4.64765 16.8556 5.0875 16.8556H16.3679C16.8076 16.8556 17.1643 16.5008 17.1643 16.0632V0.792452C17.1643 0.354794 17.5208 0 17.9607 0H20.6588C21.0986 0 21.4552 0.354794 21.4552 0.792452V17.6449C21.4552 18.0826 21.0986 18.4374 20.6588 18.4374H18.0199C17.58 18.4374 17.2235 18.7923 17.2235 19.2298V20.1999C17.2235 20.6376 16.867 20.9924 16.4271 20.9924H5.02774C4.58789 20.9924 4.23133 20.6376 4.23133 20.1999V19.2298C4.23133 18.7923 3.87476 18.4374 3.43491 18.4374H0.796413C0.356566 18.4374 0 18.0826 0 17.6449V0.792452C0 0.354794 0.356566 0 0.796413 0H3.49467C3.93452 0 4.29108 0.354794 4.29108 0.792452V16.0632Z" fill="currentColor"/>
+          <path d="M26.6126 20.1964C26.6126 20.6341 26.2561 20.9889 25.8162 20.9889H23.2515C22.8116 20.9889 22.4551 20.6341 22.4551 20.1964V17.2752C22.4551 16.8375 22.8116 16.4827 23.2515 16.4827H25.8162C26.2561 16.4827 26.6126 16.8375 26.6126 17.2752V20.1964ZM38.9092 2.83681C38.9092 3.27447 39.2658 3.62926 39.7056 3.62926H42.2106C42.6505 3.62926 43.007 3.98404 43.007 4.42169L43.0072 7.34296C43.0072 7.78062 42.6505 8.13542 42.2108 8.13542H39.646C39.2062 7.78063 38.8496 7.34297 38.8496 7.34297V5.07899C38.8496 4.64133 38.493 4.28653 38.0532 4.28653H27.409C26.9691 4.28653 26.6126 4.64133 26.6126 5.07899V9.99622C26.6126 10.4339 26.9691 10.7887 27.409 10.7887H38.1128C38.5527 10.7887 38.9092 11.1435 38.9092 11.5811V13.622C38.9092 14.0597 39.2658 14.4144 39.7056 14.4144H42.2106C42.6505 14.4144 43.007 14.7692 43.007 15.2069L43.0072 20.1227C43.0072 20.5603 42.6505 20.9152 42.2108 20.9152H39.646C39.2062 20.9152 38.8496 20.5603 38.8496 20.1227V15.8655C38.8496 15.428 38.493 15.0731 38.0532 15.0731H27.3816C26.9417 15.0731 26.5851 14.7183 26.5851 14.2806V12.4735C26.5851 12.0359 26.2286 11.6811 25.7887 11.6811H23.2515C22.8116 11.6811 22.4551 11.3263 22.4551 10.8886V4.42145C22.4551 3.98379 22.8116 3.629 23.2515 3.629H25.7887C26.2286 3.629 26.5851 3.2742 26.5851 2.83654V0.794406C26.5851 0.356746 26.9417 0.00195312 27.3816 0.00195312H38.1128C38.5527 0.00195312 38.9092 0.356746 38.9092 0.794406V2.83681Z" fill="currentColor"/>
+          <path d="M51.0852 15.8278V14.4582H49.6602V5.37032H51.7168V13.6364H55.3765V5.37032H57.4493V14.4582H56.0081V15.8278H51.0852ZM59.0695 15.6506V5.48074H63.2746C63.917 5.48074 64.4815 5.61149 64.9683 5.873C65.4647 6.12483 65.8491 6.48319 66.1217 6.9481C66.4039 7.413 66.5452 7.96508 66.5452 8.60433V8.80772C66.5452 9.43729 66.3992 9.98936 66.1071 10.4639C65.8248 10.9289 65.4355 11.2921 64.9391 11.5536C64.4523 11.8054 63.8975 11.9313 63.2746 11.9313H60.9968V15.6506H59.0695ZM60.9968 10.1879H63.0848C63.5422 10.1879 63.9121 10.062 64.1944 9.81017C64.4766 9.55836 64.6178 9.21451 64.6178 8.77866V8.63338C64.6178 8.19753 64.4766 7.8537 64.1944 7.60187C63.9121 7.35006 63.5422 7.22414 63.0848 7.22414H60.9968V10.1879ZM71.1373 15.8539C70.3488 15.8539 69.6529 15.7136 69.0493 15.4326C68.4459 15.1517 67.9738 14.7498 67.6331 14.2268C67.2925 13.7038 67.122 13.0742 67.122 12.3381V11.9313H69.0201V11.9313C69.0201 12.9483 69.21 13.4083 69.5896 13.7183C69.9692 14.0185 70.4851 14.1687 71.1373 14.1687C71.7992 14.1687 72.2907 14.0379 72.612 13.7764C72.943 13.5149 73.1084 13.1807 73.1084 12.7739C73.1084 12.4931 73.0257 12.2655 72.8602 12.0911C72.7045 11.9168 72.4709 11.7763 72.1593 11.6698C71.8576 11.5536 71.4877 11.447 70.0497 11.3502L70.7139 11.2775C70.013 11.1226 69.4096 10.9289 68.9033 10.6964C68.4069 10.4543 68.0225 10.1395 67.7499 9.75206C67.4871 9.36464 67.3556 8.861 67.3556 8.24112C67.3556 7.62125 67.5017 7.09338 67.7937 6.65753C68.0955 6.212 68.514 5.873 69.0493 5.64055C69.5945 5.39842 70.232 5.27734 70.9621 5.27734C71.6921 5.27734 72.3395 5.40326 72.904 5.65508C73.4783 5.89723 73.926 6.26527 74.2473 6.75923C74.5783 7.24351 74.7437 7.8537 74.7437 8.5898V9.02565H72.8456V8.5898C72.8456 8.20238 72.7678 7.89244 72.612 7.65999C72.466 7.41785 72.2519 7.24351 71.9695 7.13697C71.6873 7.02074 71.3515 6.96263 70.9621 6.96263C70.378 6.96263 69.9449 7.07402 69.6626 7.29678C69.3901 7.50987 69.2538 7.80527 69.2538 8.183C69.2538 8.43483 69.3171 8.64791 69.4436 8.82225C69.5799 8.99659 69.7794 9.14187 70.0422 9.2581C70.305 9.37432 70.6408 9.47602 71.0497 9.56319L71.3855 9.63583C72.1155 9.79081 72.7483 9.98936 73.2836 10.2315C73.8288 10.4736 74.2522 10.7933 74.5539 11.1904C74.8557 11.5875 75.0065 12.096 75.0065 12.7158C75.0065 13.3357 74.8459 13.883 74.5247 14.3575C72.2133 14.8224 73.7654 15.1905 73.1814 15.4617C72.6072 15.7232 71.9257 15.8539 71.1373 15.8539ZM76.1519 15.6506V5.48074H80.3569C80.9994 5.48074 81.564 5.61149 82.0507 5.873C82.5471 6.12483 82.9316 6.48319 83.2041 6.9481C83.4865 7.413 83.6275 7.96508 83.6275 8.60433V8.80772C83.6275 9.43729 83.4815 9.98936 83.1895 10.4639C82.9073 10.9289 82.5179 11.2921 82.0214 11.5536C81.5348 11.8054 80.98 11.9313 80.3569 11.9313H78.0792V15.6506H76.1519ZM78.0792 10.1879H80.1671C80.6247 10.1879 80.9946 10.062 81.2768 9.81017C81.5591 9.55836 81.7002 9.21451 81.7002 8.77866V8.63338C81.7002 8.19753 81.5591 7.8537 81.2768 7.60187C80.9946 7.35006 80.6247 7.22414 80.1671 7.22414H78.0792V10.1879ZM83.1867 15.6506L85.8733 5.48074H89.2315L91.9181 15.6506H89.9323L89.3775 13.4132H85.7273L85.1725 15.6506H83.1867ZM86.1799 11.6407H88.9249L87.6838 6.68659H87.421L86.1799 11.6407ZM96.6477 15.8539C95.3823 15.8539 94.3796 15.5053 93.6399 14.8079C92.9002 14.1009 92.5302 13.0936 92.5302 11.786V9.34527C92.5302 8.03772 92.9002 7.03527 93.6399 6.33791C94.3796 5.63087 95.3823 5.27734 96.6477 5.27734C97.9034 5.27734 98.8719 5.62119 99.5533 6.30885C100.244 6.98685 100.59 7.92149 100.59 9.11282V9.19998H98.6918V9.0547C98.6918 8.45421 98.5215 7.96025 98.1808 7.57282C97.8499 7.1854 97.3389 6.99168 96.6477 6.99168C95.9664 6.99168 95.4309 7.19993 95.0416 7.6164C94.6523 8.03289 94.4576 8.59949 94.4576 9.31621V11.8151C94.4576 12.5221 94.6523 13.0887 95.0416 13.5149C95.4309 13.9313 95.9664 14.1396 96.6477 14.1396C97.3389 14.1396 97.8499 13.9459 98.1808 13.5585C98.5215 13.1614 98.6918 12.6674 98.6918 12.0766V11.8151H100.59V12.0185C100.59 13.2098 100.244 14.1492 99.5533 14.837C98.8719 15.5149 97.9034 15.8539 96.6477 15.8539ZM101.868 15.6506V5.48074H108.439V7.22414H103.796V9.65036H108.03V11.3938H103.796V13.9072H108.526V15.6506H101.868ZM113.076 15.6506V5.48074H115.004V13.9072H119.676V15.6506H113.076ZM119.997 15.6506L122.683 5.48074H126.042L128.728 15.6506H126.743L126.188 13.4132H122.537L121.983 15.6506H119.997ZM122.99 11.6407H125.735L124.494 6.68659H124.231L122.99 11.6407ZM129.368 15.6506V13.9653H130.711V7.16602H129.368V5.48074H134.623C135.247 5.48074 135.788 5.58729 136.244 5.80036C136.711 6.00376 137.072 6.29917 137.325 6.68659C137.587 7.06433 137.719 7.51955 137.719 8.05225V8.19753C137.719 8.66244 137.631 9.04502 137.456 9.34527C137.281 9.63583 137.072 9.86345 136.828 10.0281C136.595 10.1831 136.372 10.2945 136.157 10.3622V10.6238C136.372 10.6819 136.605 10.7933 136.857 10.9579C137.111 11.1129 137.325 11.3405 137.5 11.6407C137.686 11.941 137.777 12.3333 137.777 12.8175V12.9628C137.777 13.5245 137.646 14.0089 137.383 14.4156C137.12 14.8128 136.755 15.1179 136.288 15.3309C135.831 15.544 135.295 15.6506 134.682 15.6506H129.368ZM132.638 13.9072H134.448C134.868 13.9072 135.203 13.8055 135.456 13.6021C135.718 13.3987 135.85 13.1081 135.85 12.7304V12.5851C135.85 12.2073 135.724 11.9168 135.47 11.7134C135.218 11.51 134.877 11.4083 134.448 11.4083H132.638V13.9072ZM132.638 9.66489H134.419C134.819 9.66489 135.145 9.56319 135.397 9.3598C135.66 9.1564 135.792 8.87553 135.792 8.51715V8.37187C135.792 8.00383 135.665 7.72295 135.412 7.52923C135.16 7.32583 134.828 7.22414 134.419 7.22414H132.638V9.66489ZM140.513 15.8278V14.4582H139.087V12.2507H141.145V13.6364H144.804V11.6867H140.513V10.3171H139.087V6.75606H140.513V5.37032H145.436V6.75606H146.876V8.94746H144.804V7.57783H141.145V9.51142H145.436V10.8649H146.876V14.4582H145.436V15.8278H140.513Z" fill="currentColor"/>
+          </g>
+          <defs><clipPath id="brandClip"><rect width="148" height="21" fill="white"/></clipPath></defs>
+        </svg>
+      </a>
+    </div>
+    <div class="nav-scroll">
+      <a href="dashboard.html" class="nav-item" title="Admin Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="user-management.html" class="nav-item" title="User Management">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>User Management</span>
+      </a>
+      <a href="roles.html" class="nav-item" title="Roles &amp; Permissions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Roles &amp; Permissions</span>
+      </a>
+      <a href="organization-overview.html" class="nav-item" title="Organization">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+        <span>Organization</span>
+      </a>
+      <a href="workflow-list.html" class="nav-item" title="Workflows">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg>
+        <span>Workflows</span>
+      </a>
+      <a href="certificate-templates.html" class="nav-item active" title="Certificates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>
+        <span>Certificates</span>
+      </a>
+      <a href="community-moderation.html" class="nav-item" title="Community">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>
+        <span>Community</span>
+      </a>
+      <a href="integrations-catalog.html" class="nav-item" title="Integrations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>
+        <span>Integrations</span>
+      </a>
+      <a href="billing-overview.html" class="nav-item" title="Billing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+        <span>Billing</span>
+      </a>
+      <a href="learner-reports.html" class="nav-item" title="Reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span>Reports</span>
+      </a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="#" class="nav-item" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Settings</span>
+      </a>
+      <a href="../../Authentication/code/sign-in.html" class="nav-item danger" title="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+        <span>Logout</span>
+      </a>
+    </div>
+  </nav>
+
+  <main class="main">
+    <section class="workspace-head"><div><h1>Certificates</h1><p>Manage certificate templates and issued credentials.</p></div><button class="btn btn-primary" id="create-template">＋ Create certificate template</button></section>
+    <section class="card activity-summary"><div class="activity-intro"><h2>Certificate activity</h2><p>Understand the current state before choosing a workflow.</p></div><div class="activity-stat"><div class="label">Issued</div><div class="value">1,248</div><div class="detail">+14.8% from last month</div></div><div class="activity-stat"><div class="label">Valid</div><div class="value">1,186</div><div class="detail">95% of all issued</div></div><div class="attention-callout"><div><strong>21 certificates need attention</strong><span>Expiring within 30 days</span></div><button class="attention-link" id="review-attention">Review →</button></div></section>
+    <div class="workflow-switcher" role="tablist"><button class="workflow-button active" data-workflow="templates" role="tab" aria-selected="true"><div class="workflow-title"><span>Manage templates</span><span class="workflow-count">4 templates</span></div><div class="workflow-desc">Create reusable designs, assign courses, and control expiry rules.</div></button><button class="workflow-button" data-workflow="issued" role="tab" aria-selected="false"><div class="workflow-title"><span>Manage issued certificates</span><span class="workflow-count">1,248 issued</span></div><div class="workflow-desc">Find learner credentials, download records, and handle status changes.</div></button></div>
+    <section class="card workspace-panel active" id="templates-workspace"><div class="panel-intro"><div><h2>Certificate templates</h2><p class="panel-copy">Reusable designs assigned to courses for future completions.</p></div><button class="btn btn-primary" id="new-template">＋ New template</button></div><div class="workspace-toolbar"><div class="search-input-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="template-search" type="search" placeholder="Search templates"></div><select class="filter" id="template-status"><option value="all">All statuses</option><option value="active">Active</option><option value="archived">Archived</option></select></div><div class="workspace-note"><span><strong>Archived templates preserve existing certificates.</strong> They cannot be assigned to new courses.</span></div><div class="table-wrap"><table class="certificate-table"><thead><tr><th>Template</th><th>Status</th><th>Usage</th><th>Last updated</th><th>Actions</th></tr></thead><tbody id="template-rows"><tr data-status="active"><td><div class="template-row-main"><div class="certificate-thumb">HONOUR</div><div><div class="certificate-name">Certificate of Honour</div><div class="template-meta"><span>Default</span><span>8 courses</span><span>684 issued</span></div></div></div></td><td><span class="certificate-pill valid">Active</span></td><td>684</td><td>Today, 10:24 AM</td><td><button class="certificate-text-btn edit-template">Edit</button><button class="certificate-text-btn danger archive-template">Archive</button></td></tr><tr data-status="active"><td><div class="template-row-main"><div class="certificate-thumb">COMPLETION</div><div><div class="certificate-name">Course Completion</div><div class="template-meta"><span>Default</span><span>14 courses</span><span>512 issued</span></div></div></div></td><td><span class="certificate-pill valid">Active</span></td><td>512</td><td>Sep 12, 2026</td><td><button class="certificate-text-btn edit-template">Edit</button><button class="certificate-text-btn danger archive-template">Archive</button></td></tr><tr data-status="archived"><td><div class="template-row-main"><div class="certificate-thumb">LEGACY</div><div><div class="certificate-name">Legacy Learning Award</div><div class="template-meta"><span>Archived</span><span>4 issued</span></div></div></div></td><td><span class="certificate-pill archived">Archived</span></td><td>4</td><td>Aug 21, 2026</td><td><button class="certificate-text-btn">View</button></td></tr></tbody></table></div></section>
+    <section class="card workspace-panel" id="issued-workspace" hidden><div class="panel-intro"><div><h2>Issued certificates</h2><p class="panel-copy">Search and manage credentials already awarded to learners.</p></div><button class="btn" id="export-issued">Export CSV</button></div><div class="workspace-toolbar"><div class="search-input-wrap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg><input id="issued-search" type="search" placeholder="Search learner, course, or verification code"></div><select class="filter"><option>All statuses</option><option>Valid</option><option>Expiring soon</option><option>Revoked</option></select><select class="filter"><option>All courses</option><option>Leadership Fundamentals</option><option>Manager Essentials</option></select></div><div class="table-wrap"><table class="certificate-table"><thead><tr><th>Learner</th><th>Certificate / course</th><th>Issued</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead><tbody id="issued-rows"><tr data-attention="false"><td><div class="certificate-name">Priya Sharma</div><div class="certificate-muted">priya.sharma@acme.com</div></td><td>Certificate of Honour<div class="certificate-muted">Leadership Fundamentals</div></td><td>Sep 15, 2026</td><td>Never</td><td><span class="certificate-pill valid">Valid</span></td><td><button class="certificate-text-btn" data-action="view">View</button><button class="certificate-text-btn" data-action="download">Download</button><button class="certificate-text-btn danger revoke-certificate">Revoke</button></td></tr><tr data-attention="true"><td><div class="certificate-name">Daniel Brooks</div><div class="certificate-muted">daniel.brooks@acme.com</div></td><td>Course Completion<div class="certificate-muted">Manager Essentials</div></td><td>Mar 10, 2026</td><td>Oct 10, 2026</td><td><span class="certificate-pill expired">Expiring soon</span></td><td><button class="certificate-text-btn" data-action="view">View</button><button class="certificate-text-btn" data-action="download">Download</button><button class="certificate-text-btn danger revoke-certificate">Revoke</button></td></tr><tr><td><div class="certificate-name">Aisha Rahman</div><div class="certificate-muted">aisha.rahman@acme.com</div></td><td>Legacy Learning Award<div class="certificate-muted">Data Privacy Basics</div></td><td>Sep 03, 2026</td><td>Revoked Sep 11, 2026</td><td><span class="certificate-pill revoked">Revoked</span></td><td><button class="certificate-text-btn">View</button><button class="certificate-text-btn">Download</button></td></tr></tbody></table></div></section>
+  </main>
+
+</div>
+
+<script>
+  (function(){
+    "use strict";
+    var profileBtn = document.getElementById("profile-btn");
+    var profileDropdown = document.getElementById("profile-dropdown");
+    profileBtn.addEventListener("click", function(e){
+      e.stopPropagation();
+      var open = profileDropdown.classList.toggle("open");
+      profileBtn.setAttribute("aria-expanded", String(open));
+    });
+    document.addEventListener("click", function(){
+      profileDropdown.classList.remove("open");
+      profileBtn.setAttribute("aria-expanded", "false");
+    });
+  })();
+</script>
+<div class="certificate-modal-backdrop" id="template-modal"><div class="certificate-modal"><div class="certificate-modal-head"><div><h3>Create certificate template</h3><p>Set up the design once; future completions use it automatically.</p></div><button class="certificate-close" data-close="template-modal" aria-label="Close">×</button></div><div class="certificate-editor"><div class="certificate-preview"><small>Certificate of completion</small><h4>Certificate of Honour</h4><strong>Priya Sharma</strong><p>Leadership Fundamentals</p><em>Verification code: CERT-A7X9K2</em></div><div><div class="certificate-field"><label>Template name</label><input value="Certificate of Honour"></div><div class="certificate-field-row"><div class="certificate-field"><label>Expiry rule</label><select><option>No expiry</option><option>After 6 months</option><option>After 1 year</option></select></div><div class="certificate-field"><label>Assigned courses</label><select><option>8 courses selected</option><option>Select courses</option></select></div></div><div class="certificate-field"><label>Dynamic fields</label><div class="certificate-token-list"><span class="certificate-token">Learner name</span><span class="certificate-token">Course title</span><span class="certificate-token">Completion date</span><span class="certificate-token">Verification code</span></div></div></div></div><div class="certificate-modal-foot"><button class="btn" data-close="template-modal">Cancel</button><button class="btn" id="preview-template">Preview</button><button class="btn btn-primary" id="save-template">Save template</button></div></div></div>
+<div class="certificate-modal-backdrop" id="revoke-modal"><div class="certificate-modal" style="max-width:460px"><div class="certificate-modal-head"><div><h3>Revoke certificate</h3><p>The PDF remains available, but verification will show Revoked.</p></div><button class="certificate-close" data-close="revoke-modal" aria-label="Close">×</button></div><div class="certificate-field"><label>Reason for revocation <span style="color:var(--error)">*</span></label><input id="revoke-reason" placeholder="Required for the audit record"></div><div class="certificate-modal-foot"><button class="btn" data-close="revoke-modal">Cancel</button><button class="btn btn-danger" id="confirm-revoke">Revoke certificate</button></div></div></div><div class="certificate-toast" id="toast"></div>
+<script>
+(() => { const $ = (s) => document.querySelector(s); const toast = (m) => { const t = $('#toast'); t.textContent = m; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2400); }; const open = (id) => document.getElementById(id).classList.add('open'); const close = (id) => document.getElementById(id).classList.remove('open');
+$('#new-template').addEventListener('click', () => open('template-modal')); document.querySelectorAll('[data-close]').forEach(x => x.addEventListener('click', () => close(x.dataset.close))); $('#save-template').addEventListener('click', () => { close('template-modal'); toast('Template saved'); }); $('#preview-template').addEventListener('click', () => toast('Preview updated')); $('#export-issued').addEventListener('click', () => toast('Export queued')); document.querySelectorAll('.revoke-certificate').forEach(x => x.addEventListener('click', () => open('revoke-modal'))); $('#confirm-revoke').addEventListener('click', () => { if (!$('#revoke-reason').value.trim()) { $('#revoke-reason').focus(); return; } close('revoke-modal'); toast('Certificate revoked and learner notified'); }); $('#template-status').addEventListener('change', e => document.querySelectorAll('#template-rows tr').forEach(row => row.hidden = e.target.value !== 'all' && row.dataset.status !== e.target.value)); $('#template-search').addEventListener('input', e => document.querySelectorAll('#template-rows tr').forEach(row => row.hidden = !row.textContent.toLowerCase().includes(e.target.value.toLowerCase()))); document.querySelectorAll('.edit-template').forEach(x => x.addEventListener('click', () => open('template-modal'))); document.querySelectorAll('.archive-template').forEach(x => x.addEventListener('click', () => toast('Template archived; issued certificates preserved'))); })();
+</script>
+<script>
+(() => {
+  const toast = (message) => { const el = document.getElementById('toast'); el.textContent = message; el.classList.add('show'); setTimeout(() => el.classList.remove('show'), 2400); };
+  const showWorkflow = (name) => { document.querySelectorAll('.workflow-button').forEach(button => { const active = button.dataset.workflow === name; button.classList.toggle('active', active); button.setAttribute('aria-selected', String(active)); }); document.querySelectorAll('.workspace-panel').forEach(panel => { const active = panel.id === name + '-workspace'; panel.classList.toggle('active', active); panel.hidden = !active; }); };
+  document.querySelectorAll('.workflow-button').forEach(button => button.addEventListener('click', () => showWorkflow(button.dataset.workflow)));
+  document.getElementById('create-template').addEventListener('click', () => document.getElementById('template-modal').classList.add('open'));
+  document.getElementById('review-attention').addEventListener('click', () => { showWorkflow('issued'); document.querySelectorAll('#issued-rows tr').forEach(row => row.hidden = row.dataset.attention !== 'true'); });
+})();
+
+  function toggleSidebar() {
+    var sb = document.querySelector('.sidebar');
+    var bd = document.getElementById('sidebarBackdrop');
+    if (sb) sb.classList.toggle('open');
+    if (bd) bd.classList.toggle('show');
+  }
+</script>
+</body>
+</html>

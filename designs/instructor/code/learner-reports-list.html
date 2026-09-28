@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Learner Reports</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Learner Reports (RPT-002, instructor-scoped)
+     Lightweight learner-selection layer in front of the EXISTING
+     learner-report.html — does not duplicate that screen.
+     UpSpace Design System compliant, patterns matched to
+     learners-list.html (table/filters/states) for consistency.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --brand-subtle:#eef2ff; --brand-border:#c7d2fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:16px; }
+  .back-link:hover{ color:var(--action-primary); }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 6px; font-size:28px; font-weight:700; letter-spacing:-.4px; }
+  .page-head .sub{ font-size:14px; color:var(--text-secondary); max-width:600px; }
+  .state-preview{ height:36px; min-width:200px; padding:0 30px 0 12px; font-size:12.5px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance:none; cursor:pointer; }
+  .state-preview:focus{ outline:2px solid var(--focus-ring); }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+
+  /* Toolbar */
+  .toolbar{ display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .search-input-wrap{ position:relative; flex:1; min-width:220px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:36px; padding:0 12px 0 34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13.5px; color:var(--text-primary); outline:none; }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+
+  .filter-select{ height:36px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:0 28px 0 12px; appearance:none; cursor:pointer; }
+  .filter-select:focus{ outline:2px solid var(--focus-ring); }
+
+  .btn-reset{ height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+  .btn-reset:hover{ background:var(--surface-raised); }
+
+  .toolbar-spacer{ flex:1; }
+  .result-count{ font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+  .result-count b{ color:var(--text-primary); font-weight:700; }
+
+  /* Table */
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:820px; }
+  thead th{ text-align:left; font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-bottom:1px solid var(--border-default); white-space:nowrap; }
+  tbody tr{ border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; height:58px; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+  td{ padding:12px 20px; font-size:13.5px; color:var(--text-primary); vertical-align:middle; white-space:nowrap; }
+
+  .learner-cell{ display:flex; align-items:center; gap:12px; }
+  .avatar{ width:32px; height:32px; border-radius:50%; background:var(--brand-subtle); color:var(--action-primary); border:1px solid var(--brand-border); font-weight:700; font-size:12px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .avatar.at-risk-avatar{ background:var(--warning-subtle); color:var(--warning); border-color:var(--warning-border); }
+  .learner-info{ display:flex; flex-direction:column; gap:1px; min-width:0; }
+  .learner-name{ font-weight:600; font-size:13.5px; color:var(--text-primary); line-height:1.2; }
+  .learner-id{ font-size:11.5px; color:var(--text-tertiary); font-family:monospace; }
+
+  .course-pill{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; padding:3px 8px; border-radius:var(--radius-md); background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .course-more{ font-size:11.5px; font-weight:600; color:var(--text-tertiary); margin-left:4px; }
+
+  .progress-wrap{ display:flex; align-items:center; gap:10px; width:126px; }
+  .progress-bar-bg{ flex:1; height:6px; background:var(--surface-raised); border-radius:var(--radius-full); overflow:hidden; border:1px solid var(--border-subtle); }
+  .progress-bar-fill{ height:100%; border-radius:var(--radius-full); background:var(--action-primary); }
+  .progress-bar-fill.low{ background:var(--warning); }
+  .progress-bar-fill.high{ background:var(--success); }
+  .progress-val{ font-size:12.5px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-primary); min-width:30px; text-align:right; }
+
+  .status-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; }
+  .status-badge i{ width:6px; height:6px; border-radius:50%; }
+  .status-badge.active{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .status-badge.active i{ background:var(--success); }
+  .status-badge.inactive{ background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .status-badge.inactive i{ background:var(--text-tertiary); }
+
+  .risk-flag{ font-size:12px; font-weight:600; color:var(--text-disabled); }
+  .risk-flag.flagged{ color:var(--warning); display:inline-flex; align-items:center; gap:5px; }
+  .risk-flag.flagged svg{ width:13px; height:13px; }
+
+  .action-arrow{ color:var(--text-tertiary); font-weight:700; }
+  tr:hover .action-arrow{ color:var(--action-primary); }
+
+  /* States */
+  .state-box{ padding:64px 24px; text-align:center; display:none; }
+  .state-box.show{ display:block; }
+  .state-icon{ width:48px; height:48px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px; }
+  .state-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0 0 6px; }
+  .state-desc{ font-size:13.5px; color:var(--text-secondary); max-width:440px; margin:0 auto 20px; line-height:1.5; }
+  .btn-primary{ height:38px; padding:0 16px; background:var(--action-primary); color:#fff; border:none; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+
+  .skeleton-row td{ padding:18px 20px; }
+  .skeleton{ height:14px; background:linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:4px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=reports" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Learner+Reports" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <a href="reports-home.html" class="back-link">&larr; Back to Reports</a>
+
+    <div class="page-head">
+      <div>
+        <h1>Learner Reports</h1>
+        <div class="sub">Select a learner within your assigned courses to open their full performance report.</div>
+      </div>
+      <select class="state-preview" id="statePreview" aria-label="Preview list state" onchange="switchState(this.value)">
+        <option value="normal">State: Live List</option>
+        <option value="empty">State: No Learners</option>
+        <option value="no-results">State: No Search Results</option>
+        <option value="loading">State: Loading</option>
+        <option value="error">State: Error Loading Data</option>
+        <option value="out-of-scope">State: Access Denied Test</option>
+      </select>
+    </div>
+
+    <div class="card">
+      <div class="toolbar" id="toolbarArea">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search learner by name or ID..." oninput="applyFilters()">
+        </div>
+
+        <select class="filter-select" id="courseFilter" onchange="applyFilters()">
+          <option value="">All Courses</option>
+          <option value="CS-301">CS-301: Advanced Data Structures</option>
+          <option value="UX-204">UX-204: Interaction Design</option>
+          <option value="AI-101">AI-101: Intro to Machine Learning</option>
+          <option value="WEB-202">WEB-202: Modern Frontend Frameworks</option>
+        </select>
+
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="active">Active</option>
+          <option value="inactive">Inactive</option>
+        </select>
+
+        <select class="filter-select" id="riskFilter" onchange="applyFilters()">
+          <option value="">All Learners</option>
+          <option value="at-risk">At-Risk Only</option>
+          <option value="not-at-risk">Not At-Risk</option>
+        </select>
+
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+        <div class="toolbar-spacer"></div>
+        <div class="result-count">Showing <b id="visibleCount">8</b> of 8 learners</div>
+      </div>
+
+      <div class="table-wrap" id="tableContainer">
+        <table>
+          <thead>
+            <tr>
+              <th>Learner</th>
+              <th>Course</th>
+              <th>Progress</th>
+              <th>Attendance</th>
+              <th>Status</th>
+              <th>At-risk</th>
+              <th style="width:32px;"></th>
+            </tr>
+          </thead>
+          <tbody id="learnersBody"></tbody>
+        </table>
+      </div>
+
+      <div class="state-box" id="noResultsState">
+        <div class="state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+        <div class="state-title">No matching learners found</div>
+        <div class="state-desc">No learners in your assigned courses matched your current search or filters. Try clearing filters or altering your search query.</div>
+        <button class="btn-primary" onclick="resetFilters()">Reset All Filters</button>
+      </div>
+
+      <div class="state-box" id="emptyState">
+        <div class="state-icon"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+        <div class="state-title">No learners assigned to your courses yet</div>
+        <div class="state-desc">You do not currently have any learners enrolled in your active courses or live sessions for this term.</div>
+      </div>
+
+      <div class="state-box" id="errorState">
+        <div class="state-icon" style="background:var(--error-subtle); color:var(--error);"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="7.86 2 16.14 2 22 7.86 22 16.14 16.14 22 7.86 22 2 16.14 2 7.86 7.86 2"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div class="state-title" style="color:var(--error);">Failed to load learner reports</div>
+        <div class="state-desc">An error occurred while retrieving learner data from the server. Please verify network connectivity or try refreshing.</div>
+        <button class="btn-primary" onclick="switchState('normal')">Retry Loading</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  // Same instructor-scoped roster as learners-list.html, kept id-aligned with
+  // the existing learner-report.html so every row resolves to a real report.
+  const LEARNERS_DATA = [
+    { id:"LNR-001", name:"Marcus Vance",     courses:["CS-301","WEB-202"], progress:84, attendancePct:95, status:"active",   atRisk:false },
+    { id:"LNR-002", name:"Sophia Chen",      courses:["AI-101","CS-301","UX-204"], progress:92, attendancePct:100, status:"active",   atRisk:false },
+    { id:"LNR-003", name:"David O'Connor",   courses:["CS-301"], progress:68, attendancePct:88, status:"active",   atRisk:false },
+    { id:"LNR-004", name:"Elena Rostova",    courses:["CS-301","UX-204"], progress:28, attendancePct:62, status:"active",   atRisk:true },
+    { id:"LNR-005", name:"James Wilson",     courses:["CS-301","AI-101"], progress:42, attendancePct:75, status:"active",   atRisk:true },
+    { id:"LNR-006", name:"Amara Okafor",     courses:["UX-204"], progress:96, attendancePct:96, status:"active",   atRisk:false },
+    { id:"LNR-007", name:"Lucas Miller",     courses:["WEB-202"], progress:0,  attendancePct:0,  status:"active",   atRisk:false },
+    { id:"LNR-008", name:"Priya Patel",      courses:["AI-101","WEB-202"], progress:15, attendancePct:50, status:"inactive", atRisk:true },
+  ];
+
+  function renderTable(data) {
+    const tbody = document.getElementById('learnersBody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+      document.getElementById('tableContainer').style.display = 'none';
+      document.getElementById('noResultsState').classList.add('show');
+      document.getElementById('visibleCount').textContent = '0';
+      return;
+    }
+
+    document.getElementById('tableContainer').style.display = 'block';
+    document.getElementById('noResultsState').classList.remove('show');
+    document.getElementById('visibleCount').textContent = data.length;
+
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.onclick = function(){ window.location.href = `learner-report.html?id=${item.id}`; };
+
+      const initials = item.name.split(' ').map(n => n[0]).join('');
+      const progressClass = item.progress > 75 ? 'high' : (item.progress < 40 ? 'low' : '');
+
+      let coursePillsHtml = `<span class="course-pill">${item.courses[0]}</span>`;
+      if (item.courses.length > 1) coursePillsHtml += `<span class="course-more">+${item.courses.length - 1} more</span>`;
+
+      const statusHtml = item.status === 'active'
+        ? `<span class="status-badge active"><i></i>Active</span>`
+        : `<span class="status-badge inactive"><i></i>Inactive</span>`;
+
+      const riskHtml = item.atRisk
+        ? `<span class="risk-flag flagged"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>At-Risk</span>`
+        : `<span class="risk-flag">—</span>`;
+
+      tr.innerHTML = `
+        <td>
+          <div class="learner-cell">
+            <div class="avatar ${item.atRisk ? 'at-risk-avatar' : ''}">${initials}</div>
+            <div class="learner-info">
+              <span class="learner-name">${item.name}</span>
+              <span class="learner-id">${item.id}</span>
+            </div>
+          </div>
+        </td>
+        <td>${coursePillsHtml}</td>
+        <td>
+          <div class="progress-wrap">
+            <div class="progress-bar-bg"><div class="progress-bar-fill ${progressClass}" style="width:${item.progress}%;"></div></div>
+            <span class="progress-val">${item.progress}%</span>
+          </div>
+        </td>
+        <td><span style="font-weight:700; font-variant-numeric:tabular-nums;">${item.attendancePct}%</span></td>
+        <td>${statusHtml}</td>
+        <td>${riskHtml}</td>
+        <td style="text-align:right;"><span class="action-arrow">&rarr;</span></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const course = document.getElementById('courseFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const risk = document.getElementById('riskFilter').value;
+
+    const filtered = LEARNERS_DATA.filter(item => {
+      if (search && !item.name.toLowerCase().includes(search) && !item.id.toLowerCase().includes(search)) return false;
+      if (course && !item.courses.includes(course)) return false;
+      if (status && item.status !== status) return false;
+      if (risk === 'at-risk' && !item.atRisk) return false;
+      if (risk === 'not-at-risk' && item.atRisk) return false;
+      return true;
+    });
+
+    renderTable(filtered);
+  }
+
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('courseFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('riskFilter').value = '';
+    applyFilters();
+  }
+
+  function switchState(state) {
+    const tableContainer = document.getElementById('tableContainer');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+    const errorState = document.getElementById('errorState');
+    const toolbarArea = document.getElementById('toolbarArea');
+
+    tableContainer.style.display = 'none';
+    emptyState.classList.remove('show');
+    noResultsState.classList.remove('show');
+    errorState.classList.remove('show');
+    toolbarArea.style.display = 'flex';
+
+    if (state === 'normal') {
+      applyFilters();
+    } else if (state === 'empty') {
+      emptyState.classList.add('show');
+      toolbarArea.style.display = 'none';
+    } else if (state === 'no-results') {
+      noResultsState.classList.add('show');
+    } else if (state === 'loading') {
+      tableContainer.style.display = 'block';
+      document.getElementById('learnersBody').innerHTML = Array(5).fill(0).map(() => `
+        <tr class="skeleton-row"><td colspan="7"><div class="skeleton"></div></td></tr>
+      `).join('');
+    } else if (state === 'error') {
+      errorState.classList.add('show');
+      toolbarArea.style.display = 'none';
+    } else if (state === 'out-of-scope') {
+      window.location.href = 'learner-access-denied.html';
+    }
+  }
+
+  applyFilters();
+</script>
+</body>
+</html>

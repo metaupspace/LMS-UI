@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Grade Submission</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Submission Grading Workspace (GRD-002/GRD-003/
+     GRD-004, AI-003/AI-004). Reached from submission-list.html.
+     Standalone file (Rule 7) except sidebar/topbar iframes (Rule 8
+     instructor exception). Grade History + Revise Grade live here
+     as a drawer + modal (not separate URLs), same pattern as
+     admin/user-detail.html bundling multiple modals in one file.
+     ponytail: the example assessment ("Essay: Cloud Security
+     Tradeoffs") is modelled with 3 question parts — MCQ (objective),
+     short essay (subjective/AI), diagram upload (file/needs-attention)
+     — so one workspace can demonstrate every required question type
+     without needing three separate example assessments.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5; --surface-modal:#d4d4d4;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:24px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:14px; }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  /* ---- Workspace header ---- */
+  .ws-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .ws-learner{ display:flex; align-items:center; gap:12px; min-width:0; }
+  .learner-avatar-lg{ width:44px; height:44px; border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:#f9f5ff; color:#7f56d9; font-size:15px; font-weight:700; }
+  .ws-learner h1{ margin:0; font-size:20px; font-weight:700; }
+  .ws-learner .sub{ font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+  .ws-actions{ display:flex; align-items:center; gap:8px; flex-shrink:0; }
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; white-space:nowrap; }
+  .btn svg{ width:15px; height:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-primary:disabled{ background:var(--text-disabled); cursor:not-allowed; }
+  .icon-btn-square{ width:38px; height:38px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .icon-btn-square:hover{ background:var(--surface-raised); }
+  .icon-btn-square:disabled{ color:var(--text-disabled); cursor:not-allowed; background:#fff; }
+  .icon-btn-square svg{ width:16px; height:16px; }
+
+  .ws-grid{ display:grid; grid-template-columns:1fr 340px; gap:20px; align-items:start; }
+  @media (max-width:1000px){ .ws-grid{ grid-template-columns:1fr; } }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:22px 24px; }
+
+  /* ---- Question cards ---- */
+  .q-card{ margin-bottom:16px; }
+  .q-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:14px; }
+  .q-title{ font-size:15px; font-weight:700; }
+  .q-type{ font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--text-tertiary); margin-bottom:4px; }
+  .q-points{ font-size:12.5px; color:var(--text-tertiary); white-space:nowrap; flex-shrink:0; }
+  .q-block-label{ font-size:11.5px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.04em; margin:14px 0 6px; }
+  .q-answer{ background:var(--surface-canvas); border:1px solid var(--border-subtle); border-radius:var(--radius-lg); padding:12px 14px; font-size:13.5px; color:var(--text-primary); line-height:1.6; }
+  .q-answer.correct-answer{ background:var(--success-subtle); border-color:var(--success-border); color:#14532d; }
+  .mcq-option{ display:flex; align-items:center; gap:8px; padding:6px 0; font-size:13.5px; }
+  .mcq-option svg{ width:16px; height:16px; flex-shrink:0; }
+  .mcq-option.selected-correct{ color:var(--success); font-weight:600; }
+  .mcq-option.selected-wrong{ color:var(--error); font-weight:600; text-decoration:line-through; }
+
+  .auto-score-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; padding:5px 10px; border-radius:999px; background:var(--success-subtle); color:var(--success); }
+  .auto-score-badge svg{ width:13px; height:13px; }
+
+  .rubric-list{ list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:6px; }
+  .rubric-list li{ display:flex; justify-content:space-between; gap:10px; font-size:13px; color:var(--text-secondary); padding:8px 10px; background:var(--surface-canvas); border-radius:6px; }
+  .rubric-list li b{ color:var(--text-primary); flex-shrink:0; }
+
+  .ai-panel{ margin-top:14px; border:1px solid var(--info-border); background:var(--info-subtle); border-radius:var(--radius-lg); padding:14px 16px; }
+  .ai-panel.low-conf{ border-color:var(--warning-border); background:var(--warning-subtle); }
+  .ai-panel-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; flex-wrap:wrap; }
+  .ai-label{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700; color:var(--info); }
+  .ai-panel.low-conf .ai-label{ color:var(--warning); }
+  .ai-label svg{ width:14px; height:14px; }
+  .conf-pill{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; font-weight:700; padding:3px 9px; border-radius:999px; }
+  .conf-pill.high{ background:var(--success-subtle); color:var(--success); }
+  .conf-pill.low{ background:#fff; color:var(--warning); border:1px solid var(--warning-border); }
+  .ai-suggested-score{ font-size:13.5px; font-weight:700; margin-bottom:8px; }
+  .ai-draft-feedback{ font-size:13px; color:var(--text-secondary); line-height:1.6; background:#fff; border:1px solid var(--border-subtle); border-radius:6px; padding:10px 12px; margin-bottom:10px; }
+  .ai-response-actions{ display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+  .ai-response-btn{ height:32px; padding:0 12px; border-radius:6px; border:1px solid var(--border-default); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; }
+  .ai-response-btn:hover{ background:var(--surface-raised); }
+  .ai-response-btn.accept.chosen{ background:var(--success); color:#fff; border-color:var(--success); }
+  .ai-response-btn.modify.chosen{ background:var(--info); color:#fff; border-color:var(--info); }
+  .ai-response-btn.reject.chosen{ background:var(--error); color:#fff; border-color:var(--error); }
+  .ai-response-tag{ font-size:11.5px; font-weight:700; color:var(--text-tertiary); }
+
+  .needs-attn-banner{ display:flex; gap:10px; align-items:flex-start; padding:12px 14px; background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); margin:14px 0; font-size:13px; color:#7c5b06; }
+  .needs-attn-banner svg{ width:16px; height:16px; flex-shrink:0; color:var(--warning); margin-top:1px; }
+  .file-preview{ display:flex; align-items:center; gap:12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:14px; background:var(--surface-canvas); }
+  .file-preview .file-icon{ width:40px; height:40px; border-radius:8px; background:#fff; border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; color:var(--text-tertiary); }
+  .file-preview .file-icon svg{ width:20px; height:20px; }
+  .file-preview .name{ font-size:13.5px; font-weight:600; }
+  .file-preview .meta{ font-size:12px; color:var(--text-tertiary); }
+  .file-preview a{ margin-left:auto; font-size:12.5px; font-weight:700; color:var(--action-primary); flex-shrink:0; }
+
+  .score-row{ display:flex; align-items:center; gap:10px; margin-top:14px; flex-wrap:wrap; }
+  .score-row label{ font-size:12.5px; font-weight:600; color:var(--text-secondary); }
+  .score-input-wrap{ display:flex; align-items:center; gap:6px; }
+  .score-input-wrap input{ width:64px; height:34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:0 10px; font-size:14px; font-weight:700; text-align:center; }
+  .score-input-wrap input:focus{ outline:2px solid var(--focus-ring); outline-offset:1px; }
+  .score-input-wrap .of{ font-size:13px; color:var(--text-tertiary); }
+  .feedback-textarea{ width:100%; margin-top:10px; border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:10px 12px; font-size:13.5px; color:var(--text-primary); resize:vertical; min-height:60px; }
+  .feedback-textarea:focus{ outline:2px solid var(--focus-ring); outline-offset:1px; }
+
+  /* ---- Right rail ---- */
+  .rail-card{ margin-bottom:14px; }
+  .rail-card h3{ margin:0 0 10px; font-size:13px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.04em; }
+  .rail-row{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:6px 0; }
+  .rail-row .k{ color:var(--text-tertiary); }
+  .rail-row .v{ font-weight:600; text-align:right; }
+  .overall-score{ display:flex; align-items:baseline; gap:6px; margin:6px 0 4px; }
+  .overall-score .n{ font-size:32px; font-weight:700; letter-spacing:-.4px; font-variant-numeric:tabular-nums; }
+  .overall-score .of{ font-size:14px; color:var(--text-tertiary); }
+  .rail-sticky{ position:sticky; top:0; }
+  .rail-actions{ display:flex; flex-direction:column; gap:8px; margin-top:14px; }
+  .rail-actions .btn{ justify-content:center; width:100%; }
+
+  /* ---- Toast ---- */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:10px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:60; }
+  .toast.show{ transform:translateY(0); opacity:1; }
+  .toast svg{ width:16px; height:16px; color:var(--success); flex-shrink:0; }
+
+  /* ---- Grade history drawer (Aside — right) ---- */
+  .drawer-backdrop{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; z-index:45; }
+  .drawer-backdrop.open{ display:block; }
+  .drawer{ position:fixed; top:0; right:0; height:100vh; width:420px; max-width:92vw; background:#fff; border-left:1px solid var(--border-default); box-shadow:-16px 0 40px -12px rgba(23,23,23,.2); transform:translateX(100%); transition:transform .22s ease; z-index:46; display:flex; flex-direction:column; }
+  .drawer.open{ transform:translateX(0); }
+  .drawer-head{ display:flex; align-items:center; justify-content:space-between; padding:20px 22px; border-bottom:1px solid var(--border-default); flex-shrink:0; }
+  .drawer-head h3{ margin:0; font-size:16px; font-weight:700; }
+  .drawer-close{ width:32px; height:32px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .drawer-close:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .drawer-body{ flex:1; overflow-y:auto; padding:20px 22px; }
+  .drawer-foot{ padding:16px 22px; border-top:1px solid var(--border-default); flex-shrink:0; }
+  .drawer-foot .btn{ width:100%; justify-content:center; }
+
+  .history-entry{ display:flex; gap:12px; padding-bottom:20px; margin-bottom:20px; border-bottom:1px solid var(--border-subtle); position:relative; }
+  .history-entry:last-child{ border-bottom:none; margin-bottom:0; padding-bottom:0; }
+  .history-dot{ width:10px; height:10px; border-radius:50%; background:var(--action-primary); flex-shrink:0; margin-top:5px; }
+  .history-dot.ai{ background:var(--info); }
+  .history-dot.revision{ background:var(--warning); }
+  .history-main{ flex:1; min-width:0; }
+  .history-top{ display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+  .history-score{ font-size:15px; font-weight:700; }
+  .history-time{ font-size:11.5px; color:var(--text-tertiary); white-space:nowrap; }
+  .history-who{ font-size:12.5px; color:var(--text-secondary); margin-top:2px; }
+  .history-tag{ display:inline-block; margin-top:6px; font-size:11px; font-weight:700; padding:2px 8px; border-radius:999px; }
+  .history-tag.accepted{ background:var(--success-subtle); color:var(--success); }
+  .history-tag.modified{ background:var(--info-subtle); color:var(--info); }
+  .history-tag.rejected{ background:var(--error-subtle); color:var(--error); }
+  .history-feedback{ font-size:13px; color:var(--text-secondary); margin-top:8px; line-height:1.5; }
+  .history-reason{ font-size:12.5px; color:#7c5b06; background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:6px; padding:8px 10px; margin-top:8px; }
+
+  /* ---- Revise Grade modal ---- */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:70; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:440px; max-width:100%; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal h3{ margin:0 0 6px; font-size:16px; font-weight:700; }
+  .modal p{ margin:0 0 16px; font-size:13px; color:var(--text-secondary); line-height:1.5; }
+  .modal .field{ margin-bottom:14px; }
+  .modal label{ display:block; font-size:12.5px; font-weight:600; color:var(--text-secondary); margin-bottom:6px; }
+  .modal input, .modal textarea{ width:100%; border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:9px 12px; font-size:13.5px; color:var(--text-primary); resize:vertical; }
+  .modal textarea{ min-height:64px; }
+  .modal .required{ color:var(--error); }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:8px; }
+
+  /* ---- All submissions graded (terminal state) ---- */
+  .all-done{ display:none; text-align:center; padding:100px 20px; }
+  .all-done.show{ display:block; }
+  .all-done svg{ width:44px; height:44px; color:var(--success); margin-bottom:16px; }
+  .all-done h2{ margin:0 0 8px; font-size:20px; font-weight:700; }
+  .all-done p{ margin:0 0 20px; font-size:14px; color:var(--text-tertiary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=grading&amp;pending=33" title="Instructor navigation" id="sidebarFrame"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Grade+Submission" title="Top bar"></iframe>
+
+  <main class="main">
+    <a class="back-link" id="backLink" href="submission-list.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to submissions
+    </a>
+
+    <div id="workspace">
+      <div class="ws-header">
+        <div class="ws-learner">
+          <div class="learner-avatar-lg" id="wsAvatar">PN</div>
+          <div>
+            <h1 id="wsLearnerName">Priya Nair</h1>
+            <div class="sub" id="wsAssessmentLine">Essay: Cloud Security Tradeoffs · Cloud Fundamentals</div>
+          </div>
+        </div>
+        <div class="ws-actions">
+          <button class="icon-btn-square" id="prevBtn" title="Previous submission" onclick="goRelative(-1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+          </button>
+          <button class="icon-btn-square" id="nextBtn" title="Next submission" onclick="goRelative(1)">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+          </button>
+          <button class="btn btn-secondary" onclick="openDrawer()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 8v4l3 3"/><circle cx="12" cy="12" r="10"/></svg>
+            View grade history
+          </button>
+        </div>
+      </div>
+
+      <div class="ws-grid">
+        <div>
+          <!-- Q1 — Objective (auto-graded, overridable) -->
+          <div class="card q-card">
+            <div class="q-head">
+              <div><div class="q-type">Part A · Multiple choice · Objective</div><div class="q-title">Which control best mitigates data exfiltration via misconfigured storage buckets?</div></div>
+              <div class="q-points">10 pts</div>
+            </div>
+            <div class="q-block-label">Learner's answer</div>
+            <div class="mcq-option selected-correct">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+              Default-deny bucket policies with periodic access audits
+            </div>
+            <div style="margin-top:10px;"><span class="auto-score-badge"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>10/10 — Correct, auto-graded</span></div>
+            <div class="score-row">
+              <label for="q1score">Override score</label>
+              <div class="score-input-wrap"><input type="number" min="0" max="10" value="10" id="q1score" name="q1score" onchange="recalcOverall()"><span class="of">/ 10</span></div>
+            </div>
+          </div>
+
+          <!-- Q2 — Subjective (AI-assisted, rubric) -->
+          <div class="card q-card" id="q2card">
+            <div class="q-head">
+              <div><div class="q-type">Part B · Short essay · Subjective</div><div class="q-title">Explain the tradeoffs between encryption-at-rest and tokenization for protecting sensitive cloud data.</div></div>
+              <div class="q-points">20 pts</div>
+            </div>
+            <div class="q-block-label">Learner's answer</div>
+            <div class="q-answer" id="wsEssayAnswer">Encryption-at-rest protects data using keys managed by the cloud provider or customer, but the data is still fully reversible if the key is compromised. Tokenization replaces sensitive values with non-sensitive tokens, so even if the token store is breached, the original data isn't directly exposed. Encryption is faster for bulk data and simpler to apply broadly, while tokenization is stronger for high-value fields like payment data but requires a separate token vault and adds latency to lookups.</div>
+
+            <div class="q-block-label">Rubric</div>
+            <ul class="rubric-list">
+              <li><span>Correctly defines both encryption-at-rest and tokenization</span><b>6 pts</b></li>
+              <li><span>Identifies at least two concrete tradeoffs (performance, exposure risk, complexity)</span><b>9 pts</b></li>
+              <li><span>Gives a defensible recommendation or use-case distinction</span><b>5 pts</b></li>
+            </ul>
+
+            <div class="ai-panel low-conf" id="aiPanel">
+              <div class="ai-panel-head">
+                <span class="ai-label">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>
+                  AI suggestion
+                </span>
+                <span class="conf-pill low" id="confPill">Low confidence — 78%</span>
+              </div>
+              <div class="ai-suggested-score" id="aiSuggestedScore">Suggested score: 14 / 20</div>
+              <div class="ai-draft-feedback" id="aiDraftFeedback">Good coverage of both mechanisms and a reasonable tradeoff on latency. The answer doesn't clearly justify *when* to prefer tokenization over encryption beyond "high-value fields" — a concrete example (e.g. card PANs) would strengthen the recommendation.</div>
+              <div class="ai-response-actions" id="aiResponseActions">
+                <button class="ai-response-btn accept" onclick="respondToAI('accept')">Accept</button>
+                <button class="ai-response-btn modify" onclick="respondToAI('modify')">Modify</button>
+                <button class="ai-response-btn reject" onclick="respondToAI('reject')">Reject</button>
+                <span class="ai-response-tag" id="aiResponseTag"></span>
+              </div>
+            </div>
+
+            <div class="score-row">
+              <label for="q2score">Score</label>
+              <div class="score-input-wrap"><input type="number" min="0" max="20" id="q2score" name="q2score" onchange="recalcOverall()"><span class="of">/ 20</span></div>
+            </div>
+            <textarea class="feedback-textarea" id="q2feedback" name="q2feedback" aria-label="Feedback for Part B" placeholder="Feedback for this question (optional — AI draft above can be edited or replaced)"></textarea>
+          </div>
+
+          <!-- Q3 — File/image submission (needs attention) -->
+          <div class="card q-card">
+            <div class="q-head">
+              <div><div class="q-type">Part C · Diagram upload · File submission</div><div class="q-title">Attach a network diagram showing your proposed data-flow boundary.</div></div>
+              <div class="q-points">10 pts</div>
+            </div>
+            <div class="needs-attn-banner">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
+              <div>Needs attention — AI can't confidently evaluate image/diagram submissions. Score this manually.</div>
+            </div>
+            <div class="file-preview">
+              <div class="file-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg></div>
+              <div><div class="name">data-flow-diagram.png</div><div class="meta">2.1 MB · uploaded with submission</div></div>
+              <a href="#">View file</a>
+            </div>
+            <div class="score-row">
+              <label for="q3score">Score</label>
+              <div class="score-input-wrap"><input type="number" min="0" max="10" id="q3score" name="q3score" onchange="recalcOverall()"><span class="of">/ 10</span></div>
+            </div>
+            <textarea class="feedback-textarea" id="q3feedback" name="q3feedback" aria-label="Feedback for Part C" placeholder="Feedback for this question"></textarea>
+          </div>
+        </div>
+
+        <div class="rail-sticky">
+          <div class="card rail-card">
+            <h3>Assessment</h3>
+            <div class="rail-row"><span class="k">Course</span><span class="v">Cloud Fundamentals</span></div>
+            <div class="rail-row"><span class="k">Due date</span><span class="v">Sep 18, 2026</span></div>
+            <div class="rail-row"><span class="k">Total points</span><span class="v">40</span></div>
+            <div class="rail-row"><span class="k">Submitted</span><span class="v" id="railSubmitted">20 min ago</span></div>
+          </div>
+
+          <div class="card rail-card">
+            <h3>Overall score</h3>
+            <div class="overall-score"><span class="n" id="overallScore">10</span><span class="of">/ 40</span></div>
+            <div class="rail-row"><span class="k">Grading status</span><span class="v" id="railStatus">Pending</span></div>
+            <textarea class="feedback-textarea" id="overallFeedback" name="overallFeedback" aria-label="Overall feedback for the learner" placeholder="Overall feedback for the learner"></textarea>
+            <div class="rail-actions">
+              <button class="btn btn-secondary" onclick="saveDraft()">Save draft</button>
+              <button class="btn btn-primary" id="submitBtn" onclick="submitGrade()">Submit grade</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="all-done" id="allDoneState">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+      <h2>All submissions graded</h2>
+      <p>Nice work — you're fully caught up on this assessment's grading queue.</p>
+      <a class="btn btn-primary" href="grading-overview.html">Back to grading queue</a>
+    </div>
+  </main>
+</div>
+
+<!-- Grade history drawer -->
+<div class="drawer-backdrop" id="drawerBackdrop" onclick="closeDrawer()"></div>
+<aside class="drawer" id="historyDrawer">
+  <div class="drawer-head">
+    <h3>Grade history</h3>
+    <button class="drawer-close" onclick="closeDrawer()">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div class="drawer-body" id="historyBody"></div>
+  <div class="drawer-foot" id="drawerFoot" style="display:none;">
+    <button class="btn btn-secondary" onclick="openReviseModal()">Revise grade</button>
+  </div>
+</aside>
+
+<!-- Revise grade modal -->
+<div class="modal-overlay" id="reviseModal">
+  <div class="modal">
+    <h3>Revise grade</h3>
+    <p>This creates a new history entry — the previous grade and feedback stay visible above it.</p>
+    <div class="field">
+      <label for="reviseScore">New score</label>
+      <input type="number" id="reviseScore" name="reviseScore" min="0" max="40">
+    </div>
+    <div class="field">
+      <label for="reviseFeedback">Updated feedback</label>
+      <textarea id="reviseFeedback" name="reviseFeedback" placeholder="Updated feedback for the learner"></textarea>
+    </div>
+    <div class="field">
+      <label for="reviseReason">Reason for revision <span class="required">*</span></label>
+      <textarea id="reviseReason" name="reviseReason" placeholder="Required — e.g. re-read after a regrade request" oninput="document.getElementById('reviseConfirmBtn').disabled = !this.value.trim()"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeReviseModal()">Cancel</button>
+      <button class="btn btn-primary" id="reviseConfirmBtn" disabled onclick="confirmRevision()">Confirm revision</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21.801 10A10 10 0 1 1 17 3.335"/><path d="m9 11 3 3L22 4"/></svg>
+  <span id="toastMsg">Grade submitted</span>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var QUEUE_IDS =["s1","s4","s8","s2","s3","s5","s7","s6"]; // needs-review first, then rest — order the instructor works through
+  var SUBMISSIONS = {
+    s1:{ learner:"Priya Nair", initials:"PN", submittedMinutes:20, status:"needs-review", essay:"Encryption-at-rest protects data using keys managed by the cloud provider or customer, but the data is still fully reversible if the key is compromised. Tokenization replaces sensitive values with non-sensitive tokens, so even if the token store is breached, the original data isn't directly exposed. Encryption is faster for bulk data and simpler to apply broadly, while tokenization is stronger for high-value fields like payment data but requires a separate token vault and adds latency to lookups.", aiScore:14, aiConf:78, aiFeedback:"Good coverage of both mechanisms and a reasonable tradeoff on latency. The answer doesn't clearly justify *when* to prefer tokenization over encryption beyond \"high-value fields\" — a concrete example (e.g. card PANs) would strengthen the recommendation.", history:[ {type:"ai", score:null, who:"AI grading", time:"20 min ago", feedback:"AI-assisted grade generated — awaiting instructor review."} ] },
+    s4:{ learner:"David Okafor", initials:"DO", submittedMinutes:180, status:"needs-review", essay:"Encryption at rest keeps data encrypted using a key. Tokenization swaps the value for a token. Encryption is used more often because it's simpler.", aiScore:11, aiConf:65, aiFeedback:"Correctly defines encryption but tokenization's explanation is thin — no mention of the token vault or why it reduces breach exposure. No explicit recommendation given.", history:[ {type:"ai", score:null, who:"AI grading", time:"3 hours ago", feedback:"AI-assisted grade generated — awaiting instructor review."} ] },
+    s8:{ learner:"Tamsin Reid", initials:"TR", submittedMinutes:240, status:"needs-review", essay:"See attached — answered by hand and photographed, essay portion is in the image.", aiScore:null, aiConf:null, aiFeedback:null, history:[ {type:"ai", score:null, who:"AI grading", time:"4 hours ago", feedback:"Submission includes a handwritten photo — AI couldn't confidently transcribe or score it."} ] },
+    s2:{ learner:"Marcus Webb", initials:"MW", submittedMinutes:300, status:"graded", essay:"Encryption-at-rest is transparent to applications and protects against physical media theft, but a compromised key exposes everything. Tokenization limits blast radius since tokens are useless outside the vault, at the cost of an extra lookup on every read. I'd tokenize PANs and encrypt everything else at rest.", aiScore:17, aiConf:85, aiFeedback:"Strong answer — clear tradeoff framing and a concrete recommendation (PAN tokenization).", history:[ {type:"ai", score:17, who:"AI grading", time:"5 hours ago", feedback:"Strong answer — clear tradeoff framing and a concrete recommendation (PAN tokenization)."}, {type:"grade", score:35, who:"You", time:"5 hours ago", tag:"accepted", feedback:"Agreed with AI's read — accepted as final grade."} ] },
+    s3:{ learner:"Elena Ruiz", initials:"ER", submittedMinutes:1440, status:"manually-graded", essay:"Both protect sensitive data differently — encryption is reversible with a key, tokenization isn't reversible without the vault. I'd say tokenization is basically always better.", aiScore:12, aiConf:72, aiFeedback:"Oversimplifies — \"basically always better\" isn't a defensible recommendation without weighing the performance cost.", history:[ {type:"ai", score:12, who:"AI grading", time:"1 day ago", feedback:"Oversimplifies — \"basically always better\" isn't a defensible recommendation without weighing the performance cost."}, {type:"grade", score:31, who:"You", time:"1 day ago", tag:"rejected", feedback:"AI score was too harsh — the tradeoff reasoning is present even if the recommendation is oversimplified. Regraded manually."} ] },
+    s5:{ learner:"Sofia Almeida", initials:"SA", submittedMinutes:360, status:"revised", essay:"Encryption-at-rest is fast and broad but an all-or-nothing key compromise. Tokenization is narrower in scope and limits exposure per-field, ideal for PCI-scoped data, at the cost of vault latency and added infra. I'd encrypt the database at rest by default and additionally tokenize card and SSN fields.", aiScore:18, aiConf:88, aiFeedback:"Excellent — precise tradeoff, concrete recommendation, references PCI scope correctly.", history:[ {type:"ai", score:18, who:"AI grading", time:"8 hours ago", feedback:"Excellent — precise tradeoff, concrete recommendation, references PCI scope correctly."}, {type:"grade", score:38, who:"You", time:"7 hours ago", tag:"accepted", feedback:"Accepted AI's read — excellent answer."}, {type:"revision", score:40, who:"You", time:"2 hours ago", feedback:"Bumped to full marks — re-read after Sofia flagged the PCI reference was missed in scoring the MCQ too.", reason:"Regrade request from learner — MCQ was marked correct on manual re-check, revising overall total."} ] },
+    s7:{ learner:"Wei Chen", initials:"WC", submittedMinutes:2880, status:"graded", essay:"Encryption keeps data readable with the right key; tokenization removes the sensitive value entirely from most systems. Tokenization costs more to build out. I'd use it for payment data only.", aiScore:16, aiConf:82, aiFeedback:"Solid, concise answer with a clear scoped recommendation.", history:[ {type:"ai", score:16, who:"AI grading", time:"2 days ago", feedback:"Solid, concise answer with a clear scoped recommendation."}, {type:"grade", score:36, who:"You", time:"2 days ago", tag:"accepted", feedback:"Accepted."} ] },
+    s6:{ learner:"James Whitfield", initials:"JW", submittedMinutes:5, status:"processing", essay:null, aiScore:null, aiConf:null, aiFeedback:null, history:[] }
+  };
+
+  var current = null;
+  var aiResponse = null;
+
+  function relTime(mins){
+    if (mins < 60) return mins + " min ago";
+    if (mins < 1440) return Math.round(mins/60) + " hours ago";
+    return Math.round(mins/1440) + (Math.round(mins/1440) === 1 ? " day ago" : " days ago");
+  }
+
+  function idx(id){ return QUEUE_IDS.indexOf(id); }
+
+  function load(id){
+    var s = SUBMISSIONS[id];
+    if (!s) { id = QUEUE_IDS[0]; s = SUBMISSIONS[id]; }
+    current = id;
+    aiResponse = null;
+
+    document.getElementById('wsAvatar').textContent = s.initials;
+    document.getElementById('wsLearnerName').textContent = s.learner;
+    document.getElementById('railSubmitted').textContent = relTime(s.submittedMinutes);
+    document.getElementById('backLink').href = 'submission-list.html?assessment=' + (new URLSearchParams(location.search).get('assessment') || 'essay-cloud-security');
+
+    var url = new URL(location.href);
+    url.searchParams.set('submission', id);
+    history.replaceState(null, '', url);
+
+    var processing = s.status === 'processing';
+    document.getElementById('q2card').style.opacity = processing ? .5 : 1;
+
+    if (s.essay) document.getElementById('wsEssayAnswer').textContent = s.essay;
+    document.getElementById('wsEssayAnswer').style.display = s.essay ? '' : 'none';
+
+    var aiPanel = document.getElementById('aiPanel');
+    if (s.aiScore !== null) {
+      aiPanel.style.display = '';
+      aiPanel.classList.toggle('low-conf', s.aiConf < 80);
+      document.getElementById('confPill').textContent = (s.aiConf < 80 ? 'Low confidence — ' : 'High confidence — ') + s.aiConf + '%';
+      document.getElementById('confPill').className = 'conf-pill ' + (s.aiConf < 80 ? 'low' : 'high');
+      document.getElementById('aiSuggestedScore').textContent = 'Suggested score: ' + s.aiScore + ' / 20';
+      document.getElementById('aiDraftFeedback').textContent = s.aiFeedback;
+      document.getElementById('q2score').value = '';
+      document.getElementById('aiResponseTag').textContent = '';
+    } else {
+      aiPanel.style.display = 'none';
+    }
+
+    document.getElementById('q2feedback').value = '';
+    document.getElementById('q3score').value = '';
+    document.getElementById('q3feedback').value = '';
+    document.getElementById('overallFeedback').value = '';
+    document.getElementById('q1score').value = 10;
+
+    document.getElementById('railStatus').textContent = s.status === 'processing' ? 'AI processing' : (s.status === 'needs-review' ? 'Pending' : 'Graded');
+    document.getElementById('prevBtn').disabled = idx(id) <= 0;
+    document.getElementById('nextBtn').disabled = idx(id) >= QUEUE_IDS.length - 1;
+
+    renderHistory(s);
+    recalcOverall();
+  }
+
+  function respondToAI(action){
+    aiResponse = action;
+    document.querySelectorAll('.ai-response-btn').forEach(function(b){ b.classList.remove('chosen'); });
+    document.querySelector('.ai-response-btn.' + action).classList.add('chosen');
+    var s = SUBMISSIONS[current];
+    var tag = document.getElementById('aiResponseTag');
+    if (action === 'accept') { document.getElementById('q2score').value = s.aiScore; tag.textContent = 'AI suggestion accepted'; }
+    else if (action === 'reject') { document.getElementById('q2score').value = ''; tag.textContent = 'AI suggestion rejected — enter your own score'; document.getElementById('q2score').focus(); }
+    else { document.getElementById('q2score').value = s.aiScore; tag.textContent = 'Modifying AI suggestion'; document.getElementById('q2score').focus(); }
+    recalcOverall();
+  }
+
+  function recalcOverall(){
+    var q1 = parseFloat(document.getElementById('q1score').value) || 0;
+    var q2 = parseFloat(document.getElementById('q2score').value) || 0;
+    var q3 = parseFloat(document.getElementById('q3score').value) || 0;
+    document.getElementById('overallScore').textContent = q1 + q2 + q3;
+    var ready = document.getElementById('q2score').value !== '' && document.getElementById('q3score').value !== '';
+    document.getElementById('submitBtn').disabled = !ready;
+  }
+
+  function renderHistory(s){
+    var body = document.getElementById('historyBody');
+    if (!s.history.length) {
+      body.innerHTML = '<p style="font-size:13px;color:var(--text-tertiary);">No history yet — this submission is still being processed.</p>';
+      document.getElementById('drawerFoot').style.display = 'none';
+      return;
+    }
+    body.innerHTML = s.history.map(function(h){
+      var dotClass = h.type === 'ai' ? 'ai' : (h.type === 'revision' ? 'revision' : '');
+      var scoreLine = h.type === 'ai'
+        ? 'AI suggested ' + (s.aiScore !== null ? s.aiScore + '/20' : '—')
+        : h.score + ' / 40';
+      var tag = h.tag ? '<span class="history-tag ' + h.tag + '">' + h.tag.charAt(0).toUpperCase() + h.tag.slice(1) + '</span>' : '';
+      var reason = h.reason ? '<div class="history-reason"><b>Reason:</b> ' + h.reason + '</div>' : '';
+      return '<div class="history-entry"><div class="history-dot ' + dotClass + '"></div>' +
+        '<div class="history-main">' +
+          '<div class="history-top"><span class="history-score">' + scoreLine + '</span><span class="history-time">' + h.time + '</span></div>' +
+          '<div class="history-who">' + h.who + (h.type === 'ai' ? ' (AI)' : '') + '</div>' +
+          tag +
+          '<div class="history-feedback">' + h.feedback + '</div>' +
+          reason +
+        '</div></div>';
+    }).reverse().join('');
+    var hasGrade = s.history.some(function(h){ return h.type === 'grade' || h.type === 'revision'; });
+    document.getElementById('drawerFoot').style.display = hasGrade ? '' : 'none';
+  }
+
+  function openDrawer(){ document.getElementById('historyDrawer').classList.add('open'); document.getElementById('drawerBackdrop').classList.add('open'); }
+  function closeDrawer(){ document.getElementById('historyDrawer').classList.remove('open'); document.getElementById('drawerBackdrop').classList.remove('open'); }
+
+  function openReviseModal(){
+    var s = SUBMISSIONS[current];
+    var last = s.history[s.history.length - 1];
+    document.getElementById('reviseScore').value = last.score;
+    document.getElementById('reviseFeedback').value = last.feedback;
+    document.getElementById('reviseReason').value = '';
+    document.getElementById('reviseConfirmBtn').disabled = true;
+    document.getElementById('reviseModal').classList.add('open');
+  }
+  function closeReviseModal(){ document.getElementById('reviseModal').classList.remove('open'); }
+  function confirmRevision(){
+    var s = SUBMISSIONS[current];
+    s.history.push({ type:'revision', score: parseFloat(document.getElementById('reviseScore').value) || 0, who:'You', time:'just now', feedback: document.getElementById('reviseFeedback').value, reason: document.getElementById('reviseReason').value });
+    s.status = 'revised';
+    renderHistory(s);
+    closeReviseModal();
+    showToast('Grade revised');
+  }
+
+  function showToast(msg){
+    document.getElementById('toastMsg').textContent = msg;
+    var t = document.getElementById('toast');
+    t.classList.add('show');
+    setTimeout(function(){ t.classList.remove('show'); }, 3000);
+  }
+
+  function goRelative(delta){
+    var i = idx(current) + delta;
+    if (i < 0 || i >= QUEUE_IDS.length) return;
+    load(QUEUE_IDS[i]);
+  }
+
+  function saveDraft(){ showToast('Draft saved'); }
+
+  function submitGrade(){
+    var s = SUBMISSIONS[current];
+    var overall = parseFloat(document.getElementById('overallScore').textContent);
+    s.history.push({ type:'grade', score: overall, who:'You', time:'just now', tag: aiResponse || 'modified', feedback: document.getElementById('overallFeedback').value || 'Grade submitted.' });
+    s.status = 'graded';
+    showToast('Grade submitted for ' + s.learner);
+
+    var nextUngraded = QUEUE_IDS.slice(idx(current) + 1).find(function(id){ return SUBMISSIONS[id].status === 'needs-review'; })
+      || QUEUE_IDS.find(function(id){ return SUBMISSIONS[id].status === 'needs-review'; });
+
+    setTimeout(function(){
+      if (nextUngraded) { load(nextUngraded); }
+      else { document.getElementById('workspace').style.display = 'none'; document.getElementById('allDoneState').classList.add('show'); }
+    }, 900);
+  }
+
+  (function(){
+    var params = new URLSearchParams(location.search);
+    load(params.get('submission') || 's1');
+  })();
+</script>
+</body>
+</html>

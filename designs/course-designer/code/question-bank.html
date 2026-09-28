@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Question Bank</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Question Bank (ASM-003). Shared by Creator and
+     Instructor (?as=instructor swaps in the instructor shell; one bank,
+     not one per persona).
+     CREATE ONCE → STORE IN BANK → REUSE. Bank questions are templates:
+     course-builder.html inserts independent deep copies (new ids,
+     `bankId` kept only as history). Editing / deleting here never
+     touches assessment copies and vice versa (ASM-003-FR-05/06).
+     Store: localStorage `upspace.cd.qbank.v1` (array of questions),
+     shared with question-bank-ai.html, question-bank-import.html and
+     course-builder.html. Images: Content Library `upspace.cd.library.v1`
+     + IndexedDB `upspace-cd`/`blobs` (same as the builder).
+     Org scoping (NFR-01): every question carries orgId; all reads and
+     writes go through `api`, which only returns the session org's rows.
+     No backend exists in this repo — `api` is the server stand-in and
+     must be replaced by the real API, which derives orgId server-side.
+     Flows: + Add Question → editor drawer (type picker first) ·
+     Generate with AI → question-bank-ai.html · Import → question-bank-import.html.
+     Library reused: Table, Pagination, Input field, Textarea, Select,
+     Dropdown menu, Modal, Aside, Buttons, Badge, File Dropper, Radio
+     group (Icon card), Popover, Alerts, Toast. Approved hand-built:
+     Empty state, Skeleton, Content Library browser, question editor
+     pattern, learner question render (course-preview.html), + Tag input,
+     Checkbox, Answer-key view, Fill-blank marker (logged 2026-09-24).
+     Demo states: ?state=loading | error | empty | large | save-fail |
+     delete-fail | upload-fail, or the dashed Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:28px clamp(20px, 2.6vw, 48px) 56px; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-xs{ height:28px; padding:0 10px; font-size:12.5px; gap:6px; }
+  .btn-xs svg{ width:14px; height:14px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary[disabled]{ background:#a5b4fc; cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:#fff; }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .btn-ghost[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:none; }
+  .btn-ghost.danger{ color:var(--error); }
+  .btn-ghost.danger:hover{ background:var(--error-subtle); }
+  .btn-danger{ background:var(--error); color:#fff; }
+  .btn-danger:hover{ background:#b91c1c; }
+  .ib{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; border-radius:var(--radius-lg); background:transparent; color:var(--text-secondary); flex-shrink:0; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:18px; height:18px; }
+  .ib.sm{ width:28px; height:28px; }
+  .ib.sm svg{ width:15px; height:15px; }
+  .ib[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:none; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; flex-shrink:0; }
+  .spin.dark{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Badge (library) */
+  .badge{ display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .badge svg{ width:12px; height:12px; }
+  .badge.sm{ height:20px; padding:0 7px; font-size:11.5px; }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.warning{ background:var(--warning-subtle); color:#a16207; }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+  .badge.error{ background:var(--error-subtle); color:var(--error); }
+  .badge.outline{ background:#fff; color:var(--text-secondary); box-shadow:inset 0 0 0 1px var(--border-default); }
+
+  /* Header */
+  .page-h{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .page-h h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .page-h p{ margin:0; font-size:15px; color:var(--text-secondary); }
+  .head-acts{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Filter bar — lightweight: search + library Selects, wraps when tight */
+  .fbar{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+  .search{ position:relative; flex:1 1 200px; min-width:200px; }
+  .search svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
+  .search input{ width:100%; height:40px; padding:0 12px 0 36px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .select{ height:40px; padding:0 34px 0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/16px; font-size:14px; color:var(--text-primary); outline:none; appearance:none; max-width:100%; }
+  .select.on{ border-color:var(--action-primary-soft); background-color:var(--action-primary-subtle); color:var(--action-primary); font-weight:600; }
+  .fbar .select{ flex:0 1 140px; width:140px; min-width:0; text-overflow:ellipsis; }
+  .fbar #fSort{ flex-basis:158px; width:158px; }
+  .range{ display:flex; align-items:center; gap:6px; font-size:13px; color:var(--text-secondary); }
+  .range .input{ width:150px; height:40px; }
+  .search input:focus, .select:focus, .input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .count-line{ display:flex; align-items:center; gap:10px; min-height:22px; margin-bottom:10px; font-size:13.5px; color:var(--text-secondary); }
+  .count-line b{ color:var(--text-primary); font-weight:600; }
+
+  /* Table (library) */
+  .panel{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); position:relative; overflow:hidden; }
+  .panel.busy tbody{ opacity:.5; transition:opacity .15s ease; }
+  .busy-bar{ position:absolute; left:0; right:0; top:0; height:2px; overflow:hidden; z-index:2; }
+  .busy-bar::after{ content:""; position:absolute; top:0; bottom:0; width:30%; background:var(--action-primary); animation:slide 1s ease-in-out infinite; }
+  @keyframes slide{ from{ left:-30%; } to{ left:100%; } }
+  table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  thead th{ text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); background:var(--surface-canvas); padding:11px 14px; border-bottom:1px solid var(--border-default); white-space:nowrap; }
+  thead th:first-child, td:first-child{ padding-left:20px; }
+  th.c-type{ width:140px; } th.c-tags{ width:210px; } th.c-pts{ width:68px; } th.c-by{ width:140px; } th.c-added{ width:116px; } th.c-used{ width:130px; } th.c-act{ width:118px; }
+  tbody tr{ border-bottom:1px solid #f5f5f5; transition:background-color .12s ease; cursor:pointer; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+  td{ padding:12px 14px; font-size:14px; vertical-align:middle; min-width:0; }
+  .qt{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; font-size:14.5px; font-weight:600; line-height:1.4; }
+  tr:hover .qt{ color:var(--action-primary); }
+  .meta{ display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; margin-top:4px; font-size:12.5px; color:var(--text-tertiary); }
+  .meta .m{ display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+  .meta svg{ width:13px; height:13px; }
+  .meta .ai{ color:var(--action-primary); font-weight:600; }
+  .fold{ display:none !important; }
+  .tags{ display:flex; flex-wrap:wrap; gap:4px; }
+  td.c-tags .tags{ flex-wrap:nowrap; overflow:hidden; }
+  .tag{ display:inline-block; line-height:22px; height:22px; padding:0 8px; border-radius:var(--radius-full); background:var(--surface-raised); color:var(--text-secondary); font-size:12px; font-weight:500; white-space:nowrap; max-width:150px; overflow:hidden; text-overflow:ellipsis; flex-shrink:1; min-width:0; }
+  .tag.more{ flex-shrink:0; }
+  .tag.more{ background:#fff; box-shadow:inset 0 0 0 1px var(--border-default); }
+  .c-pts{ font-variant-numeric:tabular-nums; font-weight:600; }
+  .c-by, .c-added{ font-size:13.5px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .usage-btn{ border:0; background:none; padding:4px 0; font-size:13.5px; font-weight:600; color:var(--action-primary); white-space:nowrap; }
+  .usage-btn:hover{ text-decoration:underline; }
+  .muted{ color:var(--text-tertiary); }
+  .acts{ display:flex; align-items:center; justify-content:flex-end; gap:2px; }
+
+  /* Pagination (library) */
+  .pager{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; padding:12px 20px; border-top:1px solid var(--border-subtle); font-size:13px; color:var(--text-secondary); }
+  .pager .ps{ display:flex; align-items:center; gap:8px; }
+  .pager .ps select{ height:32px; padding:0 28px 0 10px; font-size:13px; background-position:right 6px center; }
+  .pages{ display:flex; align-items:center; gap:4px; }
+  .page-tab{ min-width:32px; height:32px; padding:0 8px; border-radius:var(--radius-lg); border:1px solid transparent; background:transparent; font-size:13px; font-weight:600; color:var(--text-secondary); display:inline-flex; align-items:center; justify-content:center; }
+  .page-tab svg{ width:16px; height:16px; }
+  .page-tab:hover:not(:disabled){ background:var(--surface-raised); color:var(--text-primary); }
+  .page-tab.active{ background:var(--action-primary-subtle); color:var(--action-primary); border-color:var(--action-primary-soft); }
+  .page-tab:disabled{ color:var(--text-disabled); cursor:default; }
+
+  /* Dropdown menu + Popover (library) */
+  .menu{ position:fixed; z-index:70; min-width:200px; padding:4px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .menu button{ width:100%; display:flex; align-items:center; gap:10px; height:38px; padding:0 10px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:500; color:var(--text-strong); text-align:left; }
+  .menu button:hover, .menu button:focus-visible{ background:var(--surface-raised); outline:none; }
+  .menu button svg{ width:16px; height:16px; color:var(--text-secondary); }
+  .menu button.danger, .menu button.danger svg{ color:var(--error); }
+  .menu hr{ border:0; border-top:1px solid var(--border-subtle); margin:4px 0; }
+  .pop{ width:320px; padding:14px 16px; }
+  .pop h4{ margin:0 0 2px; font-size:14px; }
+  .pop > p{ margin:0 0 10px; font-size:12.5px; color:var(--text-tertiary); line-height:1.45; }
+  .pop ul{ list-style:none; margin:0; padding:0; display:grid; gap:2px; max-height:240px; overflow-y:auto; }
+  .pop li a{ display:block; padding:8px; margin:0 -8px; border-radius:var(--radius-md); }
+  .pop li a:hover{ background:var(--surface-raised); }
+  .pop li b{ display:block; font-size:13.5px; font-weight:600; }
+  .pop li span{ font-size:12.5px; color:var(--text-tertiary); }
+
+  /* Empty / error / skeleton (approved) */
+  .empty{ padding:56px 24px; text-align:center; }
+  .empty b{ display:block; font-size:16px; margin-bottom:6px; }
+  .empty span{ display:block; font-size:14px; color:var(--text-secondary); line-height:1.5; max-width:440px; margin:0 auto; }
+  .empty .acts{ justify-content:center; gap:8px; margin-top:18px; flex-wrap:wrap; }
+  .err{ padding:18px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .err > svg{ width:20px; height:20px; color:var(--error); flex-shrink:0; }
+  .err div{ flex:1; min-width:200px; font-size:14px; color:var(--text-secondary); }
+  .err b{ display:block; color:var(--text-primary); font-size:15px; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f3f3f3 25%, #e9e9e9 50%, #f3f3f3 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:8px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  tr.sk-row{ cursor:default; } tr.sk-row:hover{ background:none; }
+
+  /* Input field / Textarea (library) */
+  .field{ margin-bottom:14px; min-width:0; }
+  .field > label, .sec-h label{ display:block; font-size:13px; font-weight:600; color:var(--text-strong); margin-bottom:6px; }
+  .req{ color:var(--error); }
+  .input{ width:100%; height:40px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  textarea.input{ height:auto; min-height:64px; padding:10px 12px; line-height:1.5; resize:vertical; }
+  .hint{ font-size:12.5px; color:var(--text-tertiary); margin:6px 0 0; line-height:1.45; }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); margin-bottom:14px; }
+  .alert > svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); } .alert.error > svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning > svg{ color:var(--warning); }
+  .alert.info{ background:var(--info-subtle); border-color:var(--info-border); } .alert.info > svg{ color:var(--info); }
+  .alert ul{ margin:2px 0 0; padding-left:18px; }
+  .alert .btn{ margin-top:8px; }
+
+  /* Modal (library) */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:60; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:560px; max-width:100%; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal.sm{ width:440px; }
+  .modal.lg{ width:720px; }
+  .modal-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; letter-spacing:-.2px; }
+  .modal-h p, .modal > p{ margin:4px 0 0; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; flex-wrap:wrap; }
+
+  /* Aside drawers (library) */
+  .drawer-back{ position:fixed; inset:0; background:rgba(23,23,23,.24); z-index:46; }
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:min(760px, 100vw); background:var(--surface-canvas); border-left:1px solid var(--border-default); box-shadow:-12px 0 32px rgba(23,23,23,.12); z-index:47; display:flex; flex-direction:column; transform:translateX(100%); visibility:hidden; transition:transform .22s ease, visibility 0s linear .22s; }
+  .drawer.open{ transform:none; visibility:visible; transition:transform .22s ease; }
+  .drawer.narrow{ width:min(540px, 100vw); background:#fff; }
+  .drawer-h{ display:flex; align-items:center; gap:10px; padding:14px 16px 14px 20px; background:#fff; border-bottom:1px solid var(--border-default); min-height:62px; }
+  .drawer-h h2{ flex:1; margin:0; font-size:16px; font-weight:700; }
+  .drawer-b{ flex:1; overflow-y:auto; padding:20px; }
+  .drawer-f{ display:flex; align-items:center; gap:8px; padding:12px 20px; background:#fff; border-top:1px solid var(--border-default); flex-wrap:wrap; }
+  .drawer-f .grow{ flex:1; }
+
+  /* Question type picker — Radio group "Icon card" (library) */
+  .kinds{ display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:10px; }
+  .kind{ display:flex; gap:12px; align-items:flex-start; text-align:left; padding:14px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; transition:border-color .15s ease, box-shadow .15s ease; }
+  .kind:hover, .kind:focus-visible{ border-color:var(--action-primary-soft); box-shadow:0 0 0 3px var(--action-primary-subtle); outline:none; }
+  .kind .ico{ width:36px; height:36px; border-radius:var(--radius-lg); background:var(--action-primary-subtle); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .kind .ico svg{ width:18px; height:18px; }
+  .kind b{ display:block; font-size:14px; margin-bottom:2px; }
+  .kind span{ font-size:12.5px; color:var(--text-secondary); line-height:1.4; }
+
+  /* Question editor (pattern from instructor/assessment-editor.html) */
+  .ed{ display:grid; gap:14px; }
+  .ed-sec{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:16px; }
+  .ed-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 110px; gap:12px; }
+  .ed-top .field{ margin:0; }
+  .ed-top.two{ grid-template-columns:minmax(0,1fr) 110px; }
+  .sec-h{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .sec-h label{ margin:0; flex:1; }
+  .sec-h .hint{ margin:0; }
+  .q-prompt{ font-size:15px; font-weight:600; }
+  .option-stack{ display:flex; flex-direction:column; gap:6px; }
+  .option-item{ display:flex; align-items:center; gap:8px; padding:5px 5px 5px 6px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .option-item.correct{ border-color:var(--success-border); background:var(--success-subtle); }
+  .option-item.drag-over{ box-shadow:0 -2px 0 var(--action-primary); }
+  .option-item.dragging{ opacity:.45; }
+  .option-item input[type="radio"], .option-item input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--success); flex-shrink:0; margin:0 2px; }
+  .option-item input[type="text"]{ flex:1; min-width:0; border:0; background:transparent; font-size:14px; outline:none; height:30px; color:var(--text-primary); }
+  .option-item .grip{ width:18px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--text-tertiary); cursor:grab; flex-shrink:0; }
+  .option-item .grip svg{ width:14px; height:14px; }
+  .opt-l{ width:20px; font-size:12px; font-weight:700; color:var(--text-tertiary); text-align:center; flex-shrink:0; }
+  .option-item.correct .opt-l{ color:var(--success); }
+  .ok-tag{ font-size:11.5px; font-weight:700; color:var(--success); padding:0 6px; white-space:nowrap; }
+  .opts-foot{ display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .opts-foot .hint{ margin:0; }
+  .multi-note{ display:flex; gap:8px; align-items:flex-start; padding:9px 12px; margin-bottom:10px; border-radius:var(--radius-lg); background:var(--info-subtle); color:#1e40af; font-size:13px; line-height:1.45; }
+  .multi-note svg{ width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+  .alt-row{ display:flex; gap:6px; margin-top:6px; }
+
+  /* Fill-in-the-blank marker (hand-built, approved) */
+  .blank-prev{ margin-top:10px; padding:10px 12px; border-radius:var(--radius-lg); background:var(--surface-canvas); border:1px dashed var(--border-default); font-size:14px; line-height:1.9; color:var(--text-strong); }
+  .blank-prev small{ display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-tertiary); line-height:1.4; margin-bottom:2px; }
+  .blank{ display:inline-flex; align-items:center; min-width:72px; height:24px; padding:0 8px; margin:0 2px; border-radius:var(--radius-md); background:var(--action-primary-subtle); border-bottom:2px solid var(--action-primary); color:var(--action-primary); font-weight:600; font-size:13px; vertical-align:baseline; }
+  .blank.unset{ color:var(--text-tertiary); font-weight:500; }
+
+  /* Tag input (hand-built, approved) */
+  .tagin-wrap{ position:relative; }
+  .tagin{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:40px; padding:5px 8px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; cursor:text; }
+  .tagin:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .chip{ display:inline-flex; align-items:center; gap:2px; height:26px; padding:0 4px 0 10px; border-radius:var(--radius-full); background:var(--action-primary-subtle); color:var(--action-primary); font-size:13px; font-weight:600; max-width:220px; }
+  .chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip button{ width:20px; height:20px; border:0; border-radius:50%; background:transparent; color:inherit; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; }
+  .chip button:hover{ background:var(--action-primary-soft); }
+  .chip button svg{ width:12px; height:12px; }
+  .tagin input{ flex:1; min-width:120px; height:28px; border:0; outline:none; font-size:14px; background:transparent; }
+  .tag-sug{ position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:5; max-height:220px; overflow-y:auto; padding:4px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .tag-sug button{ width:100%; display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; border:0; border-radius:var(--radius-md); background:transparent; font-size:13.5px; color:var(--text-strong); text-align:left; }
+  .tag-sug button[aria-selected="true"], .tag-sug button:hover{ background:var(--surface-raised); }
+  .tag-sug button svg{ width:14px; height:14px; color:var(--text-tertiary); }
+  .tag-sug button small{ margin-left:auto; color:var(--text-tertiary); font-size:12px; }
+
+  /* Image question (File Dropper + Image figure) */
+  .dropzone{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; padding:22px 16px; border:1.5px dashed var(--border-default); border-radius:var(--radius-xl); background:var(--surface-canvas); transition:border-color .15s ease, background-color .15s ease; cursor:pointer; }
+  .dropzone:hover, .dropzone.over{ border-color:var(--action-primary); background:var(--action-primary-subtle); }
+  .dropzone svg{ width:26px; height:26px; color:var(--text-tertiary); margin-bottom:4px; }
+  .dropzone b{ font-size:14px; }
+  .dropzone b span{ color:var(--action-primary); }
+  .dropzone small{ font-size:12.5px; color:var(--text-tertiary); }
+  .img-or{ display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12.5px; color:var(--text-tertiary); }
+  .img-box{ display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr); gap:14px; align-items:start; }
+  .img-frame{ border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-raised); overflow:hidden; min-height:140px; display:flex; align-items:center; justify-content:center; }
+  .img-frame img{ display:block; width:100%; max-height:320px; object-fit:contain; background:#fff; }
+  .img-acts{ display:flex; gap:6px; flex-wrap:wrap; }
+  .uploading{ display:flex; align-items:center; gap:10px; padding:18px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; color:var(--text-secondary); }
+
+  /* Answer-key view (hand-built, approved) */
+  .d-prompt{ margin:0 0 14px; font-size:17px; font-weight:600; line-height:1.5; white-space:pre-wrap; }
+  .d-img{ margin:0 0 16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); overflow:hidden; background:var(--surface-raised); }
+  .d-img img{ display:block; width:100%; max-height:300px; object-fit:contain; background:#fff; }
+  .d-sec{ margin-bottom:18px; }
+  .d-sec h4{ margin:0 0 8px; font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-tertiary); }
+  .ak{ display:grid; gap:6px; }
+  .ak-opt{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; }
+  .ak-opt .l{ width:22px; height:22px; border-radius:50%; background:var(--surface-raised); color:var(--text-secondary); font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ak-opt.correct{ border-color:var(--success-border); background:var(--success-subtle); }
+  .ak-opt.correct .l{ background:var(--success); color:#fff; }
+  .ak-opt .l svg{ width:12px; height:12px; }
+  .ak-opt span.t{ flex:1; min-width:0; }
+  .ak-text{ padding:10px 12px; border-radius:var(--radius-lg); background:var(--surface-canvas); border:1px solid var(--border-subtle); font-size:14px; line-height:1.55; white-space:pre-wrap; color:var(--text-strong); }
+  .kv{ display:grid; grid-template-columns:120px minmax(0,1fr); gap:9px 12px; margin:0; font-size:14px; }
+  .kv dt{ color:var(--text-tertiary); }
+  .kv dd{ margin:0; min-width:0; }
+  .ai-src{ font-size:13px; color:var(--text-secondary); line-height:1.5; }
+  .ai-src q{ display:block; margin-top:4px; padding-left:10px; border-left:2px solid var(--action-primary-soft); color:var(--text-strong); font-style:normal; }
+
+  /* Learner question render (from course-preview.html) */
+  .lp{ border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; }
+  .lp-top{ display:flex; justify-content:space-between; gap:10px; font-size:12.5px; color:var(--text-tertiary); margin-bottom:8px; }
+  .lp-p{ margin:0 0 14px; font-size:16px; font-weight:600; line-height:1.6; white-space:pre-wrap; }
+  .lp-p .lp-blank{ display:inline-block; width:150px; height:32px; vertical-align:middle; margin:0 4px; }
+  .lp-img{ margin:0 0 14px; border-radius:var(--radius-lg); overflow:hidden; border:1px solid var(--border-default); }
+  .lp-img img{ display:block; width:100%; max-height:340px; object-fit:contain; background:#fff; }
+  .opt{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; cursor:pointer; }
+  .opt + .opt{ margin-top:8px; }
+  .opt:hover{ background:var(--surface-canvas); }
+  .opt input{ width:17px; height:17px; accent-color:var(--action-primary); margin:0; }
+  .lp-hint{ margin:10px 0 0; font-size:12.5px; color:var(--text-tertiary); }
+
+  /* Content Library browser (hand-built, approved — slim image-only copy of the builder's) */
+  .lib-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; max-height:420px; overflow-y:auto; padding:2px; }
+  .asset{ display:flex; flex-direction:column; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; overflow:hidden; text-align:left; padding:0; }
+  .asset:hover, .asset:focus-visible{ border-color:var(--action-primary); box-shadow:0 0 0 3px var(--action-primary-subtle); outline:none; }
+  .asset .th{ aspect-ratio:4/3; background:var(--surface-raised) center/cover no-repeat; }
+  .asset .inf{ padding:8px 10px; }
+  .asset b{ display:block; font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .asset small{ font-size:11.5px; color:var(--text-tertiary); }
+
+  /* Toast (library) */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:10px 12px 10px 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:12px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:80; max-width:calc(100vw - 48px); }
+  .toast.show{ transform:translateY(0); opacity:1; pointer-events:auto; }
+  .toast.err{ background:#7f1d1d; }
+  .toast button{ height:28px; padding:0 10px; border:0; border-radius:var(--radius-md); background:rgba(255,255,255,.14); color:#fff; font-size:13px; font-weight:600; flex-shrink:0; }
+  .toast button:hover{ background:rgba(255,255,255,.24); }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  /* Responsive — 1440/1366/1280 keep question text wide: secondary columns fold into the meta line */
+  @media (max-width:1499px){ th.c-used, td.c-used{ display:none; } .fold.f-used{ display:inline-flex !important; } }
+  @media (max-width:1399px){ th.c-by, td.c-by{ display:none; } .fold.f-by{ display:inline-flex !important; } th.c-act{ width:56px; } .act-inline{ display:none; } }
+  @media (max-width:1180px){ th.c-added, td.c-added{ display:none; } .fold.f-added{ display:inline-flex !important; } th.c-tags{ width:170px; } }
+  @media (max-width:900px){ th.c-tags, td.c-tags{ display:none; } .fold.f-tags{ display:inline-flex !important; } .ed-top{ grid-template-columns:1fr 1fr; } .img-box{ grid-template-columns:1fr; } }
+  @media (max-width:640px){ th.c-type, td.c-type, th.c-pts, td.c-pts{ display:none; } .fold.f-type{ display:inline-flex !important; } .fbar .select{ flex:1 1 45%; } .kv{ grid-template-columns:1fr; } }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 48px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" id="sideFrame" title="Navigation"></iframe>
+  <iframe class="topbar-frame" id="topFrame" title="Top bar"></iframe>
+  <main class="main"><div class="main-inner">
+    <header class="page-h">
+      <div>
+        <h1>Question Bank</h1>
+        <p>Create, organize, and reuse questions across your assessments.</p>
+      </div>
+      <div class="head-acts">
+        <a class="btn btn-secondary" href="question-bank-import.html" id="importLink"></a>
+        <a class="btn btn-secondary" href="question-bank-ai.html" id="aiLink"></a>
+        <button class="btn btn-primary" type="button" id="addBtn"></button>
+      </div>
+    </header>
+
+    <div class="fbar" role="search">
+      <label class="search"><span id="searchIc"></span><input type="search" id="q" placeholder="Search questions..." aria-label="Search questions by text"></label>
+      <select class="select" id="fType" aria-label="Filter by type"></select>
+      <select class="select" id="fTag" aria-label="Filter by tag"></select>
+      <select class="select" id="fBy" aria-label="Filter by creator"></select>
+      <select class="select" id="fDate" aria-label="Filter by date added">
+        <option value="">Any date</option><option value="7">Last 7 days</option><option value="30">Last 30 days</option><option value="90">Last 90 days</option><option value="custom">Custom range…</option>
+      </select>
+      <span class="range" id="range" hidden><input class="input" type="date" id="dFrom" aria-label="Added from"><span>to</span><input class="input" type="date" id="dTo" aria-label="Added to"></span>
+      <select class="select" id="fSort" aria-label="Sort questions">
+        <option value="recent">Recently added</option><option value="oldest">Oldest</option><option value="updated">Recently updated</option><option value="alpha">Alphabetical</option>
+      </select>
+    </div>
+    <div class="count-line" id="countLine" aria-live="polite"></div>
+    <div class="panel" id="panel"></div>
+  </div></main>
+</div>
+
+<div class="menu" id="menu" role="menu" hidden></div>
+<div class="drawer-back" id="drawerBack" hidden></div>
+<aside class="drawer narrow" id="detail" aria-label="Question details" aria-hidden="true"></aside>
+<aside class="drawer" id="editor" aria-label="Question editor" aria-hidden="true"></aside>
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal" id="modalBody"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span></span></div>
+
+<label class="preview">Preview
+  <select id="ps" aria-label="Preview state">
+    <option value="normal">Normal</option>
+    <option value="loading">Slow load</option>
+    <option value="error">List fails to load</option>
+    <option value="empty">Empty bank</option>
+    <option value="large">500+ questions</option>
+    <option value="save-fail">Save fails</option>
+    <option value="delete-fail">Delete fails</option>
+    <option value="upload-fail">Image upload fails</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){ if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed'); });
+
+  /* ================= Helpers ================= */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  var H = 3600e3, D = 24 * H;
+  function ago(ms){ return new Date(Date.now() - ms).toISOString(); }
+  function fmtDate(iso){ return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  function norm(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+  function demo(){ return $('ps').value; }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function plural(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+
+  /* ================= Session / persona ================= */
+  var params = new URLSearchParams(location.search);
+  var AS_INSTRUCTOR = params.get('as') === 'instructor';
+  // ponytail: session stand-in. The real session (and its orgId) comes from auth, server-side.
+  var SESSION = { name:'Maya Reed', orgId:'org-upspace', role:AS_INSTRUCTOR ? 'instructor' : 'creator' };
+  $('sideFrame').src = AS_INSTRUCTOR ? '../../instructor/component/sidebar.html?active=assessments' : '../component/sidebar.html?active=question-bank';
+  $('topFrame').src = (AS_INSTRUCTOR ? '../../instructor/component/topnavbar.html' : '../component/topnavbar.html') + '?current=Question+Bank';
+  if (AS_INSTRUCTOR){ $('aiLink').href += '?as=instructor'; $('importLink').href += '?as=instructor'; }
+
+  var sv = function(p){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  var I = {
+    plus:sv('<path d="M12 5v14M5 12h14"/>'), search:sv('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'), x:sv('<path d="M18 6 6 18M6 6l12 12"/>'),
+    more:sv('<circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/>'), eye:sv('<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>'),
+    edit:sv('<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>'),
+    copy:sv('<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>'), trash:sv('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+    spark:sv('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>'),
+    upload:sv('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'), alert:sv('<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'),
+    check:sv('<path d="M20 6 9 17l-5-5"/>'), image:sv('<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'),
+    grip:sv('<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>'),
+    up:sv('<path d="m18 15-6-6-6 6"/>'), down:sv('<path d="m6 9 6 6 6-6"/>'), left:sv('<path d="m15 18-6-6 6-6"/>'), right:sv('<path d="m9 18 6-6-6-6"/>'),
+    tag:sv('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>'),
+    info:sv('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'),
+    radio:sv('<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/>'), checks:sv('<rect width="18" height="18" x="3" y="3" rx="2"/><path d="m9 12 2 2 4-4"/>'), tf:sv('<path d="M3 12l3 3 5-6"/><path d="M15 9l6 6M21 9l-6 6"/>'),
+    blank:sv('<path d="M4 18h6M14 18h6"/><path d="M4 12h16"/>'), short:sv('<path d="M4 7h16M4 12h10"/>'), long:sv('<path d="M4 6h16M4 10h16M4 14h16M4 18h10"/>')
+  };
+  $('searchIc').outerHTML = I.search;
+  $('importLink').innerHTML = I.upload + 'Import Questions';
+  $('aiLink').innerHTML = I.spark + 'Generate with AI';
+  $('addBtn').innerHTML = I.plus + 'Add Question';
+
+  /* ================= Question model (shared with builder / AI / import) ================= */
+  var KINDS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', fill:'Fill in the blank', short:'Short answer', long:'Long answer', image:'Image-based' };
+  var KIND_INFO = { mcq:['radio', 'One correct answer from a list.'], multi:['checks', 'Several answers may be correct.'], tf:['tf', 'A statement learners mark true or false.'], fill:['blank', 'Learners type the missing word or phrase.'], short:['short', 'A brief typed answer.'], long:['long', 'An extended written response, marked with a rubric.'], image:['image', 'A question built around an image.'] };
+  var FORMATS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', short:'Short answer' };
+  var BLANK_RE = /_{3,}/g;
+  function effKind(q){ return q.kind === 'image' ? (q.format || 'mcq') : q.kind; }
+  function isObjective(k){ return k === 'mcq' || k === 'multi' || k === 'tf'; }
+  function opt(text, correct){ return { id:uid('o'), text:text || '', correct:!!correct }; }
+  function blankQ(kind){
+    var q = { id:uid('qb'), kind:kind, format:null, prompt:'', image:null, options:[], answer:'', alts:[], explanation:'', points:1, tags:[], ai:false, aiSource:null };
+    setKind(q, kind, true); return q;
+  }
+  // Switch type (or image answer format), keeping what still applies: prompt, points, tags, image
+  function setKind(q, kind, fresh, format){
+    var before = effKind(q);
+    q.kind = kind;
+    q.format = kind === 'image' ? (format || q.format || 'mcq') : null;
+    var k = effKind(q);
+    if (k === 'tf'){ var ok = q.options.length === 2 && /^true$/i.test(q.options[0].text) && /^false$/i.test(q.options[1].text); if (!ok) q.options = [opt('True', true), opt('False')]; }
+    else if (k === 'mcq' || k === 'multi'){
+      if (fresh || before === 'tf' || q.options.length < 2) q.options = [opt('', true), opt(''), opt(''), opt('')];
+      if (k === 'mcq'){ var seen = false; q.options.forEach(function(o){ if (o.correct && !seen) seen = true; else o.correct = false; }); if (!seen) q.options[0].correct = true; }
+    } else q.options = [];
+    if (k !== 'fill') q.alts = [];
+  }
+  function validateQ(q){
+    var e = [], k = effKind(q);
+    if (!String(q.prompt).trim()) e.push('Write the question.');
+    if (q.kind === 'image' && !q.image) e.push('Add an image for this image-based question.');
+    if (k === 'mcq' || k === 'multi'){
+      if (q.options.length < 2) e.push('Add at least two options.');
+      if (q.options.some(function(o){ return !o.text.trim(); })) e.push('Fill in or remove empty options.');
+      var seen = {}; if (q.options.some(function(o){ var n = norm(o.text); if (n && seen[n]) return true; seen[n] = 1; return false; })) e.push('Options must be unique.');
+      if (!q.options.some(function(o){ return o.correct; })) e.push(k === 'multi' ? 'Mark at least one correct answer.' : 'Mark the correct answer.');
+    }
+    if (k === 'tf' && !q.options.some(function(o){ return o.correct; })) e.push('Choose whether the statement is true or false.');
+    if (k === 'fill'){ var n = (String(q.prompt).match(BLANK_RE) || []).length; if (n !== 1) e.push(n ? 'Use one blank per question.' : 'Mark the blank in the question with ____ (use Insert blank).'); if (!q.answer.trim()) e.push('Add the accepted answer for the blank.'); }
+    if (k === 'short' && !q.answer.trim()) e.push('Add the expected answer.');
+    if (k === 'long' && !q.answer.trim()) e.push('Add a rubric or marking guidance.');
+    if (!(q.points >= 0)) e.push('Points must be 0 or more.');
+    return e;
+  }
+
+  /* ================= Storage + Content Library images ================= */
+  var QB_KEY = 'upspace.cd.qbank.v1', LIB_KEY = 'upspace.cd.library.v1';
+  var MEM = {};
+  function readJSON(k){ try { var s = JSON.parse(localStorage.getItem(k)); if (s) return s; } catch (e) {} return MEM[k] || null; }
+  function writeJSON(k, v){ MEM[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  var dbP = null;
+  function db(){ if (!dbP) dbP = new Promise(function(res, rej){ var r = indexedDB.open('upspace-cd', 1); r.onupgradeneeded = function(){ r.result.createObjectStore('blobs'); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; }); return dbP; }
+  function idbPut(id, blob){ return db().then(function(d){ return new Promise(function(res, rej){ var t = d.transaction('blobs', 'readwrite'); t.objectStore('blobs').put(blob, id); t.oncomplete = function(){ res(); }; t.onerror = function(){ rej(t.error); }; }); }); }
+  function idbGet(id){ return db().then(function(d){ return new Promise(function(res){ var r = d.transaction('blobs').objectStore('blobs').get(id); r.onsuccess = function(){ res(r.result || null); }; r.onerror = function(){ res(null); }; }); }).catch(function(){ return null; }); }
+  var urlCache = {};
+  function imgURL(img){
+    if (!img) return Promise.resolve(null);
+    if (img.url) return Promise.resolve(img.url);
+    var a = (readJSON(LIB_KEY) || []).find(function(x){ return x.id === img.assetId; });
+    if (!a || a.status === 'failed') return Promise.resolve(null);
+    if (a.url) return Promise.resolve(a.url);
+    if (urlCache[a.id]) return Promise.resolve(urlCache[a.id]);
+    return idbGet(a.id).then(function(b){ return b ? (urlCache[a.id] = URL.createObjectURL(b)) : null; });
+  }
+  function hydrateImgs(root){
+    root.querySelectorAll('img[data-img]').forEach(function(el){
+      var img = JSON.parse(el.dataset.img);
+      imgURL(img).then(function(u){ if (u) el.src = u; else el.replaceWith(Object.assign(document.createElement('div'), { className:'hint', style:'padding:24px;text-align:center', textContent:'This image is no longer available in the Content Library.' })); });
+    });
+  }
+  function imgTag(img){ return '<img data-img="' + esc(JSON.stringify(img)) + '" alt="' + esc(img.alt || '') + '">'; }
+  var IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+  function uploadImage(file){
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (IMG_EXT.indexOf(ext) < 0) return Promise.reject('Use a JPG, PNG, GIF, WEBP or SVG image.');
+    if (file.size > 10 * 1024 * 1024) return Promise.reject('Images must be 10 MB or smaller.');
+    // ponytail: IndexedDB + Content Library entry stands in for the media upload API (CRS-009-FR-07)
+    return wait(500).then(function(){
+      if (demo() === 'upload-fail') throw 'The image couldn\'t be uploaded. Check your connection and try again.';
+      var id = uid('a');
+      return idbPut(id, file).then(function(){
+        var lib = readJSON(LIB_KEY) || [];
+        lib.unshift({ id:id, name:file.name, kind:'image', ext:ext, mime:file.type, size:file.size, url:null, stored:true, status:'ready', uploaded:new Date().toISOString(), uploadedBy:SESSION.name });
+        writeJSON(LIB_KEY, lib);
+        return { assetId:id, alt:'' };
+      });
+    });
+  }
+
+  /* ================= Seed (first run only) ================= */
+  function SQ(n, kind, prompt, o, x){
+    var q = { id:'qb-seed-' + n, orgId:'org-upspace', kind:kind, format:null, prompt:prompt, image:null, options:(o || []).map(function(p, i){ return { id:'o-' + n + '-' + i, text:p[0], correct:!!p[1] }; }), answer:'', alts:[], explanation:'', points:1, tags:[], ai:false, aiSource:null, createdBy:'Maya Reed', createdAt:ago(n * 3.3 * D), updatedBy:'Maya Reed', updatedAt:ago(n * 3.3 * D), usage:[] };
+    for (var k in x) q[k] = x[k];
+    if (q.updatedBy !== q.createdBy) q.updatedBy = q.createdBy;
+    return q;
+  }
+  function use(asmId, asmTitle, courseId, courseTitle, days){ return { asmId:asmId, asmTitle:asmTitle, courseId:courseId, courseTitle:courseTitle, at:ago(days * D) }; }
+  function TF(t){ return [['True', t], ['False', !t]]; }
+  function SEED(){
+    return [
+      SQ(1, 'mcq', 'What is the primary purpose of the SBI feedback model?', [['To make feedback specific and focused on impact', 1], ['To rank employees by performance'], ['To replace annual reviews'], ['To document disciplinary action']], { points:2, tags:['Leadership', 'Communication', 'Feedback'], createdBy:'Sarah Chen', explanation:'SBI (Situation, Behavior, Impact) keeps feedback specific and tied to its effect.', usage:[use('as-lead-q1', 'Feedback fundamentals quiz', 'c-lead', 'Leadership Communication', 2.9), use('as-mgr-kc', 'First-week check', 'c-managers', 'Onboarding for New Managers', 2), use('as-lead-t1', 'SBI practice test', 'c-lead', 'Leadership Communication', 1)] }),
+      SQ(2, 'tf', 'In the SBI model, "B" stands for Behavior.', TF(true), { tags:['Leadership', 'Feedback'] }),
+      SQ(3, 'multi', 'Which of these belong in a customer success plan?', [['Measurable milestones', 1], ['Named stakeholders', 1], ['Internal ticket IDs'], ['Target dates', 1]], { points:3, tags:['Customer Success', 'Onboarding'], ai:true, aiSource:{ name:'Onboarding guide.pdf', excerpt:'Agree on three measurable milestones, named stakeholders and target dates.' } }),
+      SQ(4, 'fill', 'GDPR stands for General Data ____ Regulation.', null, { answer:'Protection', tags:['Compliance', 'Beginner'], createdBy:'Priya Shah', usage:[use('as-privacy-quiz', 'Data privacy quiz', 'c-privacy', 'Data Privacy Essentials', 8)] }),
+      SQ(5, 'short', 'Name one habit of effective 1:1 meetings.', null, { answer:'The direct report sets the agenda.', tags:['Leadership', 'Management'] }),
+      SQ(6, 'long', 'Describe how you would run the first weekly check-in with a new customer.', null, { points:5, answer:'A strong answer:\n• Reviews progress against the success plan milestones (2 pts)\n• Surfaces blockers and agrees owners for each (2 pts)\n• Confirms next steps and the next meeting date (1 pt)', tags:['Customer Success', 'Module 2'], createdBy:'Daniel Kim' }),
+      SQ(7, 'image', 'What type of chart is shown in the image?', [['Line and bar chart', 1], ['Pie chart'], ['Organization chart'], ['Gantt chart']], { format:'mcq', image:{ url:'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=70', alt:'Analytics dashboard showing line and bar charts' }, tags:['Product', 'Beginner'] }),
+      SQ(8, 'mcq', 'What is the main goal of the kickoff call?', [['Agree on a success plan', 1], ['Demo every feature'], ['Negotiate renewal pricing']], { tags:['Onboarding', 'Customer Success'], usage:[use('as-onboard-kc', 'Kickoff knowledge check', 'c-onboard', 'Customer Onboarding Playbook', 9)] }),
+      SQ(9, 'mcq', 'Which of these is personal data?', [['An email address', 1], ['A product SKU'], ['A public holiday date']], { tags:['Compliance'], createdBy:'Priya Shah', usage:[use('as-privacy-quiz', 'Data privacy quiz', 'c-privacy', 'Data Privacy Essentials', 8)] }),
+      SQ(10, 'tf', 'Anonymised data that can\'t identify anyone is still personal data.', TF(false), { tags:['Compliance'], createdBy:'Priya Shah' }),
+      SQ(11, 'mcq', 'What is the purpose of a discovery call?', [['Understand the buyer\'s problem', 1], ['Close the deal'], ['Send a proposal'], ['Agree on pricing']], { tags:['Sales', 'Beginner'], createdBy:'Daniel Kim' }),
+      SQ(12, 'tf', 'Open-ended questions help uncover buyer needs.', TF(true), { tags:['Sales'], createdBy:'Daniel Kim' }),
+      SQ(13, 'multi', 'Which are good qualification criteria?', [['Budget', 1], ['Authority', 1], ['Need', 1], ['Favorite color']], { points:2, tags:['Sales'], createdBy:'Daniel Kim' }),
+      SQ(14, 'fill', 'Your best alternative to a negotiated agreement is called your ____.', null, { answer:'BATNA', alts:['best alternative to a negotiated agreement'], tags:['Sales', 'Negotiation'], createdBy:'Daniel Kim' }),
+      SQ(15, 'short', 'What does the "I" in SBI stand for?', null, { answer:'Impact', tags:['Feedback'], createdBy:'Sarah Chen' }),
+      SQ(16, 'mcq', 'When should a success plan be agreed?', [['During kickoff', 1], ['At renewal'], ['After the first quarter']], { tags:['Customer Success'], ai:true, aiSource:{ name:'Onboarding guide.pdf', excerpt:'Set goals, confirm stakeholders and agree on a success plan before the kickoff call ends.' } }),
+      SQ(17, 'long', 'Write feedback for a teammate who missed a deadline, using SBI.', null, { points:5, answer:'Award up to 5 points:\n• Situation is specific (when/where) — 1\n• Behavior is observable, not a judgement — 2\n• Impact on the team or customer is clear — 2', tags:['Feedback', 'Communication'], createdBy:'Sarah Chen' }),
+      SQ(18, 'mcq', 'Which action best reduces the risk of a phishing attack?', [['Verify the sender before clicking links', 1], ['Forward the email to colleagues'], ['Reply asking if it is genuine']], { tags:['Compliance', 'Security'], createdBy:'Priya Shah' }),
+      SQ(19, 'tf', 'You should report a near-miss safety incident even if no one was hurt.', TF(true), { tags:['Safety'] }),
+      SQ(20, 'multi', 'Which are signs of active listening?', [['Paraphrasing what you heard', 1], ['Asking clarifying questions', 1], ['Checking your phone'], ['Interrupting to add ideas']], { tags:['Communication', 'Beginner'], createdBy:'Sarah Chen' }),
+      SQ(21, 'fill', 'A budget compares planned spending against actual ____.', null, { answer:'spending', alts:['spend', 'costs'], tags:['Finance'] }),
+      SQ(22, 'mcq', 'What is a P&L statement used for?', [['Showing revenue, costs and profit over a period', 1], ['Listing all employees'], ['Tracking customer tickets']], { tags:['Finance'] }),
+      SQ(23, 'short', 'Name one hazard to look for during a monthly workplace walk-through.', null, { answer:'Trip hazards such as trailing cables.', tags:['Safety'], createdBy:'Daniel Kim' }),
+      SQ(24, 'mcq', 'In a negotiation, what is anchoring?', [['Setting the first reference point for the discussion', 1], ['Refusing to make any offer'], ['Agreeing to the first offer']], { tags:['Sales', 'Negotiation'], createdBy:'Daniel Kim' }),
+      SQ(25, 'tf', 'A manager should hold 1:1s only when there is a problem.', TF(false), { tags:['Leadership', 'Management'], createdBy:'Sarah Chen' }),
+      SQ(26, 'mcq', 'What is the best first step when a new direct report joins?', [['Meet one-on-one to set expectations', 1], ['Assign the hardest project'], ['Wait for them to ask questions']], { tags:['Management', 'Onboarding'], createdBy:'Sarah Chen' }),
+      SQ(27, 'long', 'Explain how you would handle a disagreement between two team members.', null, { points:4, answer:'Look for: hearing both sides privately, focusing on the issue not the person, agreeing a shared next step, and following up.', tags:['Leadership', 'Communication'] }),
+      // Another organization's rows — must never appear for org-upspace (NFR-01 check)
+      SQ(28, 'mcq', 'Northwind: which warehouse zone stores cold goods?', [['Zone C', 1], ['Zone A'], ['Zone B']], { orgId:'org-northwind', createdBy:'Lena Ortiz', tags:['Logistics'] }),
+      SQ(29, 'tf', 'Northwind: forklifts may be driven without certification.', TF(false), { orgId:'org-northwind', createdBy:'Lena Ortiz', tags:['Safety'] })
+    ];
+  }
+  function readAll(){ var s = readJSON(QB_KEY); if (Array.isArray(s)) return s; s = SEED(); writeJSON(QB_KEY, s); return s; }
+  var LARGE = null;
+  function largeSet(){
+    if (LARGE) return LARGE;
+    var base = SEED().filter(function(q){ return q.orgId === 'org-upspace'; }), out = [];
+    for (var i = 0; i < 520; i++){ var q = clone(base[i % base.length]); q.id = 'qb-large-' + i; q.prompt = q.prompt + ' (set ' + (Math.floor(i / base.length) + 1) + ')'; q.createdAt = q.updatedAt = ago(i * 5 * H); out.push(q); }
+    return (LARGE = out);
+  }
+
+  /* ================= API (server stand-in, org-scoped) ================= */
+  // ponytail: each call mirrors the Question Bank API contract. The real server takes orgId from the
+  // authenticated session (ASM-003-NFR-01) — the client never sends it. Reads return only the session
+  // org's rows; writes stamp it and refuse rows owned by another org. Swap `api` for fetch() calls.
+  function source(){ return demo() === 'large' ? largeSet() : readAll(); }
+  function mine(q){ return q.orgId === SESSION.orgId; }
+  var api = {
+    query:function(p){
+      return wait(demo() === 'loading' ? 2200 : p.initial ? 450 : 160).then(function(){
+        if (demo() === 'error') throw new Error('load');
+        var all = demo() === 'empty' ? [] : source().filter(mine), s = norm(p.q), from = null, to = null;
+        if (p.date && p.date !== 'custom') from = Date.now() - (+p.date) * D;
+        if (p.date === 'custom'){ if (p.from) from = new Date(p.from + 'T00:00:00').getTime(); if (p.to) to = new Date(p.to + 'T23:59:59').getTime(); }
+        var rows = all.filter(function(x){
+          var t = new Date(x.createdAt).getTime();
+          return (!p.type || x.kind === p.type) && (!p.tag || x.tags.some(function(g){ return g.toLowerCase() === p.tag.toLowerCase(); })) && (!p.by || x.createdBy === p.by) && (from == null || t >= from) && (to == null || t <= to) &&
+            (!s || norm(x.prompt + ' ' + x.options.map(function(o){ return o.text; }).join(' ') + ' ' + x.tags.join(' ')).indexOf(s) > -1);
+        });
+        var cmp = { recent:function(a, b){ return b.createdAt.localeCompare(a.createdAt); }, oldest:function(a, b){ return a.createdAt.localeCompare(b.createdAt); }, updated:function(a, b){ return b.updatedAt.localeCompare(a.updatedAt); }, alpha:function(a, b){ return a.prompt.localeCompare(b.prompt, undefined, { sensitivity:'base' }); } }[p.sort || 'recent'];
+        rows.sort(cmp);
+        var tags = {}, by = {};
+        all.forEach(function(x){ x.tags.forEach(function(g){ var k = g.toLowerCase(); tags[k] = tags[k] || g; }); by[x.createdBy] = 1; });
+        return { total:rows.length, orgTotal:all.length, items:rows.slice((p.page - 1) * p.size, p.page * p.size).map(clone), tags:Object.keys(tags).map(function(k){ return tags[k]; }).sort(function(a, b){ return a.localeCompare(b); }), creators:Object.keys(by).sort() };
+      });
+    },
+    get:function(id){ return wait(180).then(function(){ var q = source().find(function(x){ return x.id === id && mine(x); }); if (!q) throw new Error('not-found'); return clone(q); }); },
+    save:function(q){
+      return wait(420).then(function(){
+        if (demo() === 'save-fail') throw new Error('save');
+        var list = readAll(), i = list.findIndex(function(x){ return x.id === q.id; }), now = new Date().toISOString();
+        if (i > -1 && !mine(list[i])) throw new Error('forbidden');
+        var row = clone(q); row.orgId = SESSION.orgId; row.updatedAt = now; row.updatedBy = SESSION.name;
+        if (i > -1){ row.createdAt = list[i].createdAt; row.createdBy = list[i].createdBy; row.usage = list[i].usage || []; list[i] = row; }
+        else { row.createdAt = now; row.createdBy = SESSION.name; row.usage = []; list.unshift(row); }
+        if (!writeJSON(QB_KEY, list)) throw new Error('quota');
+        return clone(row);
+      });
+    },
+    remove:function(id){
+      return wait(380).then(function(){
+        if (demo() === 'delete-fail') throw new Error('delete');
+        var list = readAll(), i = list.findIndex(function(x){ return x.id === id; });
+        if (i < 0 || !mine(list[i])) throw new Error('forbidden');
+        // Assessment copies live in upspace.cd.assessments.v1 and are never touched here (ASM-003-FR-06)
+        list.splice(i, 1); writeJSON(QB_KEY, list);
+      });
+    },
+    tags:function(){ var m = {}; readAll().filter(mine).forEach(function(x){ x.tags.forEach(function(g){ m[g.toLowerCase()] = m[g.toLowerCase()] || g; }); }); return Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return a.localeCompare(b); }); }
+  };
+
+  /* ================= Toast / menu / modal ================= */
+  var toastTimer;
+  function toast(msg, act, fn, err){
+    var t = $('toast'); t.className = 'toast' + (err ? ' err' : '');
+    t.innerHTML = '<span>' + esc(msg) + '</span>' + (act ? '<button type="button">' + esc(act) + '</button>' : '');
+    if (act) t.querySelector('button').onclick = function(){ t.classList.remove('show'); fn(); };
+    requestAnimationFrame(function(){ t.classList.add('show'); });
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, act ? 6000 : 3400);
+  }
+  var menuCb = null;
+  function placeMenu(m, btn){
+    m.hidden = false;
+    var r = btn.getBoundingClientRect(), mh = m.offsetHeight, mw = m.offsetWidth;
+    m.style.left = Math.max(8, Math.min(innerWidth - mw - 8, r.right - mw)) + 'px';
+    m.style.top = (r.bottom + 6 + mh > innerHeight ? Math.max(8, r.top - mh - 6) : r.bottom + 6) + 'px';
+  }
+  function openMenu(btn, items, cb){
+    var m = $('menu'); m.className = 'menu';
+    m.innerHTML = items.map(function(x){ return x === '-' ? '<hr>' : '<button type="button" role="menuitem" data-mact="' + x[0] + '"' + (x[3] ? ' class="danger"' : '') + '>' + I[x[1]] + esc(x[2]) + '</button>'; }).join('');
+    menuCb = cb; placeMenu(m, btn); m.querySelector('button').focus();
+  }
+  function closeMenu(){ $('menu').hidden = true; menuCb = null; }
+  $('menu').addEventListener('click', function(e){ var b = e.target.closest('[data-mact]'); if (!b) return; var cb = menuCb; closeMenu(); if (cb) cb(b.dataset.mact); });
+  document.addEventListener('click', function(e){ if (!$('menu').hidden && !e.target.closest('#menu') && !e.target.closest('[data-more],[data-usage],[data-usage-d]')) closeMenu(); });
+  document.querySelector('.main').addEventListener('scroll', closeMenu);
+
+  function openModal(html, cls){ $('modalBody').className = 'modal' + (cls ? ' ' + cls : ''); $('modalBody').innerHTML = html; $('modal').classList.add('open'); var f = $('modalBody').querySelector('[data-autofocus]') || $('modalBody').querySelector('button'); if (f) f.focus(); }
+  function closeModal(){ $('modal').classList.remove('open'); $('modalBody').innerHTML = ''; }
+  $('modal').addEventListener('click', function(e){ if (e.target === $('modal') || e.target.closest('[data-close]')) closeModal(); });
+  function confirmModal(title, body, okLabel, onOk, danger){
+    openModal('<div class="modal-h"><div><h3 id="modalTitle">' + esc(title) + '</h3><p>' + body + '</p></div></div><div id="cfErr"></div><div class="modal-foot"><button class="btn btn-secondary" type="button" data-close data-autofocus>Cancel</button><button class="btn ' + (danger ? 'btn-danger' : 'btn-primary') + '" type="button" id="cfOk">' + esc(okLabel) + '</button></div>', 'sm');
+    $('cfOk').onclick = onOk;
+  }
+
+  /* ================= List ================= */
+  var st = { q:'', type:'', tag:'', by:'', date:'', from:'', to:'', sort:'recent', page:1, size:25 }, seq = 0, last = null, loadedOnce = false;
+  $('fType').innerHTML = '<option value="">All types</option>' + Object.keys(KINDS).map(function(k){ return '<option value="' + k + '">' + KINDS[k] + '</option>'; }).join('');
+
+  function headRow(){ return '<tr><th class="c-q">Question</th><th class="c-type">Type</th><th class="c-tags">Tags</th><th class="c-pts">Points</th><th class="c-by">Creator</th><th class="c-added">Date added</th><th class="c-used">Usage</th><th class="c-act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Actions</span></th></tr>'; }
+  function skeleton(){
+    $('panel').innerHTML = '<table aria-busy="true"><thead>' + headRow() + '</thead><tbody>' + [0, 1, 2, 3, 4, 5, 6].map(function(i){ return '<tr class="sk-row"><td class="c-q"><span class="sk" style="width:' + (86 - i * 7) + '%"></span><span class="sk" style="width:30%;height:9px"></span></td><td class="c-type"><span class="sk" style="width:80px;height:20px;border-radius:99px"></span></td><td class="c-tags"><span class="sk" style="width:120px;height:20px;border-radius:99px"></span></td><td class="c-pts"><span class="sk" style="width:20px"></span></td><td class="c-by"><span class="sk" style="width:80px"></span></td><td class="c-added"><span class="sk" style="width:80px"></span></td><td class="c-used"><span class="sk" style="width:70px"></span></td><td class="c-act"></td></tr>'; }).join('') + '</tbody></table>';
+    $('countLine').innerHTML = '<span class="sk" style="width:160px"></span>';
+  }
+  function refresh(initial){
+    var my = ++seq, p = $('panel');
+    if (initial || !loadedOnce) skeleton();
+    else { p.classList.add('busy'); p.setAttribute('aria-busy', 'true'); if (!p.querySelector('.busy-bar')) p.insertAdjacentHTML('afterbegin', '<div class="busy-bar" aria-hidden="true"></div>'); }
+    api.query(Object.assign({ initial:initial }, st)).then(function(r){
+      if (my !== seq) return; // ignore stale responses
+      loadedOnce = true; last = r; render(r);
+    }).catch(function(){
+      if (my !== seq) return;
+      loadedOnce = false; p.classList.remove('busy'); p.removeAttribute('aria-busy'); $('countLine').innerHTML = '';
+      p.innerHTML = '<div class="err" role="alert">' + I.alert + '<div><b>Questions couldn\'t be loaded</b>Check your connection and try again. Nothing in your bank was changed.</div><button class="btn btn-secondary btn-sm" type="button" id="retry">Try again</button></div>';
+      $('retry').onclick = function(){ if (demo() === 'error') $('ps').value = 'normal'; refresh(true); };
+    });
+  }
+  function fillSelect(el, label, values, cur){
+    el.innerHTML = '<option value="">' + label + '</option>' + values.map(function(v){ return '<option value="' + esc(v) + '"' + (v === cur ? ' selected' : '') + '>' + esc(v) + '</option>'; }).join('');
+    if (cur && values.indexOf(cur) < 0) el.insertAdjacentHTML('beforeend', '<option value="' + esc(cur) + '" selected>' + esc(cur) + '</option>');
+  }
+  function filtersOn(){ return !!(st.q || st.type || st.tag || st.by || st.date); }
+  function render(r){
+    var p = $('panel'); p.classList.remove('busy'); p.removeAttribute('aria-busy');
+    fillSelect($('fTag'), 'All tags', r.tags, st.tag);
+    fillSelect($('fBy'), 'All creators', r.creators, st.by);
+    ['fType', 'fTag', 'fBy', 'fDate'].forEach(function(id){ $(id).classList.toggle('on', !!$(id).value); });
+    if (!r.orgTotal){
+      $('countLine').innerHTML = '';
+      p.innerHTML = '<div class="empty"><b>No questions yet</b><span>Create reusable questions once and use them across your assessments.</span><div class="acts" style="display:flex"><button class="btn btn-primary" type="button" data-empty="add">' + I.plus + 'Add Question</button><a class="btn btn-secondary" href="' + $('aiLink').getAttribute('href') + '">' + I.spark + 'Generate with AI</a><a class="btn btn-secondary" href="' + $('importLink').getAttribute('href') + '">' + I.upload + 'Import Questions</a></div></div>';
+      return;
+    }
+    $('countLine').innerHTML = filtersOn() ? '<span><b>' + r.total + '</b> of ' + plural(r.orgTotal, 'question') + '</span><button class="btn btn-ghost btn-xs" type="button" id="clear">' + I.x + 'Clear filters</button>' : '<span><b>' + plural(r.total, 'question') + '</b> in your organization\'s bank</span>';
+    if ($('clear')) $('clear').onclick = clearFilters;
+    if (!r.items.length){
+      p.innerHTML = '<div class="empty"><b>No questions match' + (st.q ? ' “' + esc(st.q) + '”' : ' these filters') + '</b><span>Try a different search, or clear the filters to see every question.</span><div class="acts" style="display:flex"><button class="btn btn-secondary" type="button" data-empty="clear">Clear filters</button></div></div>';
+      return;
+    }
+    p.innerHTML = '<table><thead>' + headRow() + '</thead><tbody>' + r.items.map(rowHTML).join('') + '</tbody></table>' + pagerHTML(r.total, (st.page - 1) * st.size, r.items.length);
+  }
+  function tagsHTML(tags, max){
+    if (!tags.length) return '<span class="muted">—</span>';
+    return '<div class="tags">' + tags.slice(0, max).map(function(t){ return '<span class="tag" title="' + esc(t) + '">' + esc(t) + '</span>'; }).join('') + (tags.length > max ? '<span class="tag more" title="' + esc(tags.slice(max).join(', ')) + '">+' + (tags.length - max) + '</span>' : '') + '</div>';
+  }
+  function usageLabel(q){ var n = (q.usage || []).length; return n ? 'Used in ' + plural(n, 'assessment') : 'Not used yet'; }
+  function rowHTML(q){
+    var n = (q.usage || []).length, k = effKind(q), sub = [];
+    if (q.kind === 'image') sub.push('<span class="m">' + I.image + FORMATS[q.format] + '</span>');
+    else if (k === 'mcq' || k === 'multi') sub.push('<span class="m">' + plural(q.options.length, 'option') + '</span>');
+    if (q.ai) sub.push('<span class="m ai">' + I.spark + 'AI generated</span>');
+    sub.push('<span class="m fold f-type">' + KINDS[q.kind] + ' · ' + plural(q.points, 'pt') + '</span>');
+    if (q.tags.length) sub.push('<span class="m fold f-tags">' + esc(q.tags.slice(0, 3).join(' · ')) + '</span>');
+    sub.push('<span class="m fold f-by">' + esc(q.createdBy) + '</span>');
+    sub.push('<span class="m fold f-added">Added ' + fmtDate(q.createdAt) + '</span>');
+    sub.push('<span class="m fold f-used">' + usageLabel(q) + '</span>');
+    return '<tr data-id="' + q.id + '"><td class="c-q"><span class="qt">' + esc(q.prompt) + '</span><span class="meta">' + sub.join('') + '</span></td>' +
+      '<td class="c-type"><span class="badge gray sm">' + KINDS[q.kind] + '</span></td>' +
+      '<td class="c-tags">' + tagsHTML(q.tags, 2) + '</td>' +
+      '<td class="c-pts">' + q.points + '</td>' +
+      '<td class="c-by" title="' + esc(q.createdBy) + '">' + esc(q.createdBy) + '</td>' +
+      '<td class="c-added">' + fmtDate(q.createdAt) + '</td>' +
+      '<td class="c-used">' + (n ? '<button class="usage-btn" type="button" data-usage="' + q.id + '">' + plural(n, 'assessment') + '</button>' : '<span class="muted">Not used</span>') + '</td>' +
+      '<td class="c-act"><div class="acts"><button class="ib sm act-inline" type="button" data-row="preview" aria-label="Preview question" title="Preview">' + I.eye + '</button><button class="ib sm act-inline" type="button" data-row="edit" aria-label="Edit question" title="Edit">' + I.edit + '</button><button class="ib sm" type="button" data-more="' + q.id + '" aria-label="More actions" aria-haspopup="menu" title="More">' + I.more + '</button></div></td></tr>';
+  }
+  function pagerHTML(total, from, count){
+    var pages = Math.max(1, Math.ceil(total / st.size)), cur = st.page, list = [];
+    for (var i = 1; i <= pages; i++){ if (i === 1 || i === pages || Math.abs(i - cur) <= 1) list.push(i); else if (list[list.length - 1] !== '…') list.push('…'); }
+    return '<nav class="pager" aria-label="Pagination"><span class="ps">Rows per page <select class="select" id="pSize" aria-label="Rows per page">' + [25, 50, 100].map(function(n){ return '<option' + (n === st.size ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></span><span>' + (from + 1) + '–' + (from + count) + ' of ' + total + '</span>' +
+      '<span class="pages"><button class="page-tab" type="button" data-page="' + (cur - 1) + '"' + (cur === 1 ? ' disabled' : '') + ' aria-label="Previous page">' + I.left + '</button>' +
+      list.map(function(p){ return p === '…' ? '<span class="page-tab" aria-hidden="true">…</span>' : '<button class="page-tab' + (p === cur ? ' active' : '') + '" type="button" data-page="' + p + '"' + (p === cur ? ' aria-current="page"' : '') + '>' + p + '</button>'; }).join('') +
+      '<button class="page-tab" type="button" data-page="' + (cur + 1) + '"' + (cur === pages ? ' disabled' : '') + ' aria-label="Next page">' + I.right + '</button></span></nav>';
+  }
+
+  var qTimer;
+  $('q').addEventListener('input', function(){ clearTimeout(qTimer); var v = this.value.trim(); qTimer = setTimeout(function(){ st.q = v; st.page = 1; refresh(); }, 180); });
+  [['fType', 'type'], ['fTag', 'tag'], ['fBy', 'by'], ['fSort', 'sort']].forEach(function(p){ $(p[0]).addEventListener('change', function(){ st[p[1]] = this.value; st.page = 1; refresh(); }); });
+  $('fDate').addEventListener('change', function(){ st.date = this.value; $('range').hidden = this.value !== 'custom'; if (this.value !== 'custom') st.from = st.to = ''; st.page = 1; refresh(); if (this.value === 'custom') $('dFrom').focus(); });
+  ['dFrom', 'dTo'].forEach(function(id){ $(id).addEventListener('change', function(){ st.from = $('dFrom').value; st.to = $('dTo').value; st.page = 1; refresh(); }); });
+  function clearFilters(){ st.q = st.type = st.tag = st.by = st.date = st.from = st.to = ''; st.page = 1; $('q').value = ''; $('fType').value = $('fDate').value = ''; $('dFrom').value = $('dTo').value = ''; $('range').hidden = true; refresh(); }
+
+  $('panel').addEventListener('click', function(e){
+    var t;
+    if ((t = e.target.closest('[data-page]'))){ st.page = +t.dataset.page; refresh(); document.querySelector('.main').scrollTop = 0; return; }
+    if ((t = e.target.closest('[data-empty]'))){ if (t.dataset.empty === 'add') openCreate(); else clearFilters(); return; }
+    if ((t = e.target.closest('[data-usage]'))){ return openUsage(t, byId(t.dataset.usage)); }
+    if ((t = e.target.closest('[data-more]'))){ var q = byId(t.dataset.more); return openMenu(t, [['preview', 'eye', 'Preview'], ['edit', 'edit', 'Edit'], ['dup', 'copy', 'Duplicate'], '-', ['del', 'trash', 'Delete', true]], function(a){ rowAct(a, q); }); }
+    if ((t = e.target.closest('[data-row]'))) return rowAct(t.dataset.row, byId(t.closest('tr').dataset.id));
+    var tr = e.target.closest('tr[data-id]'); if (tr) openDetail(tr.dataset.id);
+  });
+  $('panel').addEventListener('change', function(e){ if (e.target.id === 'pSize'){ st.size = +e.target.value; st.page = 1; refresh(); } });
+  function byId(id){ return last && last.items.find(function(x){ return x.id === id; }); }
+  function rowAct(a, q){
+    if (!q) return;
+    if (a === 'preview') return openPreview(q);
+    if (a === 'edit') return openEditor(q);
+    if (a === 'dup') return duplicate(q);
+    if (a === 'del') return askDelete(q);
+  }
+
+  /* ================= Usage popover — history, not a live dependency ================= */
+  function openUsage(btn, q){
+    if (!q) return;
+    var m = $('menu'); m.className = 'menu pop';
+    m.innerHTML = '<h4>' + usageLabel(q) + '</h4><p>Each assessment has its own copy. Changing or deleting this question won\'t change them.</p><ul>' + q.usage.slice().reverse().map(function(u){ return '<li><a href="course-builder.html?id=' + encodeURIComponent(u.courseId || '') + '"><b>' + esc(u.asmTitle || 'Untitled assessment') + '</b><span>' + esc(u.courseTitle || 'Standalone') + ' · inserted ' + fmtDate(u.at) + '</span></a></li>'; }).join('') + '</ul>';
+    menuCb = null; placeMenu(m, btn);
+  }
+
+  /* ================= Detail drawer (Aside) ================= */
+  var detailId = null;
+  function hideBackIfIdle(){ if (!$('detail').classList.contains('open') && !$('editor').classList.contains('open')) $('drawerBack').hidden = true; }
+  function openDrawer(el){ el.classList.add('open'); el.setAttribute('aria-hidden', 'false'); $('drawerBack').hidden = false; }
+  function closeDrawer(el){ el.classList.remove('open'); el.setAttribute('aria-hidden', 'true'); hideBackIfIdle(); }
+  $('drawerBack').onclick = function(){ if ($('editor').classList.contains('open')) closeEditor(); else closeDetail(); };
+
+  function openDetail(id){
+    detailId = id;
+    var d = $('detail');
+    d.innerHTML = '<div class="drawer-h"><h2>Question</h2><button class="ib" type="button" data-d="close" aria-label="Close">' + I.x + '</button></div><div class="drawer-b" aria-busy="true"><span class="sk" style="width:90%;height:16px"></span><span class="sk" style="width:60%;height:16px"></span><div style="margin-top:22px"><span class="sk" style="height:38px"></span><span class="sk" style="height:38px"></span><span class="sk" style="height:38px"></span></div></div>';
+    openDrawer(d);
+    api.get(id).then(function(q){ if (detailId === id) drawDetail(q); }).catch(function(){
+      if (detailId !== id) return;
+      d.querySelector('.drawer-b').outerHTML = '<div class="drawer-b"><div class="alert error" role="alert">' + I.alert + '<div><b>This question couldn\'t be loaded</b>It may have been deleted, or the connection dropped.<br><button class="btn btn-secondary btn-sm" type="button" data-d="retry">Try again</button></div></div></div>';
+    });
+  }
+  function answerKeyHTML(q){
+    var k = effKind(q);
+    if (isObjective(k)) return '<div class="d-sec"><h4>' + (k === 'multi' ? 'Options · correct answers' : k === 'tf' ? 'Correct answer' : 'Options · correct answer') + '</h4><div class="ak">' + q.options.map(function(o, i){ return '<div class="ak-opt' + (o.correct ? ' correct' : '') + '"><span class="l">' + (o.correct ? I.check : String.fromCharCode(65 + i)) + '</span><span class="t">' + esc(o.text) + '</span>' + (o.correct ? '<span class="ok-tag">Correct</span>' : '') + '</div>'; }).join('') + '</div></div>';
+    if (k === 'fill') return '<div class="d-sec"><h4>Accepted answers</h4><div class="tags">' + [q.answer].concat(q.alts || []).filter(Boolean).map(function(a){ return '<span class="badge success">' + esc(a) + '</span>'; }).join('') + '</div></div>';
+    return '<div class="d-sec"><h4>' + (k === 'long' ? 'Rubric / marking guidance' : 'Expected answer') + '</h4><div class="ak-text">' + esc(q.answer) + '</div></div>';
+  }
+  function promptHTML(q){ return effKind(q) === 'fill' ? esc(q.prompt).replace(BLANK_RE, '<span class="blank unset">blank</span>') : esc(q.prompt); }
+  function drawDetail(q){
+    var d = $('detail'), n = (q.usage || []).length;
+    d.innerHTML = '<div class="drawer-h"><h2><span class="badge gray">' + KINDS[q.kind] + (q.kind === 'image' ? ' · ' + FORMATS[q.format] : '') + '</span>' + (q.ai ? ' <span class="badge brand sm">' + I.spark + 'AI generated</span>' : '') + '</h2><button class="ib" type="button" data-d="close" aria-label="Close">' + I.x + '</button></div>' +
+      '<div class="drawer-b"><p class="d-prompt">' + promptHTML(q) + '</p>' + (q.image ? '<figure class="d-img">' + imgTag(q.image) + '</figure>' : '') +
+      answerKeyHTML(q) +
+      (q.explanation ? '<div class="d-sec"><h4>Explanation</h4><div class="ak-text">' + esc(q.explanation) + '</div></div>' : '') +
+      (q.ai && q.aiSource ? '<div class="d-sec"><h4>AI source</h4><div class="ai-src">Generated from <b>' + esc(q.aiSource.name) + '</b>' + (q.aiSource.excerpt ? '<q>' + esc(q.aiSource.excerpt) + '</q>' : '') + '</div></div>' : '') +
+      '<div class="d-sec"><h4>Details</h4><dl class="kv"><dt>Points</dt><dd>' + q.points + '</dd><dt>Tags</dt><dd>' + tagsHTML(q.tags, 20) + '</dd><dt>Creator</dt><dd>' + esc(q.createdBy) + '</dd><dt>Created</dt><dd>' + fmtDate(q.createdAt) + '</dd><dt>Last updated</dt><dd>' + fmtDate(q.updatedAt) + (q.updatedBy && q.updatedBy !== q.createdBy ? ' by ' + esc(q.updatedBy) : '') + '</dd><dt>Usage</dt><dd>' + (n ? '<button class="usage-btn" type="button" data-usage-d>' + usageLabel(q) + '</button>' : 'Not used in any assessment yet') + '</dd></dl></div>' +
+      '<p class="hint">Assessments get their own copy when this question is inserted. Edits here only change the bank version.</p></div>' +
+      '<div class="drawer-f"><button class="btn btn-ghost danger btn-sm" type="button" data-d="del">' + I.trash + 'Delete</button><span class="grow"></span><button class="btn btn-secondary btn-sm" type="button" data-d="dup">' + I.copy + 'Duplicate</button><button class="btn btn-secondary btn-sm" type="button" data-d="preview">' + I.eye + 'Preview</button><button class="btn btn-primary btn-sm" type="button" data-d="edit">' + I.edit + 'Edit</button></div>';
+    d._q = q; hydrateImgs(d);
+  }
+  $('detail').addEventListener('click', function(e){
+    var q = $('detail')._q, u = e.target.closest('[data-usage-d]');
+    if (u) return openUsage(u, q);
+    var t = e.target.closest('[data-d]'); if (!t) return;
+    var a = t.dataset.d;
+    if (a === 'close') return closeDetail();
+    if (a === 'retry') return openDetail(detailId);
+    if (a === 'edit') return openEditor(q);
+    if (a === 'preview') return openPreview(q);
+    if (a === 'dup') return duplicate(q);
+    if (a === 'del') return askDelete(q);
+  });
+  function closeDetail(){ detailId = null; $('detail')._q = null; closeDrawer($('detail')); }
+
+  /* ================= Learner preview (correct answers hidden) ================= */
+  function learnerHTML(q, n){
+    var k = effKind(q), name = 'lp-' + q.id, input = '';
+    if (isObjective(k)) input = q.options.map(function(o){ return '<label class="opt"><input type="' + (k === 'multi' ? 'checkbox' : 'radio') + '" name="' + name + '"><span>' + esc(o.text) + '</span></label>'; }).join('') + (k === 'multi' ? '<p class="lp-hint">Select all that apply.</p>' : '');
+    else if (k === 'long') input = '<textarea class="input" rows="5" aria-label="Your answer" placeholder="Type your answer"></textarea>';
+    else if (k === 'short') input = '<input class="input" type="text" aria-label="Your answer" placeholder="Type your answer">';
+    var prompt = k === 'fill' ? esc(q.prompt).replace(BLANK_RE, '<input class="input lp-blank" type="text" aria-label="Fill in the blank">') : esc(q.prompt);
+    return '<div class="lp"><div class="lp-top"><span>Question ' + (n || 1) + '</span><span>' + plural(q.points, 'point') + '</span></div><p class="lp-p">' + prompt + '</p>' + (q.image ? '<figure class="lp-img">' + imgTag(q.image) + '</figure>' : '') + input + '</div>';
+  }
+  function openPreview(q){
+    closeMenu();
+    openModal('<div class="modal-h"><div><h3 id="modalTitle">Learner preview</h3><p>How this question appears to learners. Correct answers are hidden.</p></div><button class="ib" type="button" data-close aria-label="Close preview">' + I.x + '</button></div><div id="lpBody">' + learnerHTML(q) + '</div><div class="modal-foot"><button class="btn btn-secondary" type="button" data-close data-autofocus>Close Preview</button><button class="btn btn-primary" type="button" id="lpEdit">' + I.edit + 'Edit</button></div>', 'lg');
+    hydrateImgs($('lpBody'));
+    $('lpEdit').onclick = function(){ closeModal(); openEditor(q); };
+  }
+
+  /* ================= Duplicate / delete ================= */
+  function duplicate(q){
+    closeMenu();
+    var c = clone(q); c.id = uid('qb'); c.usage = []; c.options.forEach(function(o){ o.id = uid('o'); });
+    api.save(c).then(function(saved){
+      toast('Question duplicated — it\'s a separate question you can change freely.', 'Edit copy', function(){ openEditor(saved); });
+      st.page = 1; if (st.sort !== 'recent'){ st.sort = 'recent'; $('fSort').value = 'recent'; } refresh();
+    }).catch(function(){ toast('Couldn\'t duplicate the question. Try again.', 'Retry', function(){ duplicate(q); }, true); });
+  }
+  function askDelete(q){
+    closeMenu();
+    var n = (q.usage || []).length;
+    confirmModal('Delete question?', 'This removes the question from the Question Bank. Existing copies in assessments will not be affected.' + (n ? '<br><br><b>' + usageLabel(q) + '</b> — those copies stay exactly as they are.' : ''), 'Delete', function(){
+      var b = $('cfOk'); b.disabled = true; b.innerHTML = '<span class="spin"></span>Deleting…';
+      api.remove(q.id).then(function(){ closeModal(); if (detailId === q.id) closeDetail(); toast('Question deleted from the Question Bank.'); refresh(); })
+        .catch(function(){ b.disabled = false; b.textContent = 'Try again'; $('cfErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>The question couldn\'t be deleted</b>Check your connection and try again. Nothing was removed.</div></div>'; });
+    }, true);
+  }
+
+  /* ================= Question editor ================= */
+  var ed = null; // { q, isNew, dirty, showExp, uploading, imgErr, errs }
+  function openCreate(){
+    closeMenu(); if (detailId) closeDetail();
+    ed = { q:null, isNew:true, dirty:false };
+    var e = $('editor');
+    e.innerHTML = '<div class="drawer-h"><h2>Create Question</h2><button class="ib" type="button" data-ed="close" aria-label="Close">' + I.x + '</button></div><div class="drawer-b"><div class="sec-h" style="margin-bottom:12px"><label>Choose a question type</label></div><div class="kinds" role="radiogroup" aria-label="Question type">' + Object.keys(KINDS).map(function(k){ return '<button class="kind" type="button" role="radio" aria-checked="false" data-kind="' + k + '"><span class="ico">' + I[KIND_INFO[k][0]] + '</span><span><b>' + KINDS[k] + '</b><span>' + KIND_INFO[k][1] + '</span></span></button>'; }).join('') + '</div></div><div class="drawer-f"><button class="btn btn-secondary" type="button" data-ed="close">Cancel</button></div>';
+    openDrawer(e); e.querySelector('.kind').focus();
+  }
+  function openEditor(q){
+    closeMenu(); closeModal(); if (detailId) closeDetail();
+    ed = { q:clone(q), isNew:false, dirty:false, showExp:!!q.explanation };
+    drawEditor(); openDrawer($('editor'));
+    $('editor').querySelector('[data-e="prompt"]').focus();
+  }
+  function startWith(kind, keep){
+    ed.q = blankQ(kind);
+    if (keep){ ed.q.tags = keep.tags.slice(); ed.q.points = keep.points; if (kind === 'image') setKind(ed.q, 'image', true, keep.format); }
+    ed.showExp = false; ed.errs = null; drawEditor(); $('editor').querySelector('[data-e="prompt"]').focus();
+  }
+  function drawEditor(){
+    var e = $('editor'), y = e.querySelector('.drawer-b') ? e.querySelector('.drawer-b').scrollTop : 0;
+    e.innerHTML = '<div class="drawer-h"><h2>' + (ed.isNew ? 'Create Question' : 'Edit Question') + '</h2>' + (ed.q.ai ? '<span class="badge brand sm">' + I.spark + 'AI generated</span>' : '') + '<button class="ib" type="button" data-ed="close" aria-label="Close">' + I.x + '</button></div>' +
+      '<div class="drawer-b"><div id="edErr"></div>' + edHTML(ed.q, ed) + '</div>' +
+      '<div class="drawer-f"><button class="btn btn-secondary" type="button" data-ed="close">Cancel</button><span class="grow"></span>' + (ed.isNew ? '<button class="btn btn-secondary" type="button" data-ed="save-another">Save &amp; Add Another</button>' : '') + '<button class="btn btn-primary" type="button" data-ed="save">Save Question</button></div>';
+    if (ed.errs && ed.errs.length) showEdErr(ed.errs);
+    hydrateImgs(e); autoGrow(e);
+    e.querySelector('.drawer-b').scrollTop = y;
+  }
+  function autoGrow(root){ root.querySelectorAll('textarea[data-e="prompt"]').forEach(function(t){ t.style.height = 'auto'; t.style.height = Math.max(64, t.scrollHeight + 2) + 'px'; }); }
+  function showEdErr(errs){ $('edErr').innerHTML = errs.length ? '<div class="alert error" role="alert">' + I.alert + '<div><b>Fix ' + (errs.length === 1 ? 'this' : 'these') + ' before saving</b><ul>' + errs.map(function(x){ return '<li>' + esc(x) + '</li>'; }).join('') + '</ul></div></div>' : ''; }
+
+  // Editor markup — copied into question-bank-ai.html (review items) and course-builder.html uses the same data shape
+  function edHTML(q, ctx){
+    var k = effKind(q), id = q.id, h = '<div class="ed">';
+    h += '<div class="ed-top' + (q.kind === 'image' ? '' : ' two') + '"><div class="field"><label for="k-' + id + '">Question type</label><select class="select" id="k-' + id + '" data-e="kind" style="width:100%">' + Object.keys(KINDS).map(function(x){ return '<option value="' + x + '"' + (x === q.kind ? ' selected' : '') + '>' + KINDS[x] + '</option>'; }).join('') + '</select></div>' +
+      (q.kind === 'image' ? '<div class="field"><label for="f-' + id + '">Answer format</label><select class="select" id="f-' + id + '" data-e="format" style="width:100%">' + Object.keys(FORMATS).map(function(x){ return '<option value="' + x + '"' + (x === q.format ? ' selected' : '') + '>' + FORMATS[x] + '</option>'; }).join('') + '</select></div>' : '') +
+      '<div class="field"><label for="p-' + id + '">Points</label><input class="input" id="p-' + id + '" type="number" min="0" step="1" data-e="points" value="' + (isNaN(q.points) ? '' : q.points) + '"></div></div>';
+    h += '<section class="ed-sec"><div class="sec-h"><label for="q-' + id + '">Question <span class="req">*</span></label>' + (k === 'fill' ? '<button class="btn btn-secondary btn-xs" type="button" data-ea="blank">' + I.blank + 'Insert blank</button>' : '') + '</div>' +
+      '<textarea class="input q-prompt" id="q-' + id + '" data-e="prompt" rows="2" placeholder="' + (k === 'fill' ? 'e.g. GDPR stands for General Data ____ Regulation.' : k === 'tf' ? 'Write a statement learners mark true or false' : 'Write the question') + '">' + esc(q.prompt) + '</textarea>' +
+      (k === 'fill' ? '<div class="blank-prev" data-blankprev>' + blankPrev(q) + '</div>' : '') + '</section>';
+    if (q.kind === 'image') h += '<section class="ed-sec"><div class="sec-h"><label>Image <span class="req">*</span></label></div>' + imageEdHTML(q, ctx) + '</section>';
+    h += '<section class="ed-sec">' + answersEdHTML(q, k) + '</section>';
+    if (isObjective(k) || k === 'fill') h += ctx.showExp || q.explanation ? '<section class="ed-sec"><div class="sec-h"><label for="x-' + id + '">Explanation</label><span class="hint">Optional · explains the correct answer</span></div><textarea class="input" id="x-' + id + '" data-e="explanation" rows="2" placeholder="Why this answer is correct">' + esc(q.explanation) + '</textarea></section>' : '<div><button class="btn btn-ghost btn-sm" type="button" data-ea="exp">' + I.plus + 'Add explanation</button></div>';
+    h += '<section class="ed-sec"><div class="sec-h"><label for="t-' + id + '">Tags</label><span class="hint">Used to search and filter the bank</span></div>' + tagInHTML(q) + '</section>';
+    return h + '</div>';
+  }
+  function blankPrev(q){
+    var n = (q.prompt.match(BLANK_RE) || []).length, i = 0;
+    if (!n) return '<small>Preview</small><span style="color:var(--text-tertiary)">Type ____ or use <b>Insert blank</b> to mark where learners type the answer.</span>';
+    return '<small>Preview' + (n > 1 ? ' · only one blank is supported' : '') + '</small>' + esc(q.prompt).replace(BLANK_RE, function(){ i++; var show = i === 1 && q.answer.trim(); return '<span class="blank' + (show ? '' : ' unset') + '">' + (show ? esc(q.answer) : 'blank') + '</span>'; });
+  }
+  function imageEdHTML(q, ctx){
+    if (ctx.uploading) return '<div class="uploading" aria-live="polite"><span class="spin dark"></span>Uploading ' + esc(ctx.uploading) + '…</div>';
+    var err = ctx.imgErr ? '<p class="hint" role="alert" style="color:var(--error);font-weight:600">' + esc(ctx.imgErr) + '</p>' : '';
+    if (!q.image) return '<label class="dropzone" data-drop>' + I.upload + '<b><span>Click to upload</span> or drag and drop</b><small>JPG, PNG, GIF, WEBP or SVG · up to 10 MB · saved to your Content Library</small><input type="file" hidden accept=".jpg,.jpeg,.png,.gif,.webp,.svg" data-imgfile></label><div class="img-or">or <button class="btn btn-secondary btn-sm" type="button" data-ea="img-lib">' + I.image + 'Choose from Content Library</button></div>' + err;
+    return '<div class="img-box"><div class="img-frame">' + imgTag(q.image) + '</div><div><div class="field"><label for="alt-' + q.id + '">Alt text</label><input class="input" id="alt-' + q.id + '" data-e="alt" value="' + esc(q.image.alt || '') + '" placeholder="Describe the image for screen readers"></div><div class="img-acts"><label class="btn btn-secondary btn-sm">' + I.upload + 'Replace<input type="file" hidden accept=".jpg,.jpeg,.png,.gif,.webp,.svg" data-imgfile></label><button class="btn btn-secondary btn-sm" type="button" data-ea="img-lib">From library</button><button class="btn btn-ghost danger btn-sm" type="button" data-ea="img-del">Remove</button></div>' + err + '</div></div>';
+  }
+  function answersEdHTML(q, k){
+    var id = q.id;
+    if (isObjective(k)){
+      var multi = k === 'multi', tf = k === 'tf';
+      return '<div class="sec-h"><label>' + (tf ? 'Correct answer' : 'Answer options') + ' <span class="req">*</span></label><span class="hint">' + (multi ? 'Tick every correct answer' : tf ? 'Select true or false' : 'Select the one correct answer') + '</span></div>' +
+        (multi ? '<div class="multi-note">' + I.info + '<span>Learners can select more than one answer. Mark every option that is correct.</span></div>' : '') +
+        '<div class="option-stack" data-opts>' + q.options.map(function(o, i){
+          var L = String.fromCharCode(65 + i);
+          return '<div class="option-item' + (o.correct ? ' correct' : '') + '" data-o="' + o.id + '">' + (tf ? '' : '<span class="grip" draggable="true" data-grip title="Drag to reorder">' + I.grip + '</span><span class="opt-l">' + L + '</span>') +
+            '<input type="' + (multi ? 'checkbox' : 'radio') + '" name="c-' + id + '" data-oc' + (o.correct ? ' checked' : '') + ' aria-label="Mark ' + (tf ? esc(o.text) : 'option ' + L) + ' correct">' +
+            '<input type="text" data-ot value="' + esc(o.text) + '"' + (tf ? ' readonly tabindex="-1"' : ' placeholder="Option ' + L + '" aria-label="Option ' + L + ' text"') + '>' +
+            (o.correct ? '<span class="ok-tag">Correct</span>' : '') +
+            (tf ? '' : '<button class="ib sm" type="button" data-ea="up" aria-label="Move option ' + L + ' up"' + (i ? '' : ' disabled') + '>' + I.up + '</button><button class="ib sm" type="button" data-ea="down" aria-label="Move option ' + L + ' down"' + (i < q.options.length - 1 ? '' : ' disabled') + '>' + I.down + '</button><button class="ib sm" type="button" data-ea="del-opt" aria-label="Remove option ' + L + '"' + (q.options.length > 2 ? '' : ' disabled') + '>' + I.x + '</button>') + '</div>';
+        }).join('') + '</div>' +
+        (tf ? '' : '<div class="opts-foot"><button class="btn btn-ghost btn-sm" type="button" data-ea="add-opt"' + (q.options.length >= 10 ? ' disabled' : '') + '>' + I.plus + 'Add option</button>' + (q.options.length >= 10 ? '<span class="hint">Up to 10 options.</span>' : '') + '</div>');
+    }
+    if (k === 'fill') return '<div class="field" style="margin:0"><label for="a-' + id + '">Accepted answer <span class="req">*</span></label><input class="input" id="a-' + id + '" data-e="answer" value="' + esc(q.answer) + '" placeholder="Word or phrase that fills the blank"></div>' +
+      (q.alts || []).map(function(a, i){ return '<div class="alt-row"><input class="input" data-alt="' + i + '" value="' + esc(a) + '" placeholder="Another accepted answer" aria-label="Accepted answer ' + (i + 2) + '"><button class="ib" type="button" data-ea="del-alt" data-i="' + i + '" aria-label="Remove accepted answer ' + (i + 2) + '">' + I.x + '</button></div>'; }).join('') +
+      '<div class="opts-foot"><button class="btn btn-ghost btn-sm" type="button" data-ea="add-alt">' + I.plus + 'Add another accepted answer</button><span class="hint">Answers are matched ignoring upper/lower case.</span></div>';
+    if (k === 'short') return '<div class="field" style="margin:0"><label for="a-' + id + '">Expected answer <span class="req">*</span></label><textarea class="input" id="a-' + id + '" data-e="answer" rows="2" placeholder="The answer you expect, or guidance for marking">' + esc(q.answer) + '</textarea></div>';
+    return '<div class="field" style="margin:0"><label for="a-' + id + '">Rubric / marking guidance <span class="req">*</span></label><textarea class="input" id="a-' + id + '" data-e="answer" rows="5" placeholder="What a strong answer includes and how points are awarded">' + esc(q.answer) + '</textarea><p class="hint">Graders see this when marking. Learners don\'t.</p></div>';
+  }
+  function tagInHTML(q){
+    return '<div class="tagin-wrap" data-tagwrap><div class="tagin" data-tagbox>' + q.tags.map(function(t){ return '<span class="chip"><span>' + esc(t) + '</span><button type="button" data-ea="del-tag" data-t="' + esc(t) + '" aria-label="Remove tag ' + esc(t) + '">' + I.x + '</button></span>'; }).join('') +
+      '<input id="t-' + q.id + '" data-tagin placeholder="' + (q.tags.length ? 'Add tag' : 'Add a tag, e.g. Leadership') + '" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-' + q.id + '" maxlength="40"></div><div class="tag-sug" id="sug-' + q.id + '" role="listbox" hidden></div></div>';
+  }
+
+  // Editor behavior, bound once per editor root. get() → live question; changed(redraw) marks dirty; ctxOf() → editor context
+  function bindEditor(root, get, changed, ctxOf){
+    function oById(q, el){ var id = el.closest('[data-o]').dataset.o; return q.options.find(function(o){ return o.id === id; }); }
+    function doUpload(file){
+      var q = get(), ctx = ctxOf(); ctx.uploading = file.name; ctx.imgErr = null; changed(true);
+      uploadImage(file).then(function(img){ ctx.uploading = null; if (q.image && q.image.alt) img.alt = q.image.alt; q.image = img; changed(true); })
+        .catch(function(msg){ ctx.uploading = null; ctx.imgErr = typeof msg === 'string' ? msg : 'The image couldn\'t be uploaded. Try again.'; changed(true); });
+    }
+    root.addEventListener('input', function(e){
+      var q = get(); if (!q) return; var t = e.target, f = t.dataset.e;
+      if (t.matches('[data-tagin]')) return tagSuggest(q, t);
+      if (f && f !== 'kind' && f !== 'format'){
+        if (f === 'points') q.points = t.value === '' ? NaN : Math.max(0, Math.round(+t.value));
+        else if (f === 'alt') q.image.alt = t.value;
+        else q[f] = t.value;
+        if (f === 'prompt') autoGrow(root);
+        if ((f === 'prompt' || f === 'answer') && effKind(q) === 'fill'){ var bp = t.closest('.ed').querySelector('[data-blankprev]'); if (bp) bp.innerHTML = blankPrev(q); }
+        changed(false); return;
+      }
+      if (t.matches('[data-ot]')){ oById(q, t).text = t.value; changed(false); return; }
+      if (t.dataset.alt != null){ q.alts[+t.dataset.alt] = t.value; changed(false); }
+    });
+    root.addEventListener('change', function(e){
+      var q = get(); if (!q) return; var t = e.target;
+      if (t.dataset.e === 'kind'){ setKind(q, t.value); changed(true); return; }
+      if (t.dataset.e === 'format'){ setKind(q, 'image', false, t.value); changed(true); return; }
+      if (t.matches('[data-oc]')){ var o = oById(q, t); q.options.forEach(function(x){ if (effKind(q) === 'multi'){ if (x === o) x.correct = t.checked; } else x.correct = x === o; }); changed(true); return; }
+      if (t.matches('[data-imgfile]') && t.files[0]) doUpload(t.files[0]);
+    });
+    root.addEventListener('click', function(e){
+      var box = e.target.closest('[data-tagbox]'); if (box && e.target === box) box.querySelector('[data-tagin]').focus();
+      var b = e.target.closest('[data-ea]'), q = get(); if (!b || !q) return;
+      var a = b.dataset.ea, i;
+      if (a === 'blank'){
+        var ta = root.querySelector('#q-' + CSS.escape(q.id)), s = ta.selectionStart, en = ta.selectionEnd, v = q.prompt;
+        if ((v.match(BLANK_RE) || []).length) return toast('This question already has a blank.', null, null, true);
+        var ins = (s && v[s - 1] !== ' ' ? ' ' : '') + '____' + (v[en] && v[en] !== ' ' ? ' ' : '');
+        q.prompt = v.slice(0, s) + ins + v.slice(en); changed(true);
+        var n2 = root.querySelector('#q-' + CSS.escape(q.id)), p = q.prompt.indexOf('____') + 4; n2.focus(); n2.setSelectionRange(p, p); return;
+      }
+      if (a === 'exp'){ ctxOf().showExp = true; changed(true); var x = root.querySelector('#x-' + CSS.escape(q.id)); if (x) x.focus(); return; }
+      if (a === 'add-opt'){ q.options.push(opt('')); changed(true); var ots = root.querySelectorAll('[data-ot]'); ots[ots.length - 1].focus(); return; }
+      if (a === 'del-opt' || a === 'up' || a === 'down'){
+        i = q.options.findIndex(function(o){ return o.id === b.closest('[data-o]').dataset.o; });
+        var moved = q.options[i];
+        if (a === 'del-opt'){ q.options.splice(i, 1); if (moved.correct && effKind(q) === 'mcq') q.options[0].correct = true; changed(true); var rest = root.querySelectorAll('[data-ot]'); if (rest[Math.min(i, rest.length - 1)]) rest[Math.min(i, rest.length - 1)].focus(); return; }
+        var j = a === 'up' ? i - 1 : i + 1; if (j < 0 || j >= q.options.length) return;
+        q.options[i] = q.options[j]; q.options[j] = moved; changed(true);
+        var mb = root.querySelector('[data-o="' + moved.id + '"] [data-ea="' + a + '"]'); if (mb && !mb.disabled) mb.focus(); else { var mt = root.querySelector('[data-o="' + moved.id + '"] [data-ot]'); if (mt) mt.focus(); }
+        return;
+      }
+      if (a === 'add-alt'){ q.alts.push(''); changed(true); var al = root.querySelectorAll('[data-alt]'); al[al.length - 1].focus(); return; }
+      if (a === 'del-alt'){ q.alts.splice(+b.dataset.i, 1); changed(true); return; }
+      if (a === 'del-tag'){ q.tags = q.tags.filter(function(t){ return t !== b.dataset.t; }); changed(true); focusTag(root, q); return; }
+      if (a === 'sug'){ addTag(root, q, b.dataset.v, changed); return; }
+      if (a === 'img-del'){ q.image = null; changed(true); return; }
+      if (a === 'img-lib') openLibrary(function(assetId){ q.image = { assetId:assetId, alt:(q.image && q.image.alt) || '' }; ctxOf().imgErr = null; changed(true); });
+    });
+    root.addEventListener('keydown', function(e){
+      var t = e.target; if (!t.matches('[data-tagin]')) return;
+      var q = get(), box = t.closest('[data-tagwrap]').querySelector('.tag-sug'), items = box.hidden ? [] : Array.prototype.slice.call(box.querySelectorAll('button')), cur = items.findIndex(function(x){ return x.getAttribute('aria-selected') === 'true'; });
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ if (!items.length) return; e.preventDefault(); var n = e.key === 'ArrowDown' ? (cur + 1) % items.length : (cur - 1 + items.length) % items.length; items.forEach(function(x, k){ x.setAttribute('aria-selected', String(k === n)); }); return; }
+      if (e.key === 'Enter' || e.key === ','){ e.preventDefault(); var v = cur > -1 ? items[cur].dataset.v : t.value; if (cleanTag(v)) addTag(root, q, v, changed); return; }
+      if (e.key === 'Backspace' && !t.value && q.tags.length){ q.tags.pop(); changed(true); focusTag(root, q); return; }
+      if (e.key === 'Escape' && !box.hidden){ e.stopPropagation(); box.hidden = true; t.setAttribute('aria-expanded', 'false'); }
+    });
+    root.addEventListener('focusout', function(e){ if (!e.target.matches('[data-tagin]')) return; var w = e.target.closest('[data-tagwrap]'); setTimeout(function(){ if (w.isConnected && !w.contains(document.activeElement)) w.querySelector('.tag-sug').hidden = true; }, 150); });
+    // Drag to reorder options by the grip; up/down buttons are the keyboard path
+    var dragId = null;
+    root.addEventListener('dragstart', function(e){ var g = e.target.closest && e.target.closest('[data-grip]'); if (!g) return; var row = g.closest('[data-o]'); dragId = row.dataset.o; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); e.dataTransfer.setDragImage(row, 20, 20); });
+    root.addEventListener('dragover', function(e){
+      var dz = e.target.closest && e.target.closest('[data-drop]');
+      if (dz && !dragId){ e.preventDefault(); dz.classList.add('over'); return; }
+      if (!dragId) return; var row = e.target.closest('[data-o]'); if (!row) return; e.preventDefault();
+      root.querySelectorAll('.drag-over').forEach(function(x){ x.classList.remove('drag-over'); }); if (row.dataset.o !== dragId) row.classList.add('drag-over');
+    });
+    root.addEventListener('dragleave', function(e){ var dz = e.target.closest && e.target.closest('[data-drop]'); if (dz) dz.classList.remove('over'); });
+    root.addEventListener('drop', function(e){
+      var dz = e.target.closest && e.target.closest('[data-drop]');
+      if (dz && !dragId){ e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) doUpload(e.dataTransfer.files[0]); return; }
+      if (!dragId) return; e.preventDefault();
+      var q = get(), row = e.target.closest('[data-o]');
+      if (row && row.dataset.o !== dragId){ var from = q.options.findIndex(function(o){ return o.id === dragId; }), it = q.options.splice(from, 1)[0], to = q.options.findIndex(function(o){ return o.id === row.dataset.o; }); q.options.splice(to, 0, it); }
+      dragId = null; changed(true);
+    });
+    root.addEventListener('dragend', function(){ dragId = null; root.querySelectorAll('.dragging,.drag-over').forEach(function(x){ x.classList.remove('dragging', 'drag-over'); }); });
+  }
+  function focusTag(root, q){ var inp = root.querySelector('#t-' + CSS.escape(q.id)); if (inp) inp.focus(); }
+  function cleanTag(v){ return String(v || '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40); }
+  function addTag(root, q, v, changed){
+    v = cleanTag(v); if (!v) return;
+    var existing = api.tags().find(function(t){ return t.toLowerCase() === v.toLowerCase(); }) || v; // reuse the org's casing
+    if (!q.tags.some(function(t){ return t.toLowerCase() === existing.toLowerCase(); })) q.tags.push(existing);
+    changed(true); focusTag(root, q);
+  }
+  function tagSuggest(q, inp){
+    var v = cleanTag(inp.value), box = inp.closest('[data-tagwrap]').querySelector('.tag-sug');
+    if (!v){ box.hidden = true; inp.setAttribute('aria-expanded', 'false'); return; }
+    var have = q.tags.map(function(t){ return t.toLowerCase(); }), all = api.tags(), lv = v.toLowerCase();
+    var hits = all.filter(function(t){ return have.indexOf(t.toLowerCase()) < 0 && t.toLowerCase().indexOf(lv) > -1; }).slice(0, 8);
+    var exact = all.some(function(t){ return t.toLowerCase() === lv; }) || have.indexOf(lv) > -1;
+    box.innerHTML = hits.map(function(t, i){ return '<button type="button" role="option" data-ea="sug" data-v="' + esc(t) + '" aria-selected="' + (i === 0) + '">' + I.tag + esc(t) + '</button>'; }).join('') + (exact ? '' : '<button type="button" role="option" data-ea="sug" data-v="' + esc(v) + '" aria-selected="' + !hits.length + '">' + I.plus + 'Create “' + esc(v) + '”<small>New tag</small></button>');
+    box.hidden = !box.innerHTML; inp.setAttribute('aria-expanded', String(!box.hidden));
+  }
+
+  bindEditor($('editor'), function(){ return ed && ed.q; }, function(redraw){ ed.dirty = true; if (redraw){ var f = document.activeElement && document.activeElement.id; drawEditor(); if (f && $(f)) $(f).focus(); } }, function(){ return ed; });
+  $('editor').addEventListener('click', function(e){
+    var k = e.target.closest('[data-kind]'); if (k) return startWith(k.dataset.kind);
+    var b = e.target.closest('[data-ed]'); if (!b) return;
+    if (b.dataset.ed === 'close') return closeEditor();
+    if (b.dataset.ed === 'save' || b.dataset.ed === 'save-another') saveEditor(b.dataset.ed === 'save-another', b);
+  });
+  function closeEditor(force){
+    if (!force && ed && ed.dirty) return confirmModal('Discard changes?', 'Your changes to this question haven\'t been saved.', 'Discard', function(){ closeModal(); closeEditor(true); }, true);
+    ed = null; closeDrawer($('editor'));
+  }
+  function saveEditor(another, btn){
+    var q = ed.q, errs = validateQ(q);
+    if (ed.uploading) errs.push('Wait for the image to finish uploading.');
+    ed.errs = errs; showEdErr(errs);
+    if (errs.length){ $('editor').querySelector('.drawer-b').scrollTop = 0; return; }
+    var clean = clone(q);
+    clean.prompt = clean.prompt.trim(); clean.answer = clean.answer.trim(); clean.explanation = clean.explanation.trim();
+    clean.options.forEach(function(o){ o.text = o.text.trim(); });
+    clean.alts = (clean.alts || []).map(function(a){ return a.trim(); }).filter(Boolean);
+    if (clean.ai && ed.dirty) clean.edited = true;
+    var btns = $('editor').querySelectorAll('.drawer-f .btn'), label = btn.innerHTML;
+    btns.forEach(function(x){ x.disabled = true; }); btn.innerHTML = '<span class="spin' + (btn.classList.contains('btn-primary') ? '' : ' dark') + '"></span>Saving…';
+    api.save(clean).then(function(saved){
+      var wasNew = ed.isNew;
+      toast(wasNew ? 'Question saved to the Question Bank.' : 'Question updated. Assessment copies are unchanged.');
+      if (another){ ed = { q:null, isNew:true, dirty:false }; startWith(saved.kind, saved); }
+      else closeEditor(true);
+      if (wasNew){ st.page = 1; if (st.sort !== 'recent'){ st.sort = 'recent'; $('fSort').value = 'recent'; } }
+      refresh();
+    }).catch(function(){
+      btns.forEach(function(x){ x.disabled = false; }); btn.innerHTML = label;
+      $('edErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>The question couldn\'t be saved</b>Your changes are still here. Check your connection and try again.</div></div>'; $('editor').querySelector('.drawer-b').scrollTop = 0;
+    });
+  }
+
+  /* ================= Content Library chooser (images) ================= */
+  function openLibrary(cb){
+    openModal('<div class="modal-h"><div><h3 id="modalTitle">Choose from Content Library</h3><p>Images your organization has uploaded.</p></div><button class="ib" type="button" data-close aria-label="Close">' + I.x + '</button></div><div id="libGrid" aria-busy="true"><div class="lib-grid">' + [0, 1, 2, 3, 4, 5].map(function(){ return '<div class="asset"><div class="th sk" style="height:auto;border-radius:0"></div><div class="inf"><span class="sk" style="width:70%"></span></div></div>'; }).join('') + '</div></div>', 'lg');
+    // ponytail: simulated library fetch; replace with the Content Library API (CRS-009)
+    wait(300).then(function(){
+      var g = $('libGrid'); if (!g) return; g.removeAttribute('aria-busy');
+      var items = (readJSON(LIB_KEY) || []).filter(function(a){ return a.kind === 'image' && a.status === 'ready'; });
+      if (!items.length){ g.innerHTML = '<div class="empty" style="padding:32px"><b>No images in your Content Library yet</b><span>Upload an image in the question editor and it\'s saved here for reuse.</span></div>'; return; }
+      g.innerHTML = '<div class="lib-grid">' + items.map(function(a){ return '<button class="asset" type="button" data-asset="' + a.id + '"><div class="th" data-thumb="' + a.id + '"></div><div class="inf"><b title="' + esc(a.name) + '">' + esc(a.name) + '</b><small>' + esc(a.uploadedBy || '') + ' · ' + fmtDate(a.uploaded) + '</small></div></button>'; }).join('') + '</div>';
+      g.querySelectorAll('[data-thumb]').forEach(function(t){ imgURL({ assetId:t.dataset.thumb }).then(function(u){ if (u) t.style.backgroundImage = 'url("' + u + '")'; }); });
+      g.onclick = function(e){ var b = e.target.closest('[data-asset]'); if (b){ closeModal(); cb(b.dataset.asset); } };
+    });
+  }
+
+  /* ================= Global keys / boot ================= */
+  document.addEventListener('keydown', function(e){
+    if (e.key !== 'Escape') return;
+    if (!$('menu').hidden) return closeMenu();
+    if ($('modal').classList.contains('open')) return closeModal();
+    if ($('editor').classList.contains('open')) return closeEditor();
+    if ($('detail').classList.contains('open')) return closeDetail();
+  });
+  window.addEventListener('beforeunload', function(e){ if (ed && ed.dirty){ e.preventDefault(); e.returnValue = ''; } });
+  $('addBtn').onclick = openCreate;
+  $('ps').addEventListener('change', function(){ closeModal(); if (ed) closeEditor(true); closeDetail(); st.page = 1; refresh(true); });
+
+  (function boot(){
+    var s = params.get('state'); if (s && $('ps').querySelector('option[value="' + s + '"]')) $('ps').value = s;
+    var saved = +params.get('saved'), imported = +params.get('imported');
+    if (saved) toast(plural(saved, 'question') + ' saved to the Question Bank.');
+    if (imported) toast(plural(imported, 'question') + ' imported into the Question Bank.');
+    if (saved || imported) history.replaceState(null, '', location.pathname + (AS_INSTRUCTOR ? '?as=instructor' : ''));
+    refresh(true);
+    if (params.get('new') === '1') openCreate();
+  })();
+</script>
+</body>
+</html>

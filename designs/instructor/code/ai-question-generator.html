@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — AI Question Generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     UpSpace Instructor — AI Question Generator (2-Stage Workflow)
+     STAGE 1: Configure Generation Setup
+     STAGE 2: Generating Loading State
+     STAGE 3: Review Generated Questions Workspace
+     Design System: UpSpaceDESIGN.md
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --icon-muted:#a3a3a3; --icon-primary:#404040;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --brand-subtle:#eef2ff; --brand-border:#c7d2fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:28px 32px 48px; }
+
+  /* Navigation Back */
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:12px; cursor:pointer; }
+  .back-link:hover{ color:var(--action-primary); }
+
+  /* Compact Header */
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; flex-wrap:wrap; border-bottom:1px solid var(--border-default); padding-bottom:16px; }
+  .page-head-left{ display:flex; flex-direction:column; gap:4px; }
+  .page-head h1{ margin:0; font-size:24px; font-weight:700; letter-spacing:-0.3px; color:var(--text-primary); }
+  .page-head .sub{ font-size:13.5px; color:var(--text-secondary); margin:0; }
+
+  .state-preview{ height:34px; padding:0 28px 0 10px; font-size:12px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 8px center; appearance:none; cursor:pointer; }
+
+  /* Stage 1: Setup Layout (Inputs Column + Summary Sidebar) */
+  .setup-layout{ display:grid; grid-template-columns:1fr 300px; gap:24px; align-items:start; }
+  @media (max-width: 1100px){ .setup-layout{ grid-template-columns:1fr; } }
+
+  .panel{ background:#ffffff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
+  .panel-body{ padding:24px; }
+
+  .section-title{ font-size:15px; font-weight:700; color:var(--text-primary); margin:0 0 16px; padding-bottom:10px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; gap:8px; }
+
+  /* Input Grid */
+  .form-grid{ display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:20px; }
+  .form-group{ display:flex; flex-direction:column; gap:6px; }
+  .form-group.full{ grid-column:1 / -1; }
+  .form-group label{ font-size:13px; font-weight:600; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; }
+  .form-group label .req{ color:var(--error); font-weight:700; }
+  .form-group label .opt{ color:var(--text-tertiary); font-weight:400; font-size:12px; }
+  .form-control{ height:38px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:13.5px; background:#fff; outline:none; transition:border-color 0.15s ease; }
+  .form-control:focus{ border-color:var(--focus-ring); }
+  .form-control.error-input{ border-color:var(--error); background:var(--error-subtle); }
+  .field-error{ font-size:12px; color:var(--error); font-weight:600; display:none; }
+  .field-error.show{ display:block; }
+
+  /* Difficulty Segmented Control */
+  .segmented-control{ display:flex; background:var(--surface-canvas); padding:3px; border:1px solid var(--border-default); border-radius:var(--radius-lg); gap:4px; }
+  .segment-btn{ flex:1; height:32px; border:none; background:transparent; font-size:13px; font-weight:600; color:var(--text-secondary); border-radius:var(--radius-md); cursor:pointer; transition:all 0.15s ease; text-align:center; display:flex; align-items:center; justify-content:center; }
+  .segment-btn.active{ background:#fff; color:var(--action-primary); box-shadow:0 1px 3px rgba(0,0,0,0.1); font-weight:700; }
+
+  /* Drag & Drop File Upload Zone */
+  .drop-zone{ border:2px dashed var(--brand-border); border-radius:var(--radius-lg); padding:20px 16px; text-align:center; background:var(--brand-subtle); cursor:pointer; transition:border-color 0.15s ease; margin-bottom:12px; }
+  .drop-zone:hover{ border-color:var(--action-primary); }
+  .drop-title{ font-size:13px; font-weight:700; color:var(--action-primary); }
+  .drop-sub{ font-size:11.5px; color:var(--text-secondary); margin-top:2px; }
+
+  .file-chips-list{ display:flex; flex-direction:column; gap:6px; }
+  .file-chip{ display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:var(--surface-canvas); border:1px solid var(--border-default); border-radius:var(--radius-md); font-size:12.5px; }
+  .file-chip-info{ display:flex; align-items:center; gap:8px; font-weight:600; color:var(--text-primary); }
+  .file-chip-size{ font-size:11.5px; color:var(--text-tertiary); font-weight:400; }
+  .file-remove{ border:none; background:transparent; color:var(--text-tertiary); font-weight:700; cursor:pointer; font-size:16px; padding:0 4px; }
+  .file-remove:hover{ color:var(--error); }
+
+  /* Stage 1 Summary Panel */
+  .summary-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; position:sticky; top:28px; display:flex; flex-direction:column; gap:16px; }
+  .summary-title{ font-size:12px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.5px; margin:0; }
+  .summary-list{ display:flex; flex-direction:column; gap:10px; }
+  .summary-item{ display:flex; flex-direction:column; gap:2px; }
+  .summary-item .lbl{ font-size:11.5px; font-weight:600; color:var(--text-tertiary); }
+  .summary-item .val{ font-size:13.5px; font-weight:700; color:var(--text-primary); }
+
+  .btn{ height:38px; padding:0 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; text-decoration:none; white-space:nowrap; }
+  .btn:disabled{ opacity:0.5; cursor:not-allowed; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover:not(:disabled){ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+
+  /* STAGE 2: Generating State Loader Box */
+  .stage-loading-box{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:48px 32px; text-align:center; display:none; flex-direction:column; align-items:center; justify-content:center; }
+  .stage-loading-box.show{ display:flex; }
+
+  .loading-context-badge{ font-size:12.5px; font-weight:600; color:var(--action-primary); background:var(--brand-subtle); padding:6px 14px; border-radius:var(--radius-full); border:1px solid var(--brand-border); margin-bottom:20px; }
+
+  .step-tracker{ display:flex; flex-direction:column; gap:12px; width:100%; max-width:420px; text-align:left; margin:24px 0; }
+  .step-row{ display:flex; align-items:center; gap:12px; font-size:13.5px; color:var(--text-tertiary); font-weight:500; }
+  .step-row.done{ color:var(--success); font-weight:600; }
+  .step-row.active{ color:var(--action-primary); font-weight:700; }
+  .step-dot{ width:20px; height:20px; border-radius:50%; border:2px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:11px; flex-shrink:0; }
+  .step-row.done .step-dot{ border-color:var(--success); background:var(--success); color:#fff; }
+  .step-row.active .step-dot{ border-color:var(--action-primary); background:var(--brand-subtle); color:var(--action-primary); }
+
+  /* Skeletons */
+  .skeleton-box{ width:100%; max-width:600px; display:flex; flex-direction:column; gap:10px; }
+  .skeleton-line{ height:14px; background:linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:4px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* STAGE 3: Review Workspace Layout */
+  .workspace-layout{ display:none; grid-template-columns:1fr 280px; gap:24px; align-items:start; }
+  .workspace-layout.show{ display:grid; }
+
+  .ws-header{ padding:16px 20px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; background:#fff; }
+  .ws-title-group{ display:flex; align-items:center; gap:12px; }
+  .ws-title{ font-size:15px; font-weight:700; color:var(--text-primary); margin:0; }
+  
+  .progress-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface-raised); padding:3px 10px; border-radius:var(--radius-full); border:1px solid var(--border-default); }
+  .progress-pill b{ color:var(--action-primary); }
+
+  .bulk-bar{ background:var(--brand-subtle); border-bottom:1px solid var(--brand-border); padding:10px 20px; display:none; align-items:center; justify-content:space-between; font-size:12.5px; font-weight:600; color:var(--action-primary); }
+  .bulk-bar.show{ display:flex; }
+
+  /* Editorial Question List Item */
+  .q-item{ padding:20px 24px; border-bottom:1px solid var(--border-subtle); background:#fff; transition:background-color 0.12s ease; position:relative; }
+  .q-item:last-child{ border-bottom:none; }
+  .q-item.selected{ background:#fafaff; }
+
+  .q-row-top{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+  .q-meta-left{ display:flex; align-items:center; gap:10px; }
+  .q-check{ width:16px; height:16px; accent-color:var(--action-primary); cursor:pointer; }
+  .q-num{ font-size:13px; font-weight:700; color:var(--text-primary); }
+  .q-ai-tag{ font-size:11px; font-weight:600; color:var(--action-primary); background:var(--brand-subtle); padding:2px 7px; border-radius:var(--radius-sm); border:1px solid var(--brand-border); }
+  .q-type-meta{ font-size:12px; color:var(--text-tertiary); font-weight:500; }
+
+  .status-tag{ font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:4px; }
+  .status-tag.approved{ color:var(--success); }
+  .status-tag.review{ color:var(--text-tertiary); }
+
+  .q-stem{ font-size:14.5px; font-weight:600; color:var(--text-primary); line-height:1.45; margin-bottom:12px; }
+
+  .options-container{ display:flex; flex-direction:column; gap:6px; margin-bottom:12px; }
+  .option-row{ font-size:13px; padding:7px 12px; border-radius:var(--radius-md); background:var(--surface-canvas); border:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; color:var(--text-primary); }
+  .option-row.correct-opt{ background:#f0fdf4; border-color:#bbf7d0; color:var(--success); font-weight:600; }
+  .opt-key{ font-weight:700; width:20px; color:var(--text-secondary); }
+  .opt-val{ flex:1; }
+  .opt-badge{ font-size:11px; font-weight:700; color:var(--success); }
+
+  .exp-toggle{ display:inline-flex; align-items:center; gap:5px; font-size:12px; font-weight:600; color:var(--text-tertiary); cursor:pointer; user-select:none; margin-bottom:12px; }
+  .exp-toggle:hover{ color:var(--action-primary); }
+  .exp-body{ display:none; font-size:12.5px; color:var(--text-secondary); background:var(--surface-canvas); padding:10px 14px; border-radius:var(--radius-md); border-left:3px solid var(--brand-border); margin-bottom:12px; line-height:1.45; }
+  .exp-body.show{ display:block; }
+
+  .q-actions-bar{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:8px; padding-top:10px; border-top:1px dashed var(--border-subtle); }
+  .q-actions-left{ display:flex; align-items:center; gap:8px; }
+
+  /* Inline Editor */
+  .inline-editor{ background:var(--surface-canvas); border:1px solid var(--border-strong); border-radius:var(--radius-lg); padding:16px; margin-top:10px; display:none; flex-direction:column; gap:12px; }
+  .inline-editor.show{ display:flex; }
+  .inline-label{ font-size:12px; font-weight:600; color:var(--text-secondary); }
+  .inline-input{ width:100%; padding:8px 10px; border:1px solid var(--border-default); border-radius:var(--radius-md); font-size:13.5px; background:#fff; }
+
+  /* Regenerate Popover */
+  .regen-popover{ position:absolute; right:20px; bottom:45px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:0 10px 25px rgba(0,0,0,0.12); padding:14px; width:260px; z-index:50; display:none; flex-direction:column; gap:8px; }
+  .regen-popover.show{ display:flex; }
+  .regen-title{ font-size:13px; font-weight:700; color:var(--text-primary); }
+  .regen-desc{ font-size:12px; color:var(--text-secondary); line-height:1.35; }
+
+  /* Right Side Summary Rail */
+  .rail-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; position:sticky; top:28px; display:flex; flex-direction:column; gap:16px; }
+  .rail-title{ font-size:12px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.5px; margin:0; }
+  .rail-stat-list{ display:flex; flex-direction:column; gap:8px; }
+  .rail-stat-item{ display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--text-secondary); }
+  .rail-stat-item b{ color:var(--text-primary); font-weight:700; }
+  .rail-divider{ border:none; border-top:1px solid var(--border-subtle); margin:0; }
+
+  /* Alert Banners */
+  .alert-box{ padding:12px 16px; border-radius:var(--radius-lg); font-size:13px; display:flex; align-items:center; gap:10px; margin-bottom:20px; }
+  .alert-box.warn{ background:var(--warning-subtle); border:1px solid var(--warning-border); color:#854d0e; }
+  .alert-box.error{ background:var(--error-subtle); border:1px solid var(--error-border); color:var(--error); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=AI+Question+Generator" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <a href="assessment-editor.html" class="back-link">&larr; Back to Assessment Editor</a>
+
+    <!-- Page Header -->
+    <div class="page-head">
+      <div class="page-head-left">
+        <h1>AI Question Generator</h1>
+        <p class="sub" id="headerSub">Create assessment questions using course content, difficulty, question count, and additional instructions.</p>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <select class="state-preview" id="statePreview" onchange="switchState(this.value)">
+          <option value="setup">Stage 1: Configure Setup</option>
+          <option value="generating">Stage 2: Generating State</option>
+          <option value="review">Stage 3: Review Workspace (3/5 Approved)</option>
+          <option value="partial">State: Partial Generation Warning</option>
+          <option value="error">State: Generation Failed Error</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Warning Area -->
+    <div id="warningArea"></div>
+
+    <!-- =========================================================
+         STAGE 1: CONFIGURE GENERATION SETUP WORKSPACE
+    ========================================================= -->
+    <div class="setup-layout" id="stageSetup">
+      
+      <!-- Inputs Form Panel -->
+      <div class="panel">
+        <div class="panel-body">
+          <h2 class="section-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+            Generation Inputs
+          </h2>
+
+          <div class="form-grid">
+            <!-- 1. Course -->
+            <div class="form-group">
+              <label>1. Course <span class="req">*</span></label>
+              <select class="form-control" id="inputCourse" onchange="onCourseChange()">
+                <option value="">Select a course...</option>
+                <option value="CS-301" selected>Introduction to Computer Science (CS-301)</option>
+                <option value="UX-204">Interaction Design (UX-204)</option>
+                <option value="AI-101">Intro to Machine Learning (AI-101)</option>
+                <option value="WEB-202">Modern Frontend Frameworks (WEB-202)</option>
+              </select>
+              <span class="field-error" id="errCourse">Select a course to continue</span>
+            </div>
+
+            <!-- 2. Module -->
+            <div class="form-group">
+              <label>2. Module / Lesson <span class="req">*</span></label>
+              <select class="form-control" id="inputModule" onchange="updateSummary()">
+                <option value="">Select a module...</option>
+                <option value="Binary Search Trees" selected>Binary Search Trees</option>
+                <option value="Dynamic Programming & Graphs">Dynamic Programming & Graphs</option>
+                <option value="Heaps & Priority Queues">Heaps & Priority Queues</option>
+              </select>
+              <span class="field-error" id="errModule">Select a module to continue</span>
+            </div>
+
+            <!-- 3. Difficulty -->
+            <div class="form-group">
+              <label>3. Difficulty <span class="req">*</span></label>
+              <div class="segmented-control">
+                <button type="button" class="segment-btn" onclick="setDifficulty('Easy')">Easy</button>
+                <button type="button" class="segment-btn active" id="diffMediumBtn" onclick="setDifficulty('Medium')">Medium</button>
+                <button type="button" class="segment-btn" onclick="setDifficulty('Hard')">Hard</button>
+              </div>
+            </div>
+
+            <!-- 4. Number of Questions -->
+            <div class="form-group">
+              <label>4. Number of Questions <span class="req">*</span></label>
+              <input type="number" class="form-control" id="inputQCount" value="10" min="1" max="50" oninput="updateSummary()">
+            </div>
+
+            <!-- 5. Additional Prompt (Optional) -->
+            <div class="form-group full">
+              <label>5. Additional Instructions <span class="opt">(Optional)</span></label>
+              <textarea rows="3" class="form-control" id="inputPrompt" style="height:auto; padding:10px;" placeholder="Tell the AI anything specific you want these questions to focus on (e.g. Focus on practical applications, scenario-based questions, avoid implementation details...)" oninput="updateSummary()">Scenario-based questions focused on practical understanding</textarea>
+            </div>
+
+            <!-- 6. Supporting Documents (Optional) -->
+            <div class="form-group full">
+              <label>6. Supporting Documents <span class="opt">(Optional)</span></label>
+              
+              <div class="drop-zone" onclick="alert('File selector opened (PDF, DOCX, PPTX, Images supported).')">
+                <div class="drop-title">+ Upload supporting materials (PDF, DOCX, PPTX, Images)</div>
+                <div class="drop-sub">AI will use these materials as additional context when generating questions.</div>
+              </div>
+
+              <div class="file-chips-list" id="fileChipsList">
+                <div class="file-chip">
+                  <div class="file-chip-info">
+                    📄 BST_Lecture_Slides.pdf <span class="file-chip-size">(2.4 MB)</span>
+                  </div>
+                  <button type="button" class="file-remove" onclick="this.closest('.file-chip').remove(); updateSummary();">&times;</button>
+                </div>
+                <div class="file-chip">
+                  <div class="file-chip-info">
+                    📘 Tree_Traversals_Guide.docx <span class="file-chip-size">(850 KB)</span>
+                  </div>
+                  <button type="button" class="file-remove" onclick="this.closest('.file-chip').remove(); updateSummary();">&times;</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Dynamic Generation Summary Panel -->
+      <div class="summary-card">
+        <h3 class="summary-title">Generation Summary</h3>
+
+        <div class="summary-list">
+          <div class="summary-item">
+            <span class="lbl">Course</span>
+            <span class="val" id="sumCourse">Introduction to Computer Science</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="lbl">Module</span>
+            <span class="val" id="sumModule">Binary Search Trees</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="lbl">Difficulty</span>
+            <span class="val" id="sumDifficulty">Medium</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="lbl">Questions</span>
+            <span class="val" id="sumQCount">10 questions</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="lbl">Supporting Documents</span>
+            <span class="val" id="sumDocs">2 documents</span>
+          </div>
+
+          <div class="summary-item">
+            <span class="lbl">Additional Instructions</span>
+            <span class="val" id="sumPrompt" style="font-weight:500; font-size:12.5px; color:var(--text-secondary);">Scenario-based questions focused on practical understanding</span>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" id="btnGenerateCTA" style="width:100%; justify-content:center; margin-top:8px;" onclick="validateAndGenerate()">
+          Generate Questions &rarr;
+        </button>
+      </div>
+
+    </div>
+
+    <!-- =========================================================
+         STAGE 2: POLISHED GENERATING LOADING STATE
+    ========================================================= -->
+    <div class="stage-loading-box" id="stageLoading">
+      <div class="loading-context-badge">
+        Generating 10 Questions · Binary Search Trees · Medium Difficulty
+      </div>
+
+      <div style="font-size:20px; font-weight:700; color:var(--text-primary); margin-bottom:6px;">
+        Generating your questions...
+      </div>
+      <div style="font-size:13.5px; color:var(--text-secondary); max-width:440px;">
+        Analyzing course syllabus content and 2 uploaded supporting documents to formulate draft questions.
+      </div>
+
+      <div class="step-tracker">
+        <div class="step-row done" id="step1">
+          <div class="step-dot">✓</div>
+          <span>Analyzing learning content & supporting documents</span>
+        </div>
+        <div class="step-row active" id="step2">
+          <div class="step-dot">2</div>
+          <span>Creating questions & distractor options</span>
+        </div>
+        <div class="step-row" id="step3">
+          <div class="step-dot">3</div>
+          <span>Checking answer quality & explanations</span>
+        </div>
+        <div class="step-row" id="step4">
+          <div class="step-dot">4</div>
+          <span>Preparing review workspace</span>
+        </div>
+      </div>
+
+      <div class="skeleton-box">
+        <div class="skeleton-line" style="width:50%;"></div>
+        <div class="skeleton-line" style="width:100%;"></div>
+        <div class="skeleton-line" style="width:75%;"></div>
+      </div>
+    </div>
+
+    <!-- =========================================================
+         STAGE 3: REVIEW GENERATED QUESTIONS WORKSPACE
+    ========================================================= -->
+    <div class="workspace-layout" id="stageReview">
+      
+      <!-- Main Review Column -->
+      <div class="panel">
+        
+        <!-- Header Bar -->
+        <div class="ws-header">
+          <div class="ws-title-group">
+            <h2 class="ws-title">Generated Questions</h2>
+            <span class="progress-pill"><b id="approvedNum">3</b> / <span id="totalNum">5</span> approved</span>
+          </div>
+
+          <div class="ws-actions">
+            <button class="btn btn-secondary" onclick="returnToSetup()">⚙️ Edit Configuration</button>
+            <button class="btn btn-secondary" onclick="approveAll()">✓ Approve All</button>
+            <button class="btn btn-primary" id="btnMainInsert" onclick="insertApproved()">Insert 3 Approved Questions &rarr;</button>
+          </div>
+        </div>
+
+        <!-- Bulk Actions Bar -->
+        <div class="bulk-bar" id="bulkBar">
+          <div><span id="selectedCountText">0</span> questions selected</div>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" style="height:28px; font-size:12px;" onclick="bulkApprove()">Approve Selected</button>
+            <button class="btn btn-secondary" style="height:28px; font-size:12px; color:var(--error);" onclick="bulkDelete()">Delete Selected</button>
+          </div>
+        </div>
+
+        <!-- Toolbar Bar -->
+        <div style="padding:10px 24px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; background:var(--surface-canvas); font-size:12px; color:var(--text-secondary);">
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600;">
+            <input type="checkbox" class="q-check" id="selectAllCheck" onchange="toggleSelectAll(this.checked)"> Select All
+          </label>
+          <span style="font-size:11.5px; color:var(--text-tertiary);">AI output requires instructor approval before insertion</span>
+        </div>
+
+        <!-- Questions Editorial List -->
+        <div id="questionList">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+
+      <!-- Right Side Summary Rail -->
+      <div class="rail-card">
+        <h3 class="rail-title">Review Summary</h3>
+        
+        <div class="rail-stat-list">
+          <div class="rail-stat-item"><span>Total Generated:</span> <b id="railTotal">5 questions</b></div>
+          <div class="rail-stat-item"><span>Approved:</span> <b style="color:var(--success);" id="railApproved">3 questions</b></div>
+          <div class="rail-stat-item"><span>Need Review:</span> <b style="color:var(--warning);" id="railNeedReview">2 questions</b></div>
+        </div>
+
+        <hr class="rail-divider">
+
+        <h3 class="rail-title">Configuration</h3>
+        <div class="rail-stat-list">
+          <div class="rail-stat-item"><span>Module:</span> <b id="railModule">Binary Search Trees</b></div>
+          <div class="rail-stat-item"><span>Difficulty:</span> <b id="railDiff">Medium</b></div>
+        </div>
+
+        <hr class="rail-divider">
+
+        <div class="rail-stat-list">
+          <div class="rail-stat-item"><span>Total Points:</span> <b id="railPoints">55 Pts</b></div>
+        </div>
+
+        <button class="btn btn-primary" id="btnRailInsert" style="width:100%; justify-content:center; margin-top:6px;" onclick="insertApproved()">
+          Insert 3 Approved &rarr;
+        </button>
+      </div>
+
+    </div>
+  </main>
+</div>
+
+<script>
+  let selectedDifficulty = 'Medium';
+  let QUESTIONS_DATA = [
+    {
+      id: "q1",
+      stem: "What is the average time complexity of searching in a balanced Binary Search Tree (BST)?",
+      type: "Multiple Choice",
+      points: 10,
+      status: "approved",
+      options: [
+        { key: "A", text: "O(log N)", correct: true },
+        { key: "B", text: "O(N)", correct: false },
+        { key: "C", text: "O(N log N)", correct: false },
+        { key: "D", text: "O(1)", correct: false }
+      ],
+      explanation: "Searching in a balanced BST halves the search space at each comparison step, yielding logarithmic O(log N) complexity."
+    },
+    {
+      id: "q2",
+      stem: "In-order traversal of a Binary Search Tree (BST) visits nodes in non-decreasing order.",
+      type: "True / False",
+      points: 5,
+      status: "approved",
+      options: [
+        { key: "A", text: "True", correct: true },
+        { key: "B", text: "False", correct: false }
+      ],
+      explanation: "In-order traversal (Left subtree, Root node, Right subtree) visits BST keys in sorted ascending order."
+    },
+    {
+      id: "q3",
+      stem: "Select all self-balancing binary search trees from the list below:",
+      type: "Multiple Select",
+      points: 15,
+      status: "review",
+      options: [
+        { key: "A", text: "AVL Tree", correct: true },
+        { key: "B", text: "Red-Black Tree", correct: true },
+        { key: "C", text: "Min-Heap", correct: false },
+        { key: "D", text: "Splay Tree", correct: true }
+      ],
+      explanation: "AVL, Red-Black, and Splay trees maintain balance heights. Min-Heap is a priority queue structure, not a search tree."
+    },
+    {
+      id: "q4",
+      stem: "What is the maximum height of a Red-Black tree with N internal nodes?",
+      type: "Multiple Choice",
+      points: 10,
+      status: "review",
+      options: [
+        { key: "A", text: "2 log_2(N + 1)", correct: true },
+        { key: "B", text: "log_2(N)", correct: false },
+        { key: "C", text: "N", correct: false }
+      ],
+      explanation: "The black-height property guarantees the longest path is at most twice the shortest path: 2 log_2(N + 1)."
+    },
+    {
+      id: "q5",
+      stem: "A complete binary tree of depth D contains exactly 2^D leaf nodes.",
+      type: "True / False",
+      points: 15,
+      status: "approved",
+      options: [
+        { key: "A", text: "True", correct: true },
+        { key: "B", text: "False", correct: false }
+      ],
+      explanation: "A full complete tree at depth D contains 2^D leaves."
+    }
+  ];
+
+  let selectedIds = new Set();
+  let editingId = null;
+
+  function setDifficulty(diff) {
+    selectedDifficulty = diff;
+    document.querySelectorAll('.segment-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.trim() === diff);
+    });
+    updateSummary();
+  }
+
+  function onCourseChange() {
+    const course = document.getElementById('inputCourse').value;
+    const moduleSelect = document.getElementById('inputModule');
+
+    if (course === 'UX-204') {
+      moduleSelect.innerHTML = `<option value="Heuristic Evaluation">Module 2: Heuristic Evaluation</option><option value="Usability Testing">Module 4: Usability Testing</option>`;
+    } else if (course === 'AI-101') {
+      moduleSelect.innerHTML = `<option value="Neural Networks">Module 3: Neural Networks</option><option value="AI Ethics">Module 6: Governance & Ethics</option>`;
+    } else {
+      moduleSelect.innerHTML = `<option value="Binary Search Trees" selected>Binary Search Trees</option><option value="Dynamic Programming & Graphs">Dynamic Programming & Graphs</option>`;
+    }
+    updateSummary();
+  }
+
+  function updateSummary() {
+    const courseEl = document.getElementById('inputCourse');
+    const courseText = courseEl.options[courseEl.selectedIndex]?.text.split('(')[0].trim() || 'None Selected';
+    
+    const moduleEl = document.getElementById('inputModule');
+    const moduleText = moduleEl.value || 'None Selected';
+
+    const qCount = document.getElementById('inputQCount').value || 10;
+    const promptText = document.getElementById('inputPrompt').value.trim() || 'None specified';
+    const docCount = document.querySelectorAll('.file-chip').length;
+
+    document.getElementById('sumCourse').textContent = courseText;
+    document.getElementById('sumModule').textContent = moduleText;
+    document.getElementById('sumDifficulty').textContent = selectedDifficulty;
+    document.getElementById('sumQCount').textContent = `${qCount} questions`;
+    document.getElementById('sumDocs').textContent = `${docCount} documents`;
+    document.getElementById('sumPrompt').textContent = promptText;
+
+    document.getElementById('railModule').textContent = moduleText;
+    document.getElementById('railDiff').textContent = selectedDifficulty;
+
+    // Validate button enable state
+    const isValid = courseEl.value && moduleEl.value && qCount > 0;
+    document.getElementById('btnGenerateCTA').disabled = !isValid;
+  }
+
+  function validateAndGenerate() {
+    const course = document.getElementById('inputCourse').value;
+    const moduleVal = document.getElementById('inputModule').value;
+
+    let valid = true;
+    if (!course) {
+      document.getElementById('errCourse').classList.add('show');
+      document.getElementById('inputCourse').classList.add('error-input');
+      valid = false;
+    } else {
+      document.getElementById('errCourse').classList.remove('show');
+      document.getElementById('inputCourse').classList.remove('error-input');
+    }
+
+    if (!moduleVal) {
+      document.getElementById('errModule').classList.add('show');
+      document.getElementById('inputModule').classList.add('error-input');
+      valid = false;
+    } else {
+      document.getElementById('errModule').classList.remove('show');
+      document.getElementById('inputModule').classList.remove('error-input');
+    }
+
+    if (valid) {
+      showLoadingStage();
+    }
+  }
+
+  function showLoadingStage() {
+    document.getElementById('stageSetup').style.display = 'none';
+    document.getElementById('stageReview').classList.remove('show');
+    const loader = document.getElementById('stageLoading');
+    loader.classList.add('show');
+
+    // Progressive Steps Simulation
+    setTimeout(() => {
+      document.getElementById('step2').classList.add('done');
+      document.getElementById('step3').classList.add('active');
+    }, 1000);
+
+    setTimeout(() => {
+      document.getElementById('step3').classList.add('done');
+      document.getElementById('step4').classList.add('active');
+    }, 2000);
+
+    setTimeout(() => {
+      loader.classList.remove('show');
+      showReviewStage();
+    }, 3000);
+  }
+
+  function showReviewStage() {
+    document.getElementById('headerSub').textContent = 'Review, refine, and approve AI-generated questions before adding them to your assessment.';
+    document.getElementById('stageSetup').style.display = 'none';
+    document.getElementById('stageLoading').classList.remove('show');
+    document.getElementById('stageReview').classList.add('show');
+    renderWorkspace();
+  }
+
+  function returnToSetup() {
+    document.getElementById('headerSub').textContent = 'Create assessment questions using course content, difficulty, question count, and additional instructions.';
+    document.getElementById('stageReview').classList.remove('show');
+    document.getElementById('stageLoading').classList.remove('show');
+    document.getElementById('stageSetup').style.display = 'grid';
+  }
+
+  function renderWorkspace() {
+    const listEl = document.getElementById('questionList');
+    listEl.innerHTML = '';
+
+    let approvedCount = 0;
+    let totalPoints = 0;
+
+    QUESTIONS_DATA.forEach((q, idx) => {
+      const isApproved = q.status === 'approved';
+      if (isApproved) approvedCount++;
+      totalPoints += q.points;
+
+      const isSelected = selectedIds.has(q.id);
+      const isEditing = editingId === q.id;
+
+      const itemEl = document.createElement('div');
+      itemEl.className = `q-item ${isSelected ? 'selected' : ''}`;
+      itemEl.id = `qitem-${q.id}`;
+
+      let statusHtml = `<span class="status-tag review">• Review Required</span>`;
+      if (isApproved) {
+        statusHtml = `<span class="status-tag approved">✓ Approved</span>`;
+      }
+
+      let optionsHtml = '';
+      if (q.options && q.options.length > 0) {
+        optionsHtml = `<div class="options-container">` + q.options.map(opt => `
+          <div class="option-row ${opt.correct ? 'correct-opt' : ''}">
+            <span class="opt-key">${opt.key || ''}</span>
+            <span class="opt-val">${opt.text}</span>
+            ${opt.correct ? '<span class="opt-badge">✓ Correct</span>' : ''}
+          </div>
+        `).join('') + `</div>`;
+      }
+
+      itemEl.innerHTML = `
+        <div class="q-row-top">
+          <div class="q-meta-left">
+            <input type="checkbox" class="q-check" ${isSelected ? 'checked' : ''} onchange="toggleSelect('${q.id}', this.checked)">
+            <span class="q-num">Q${idx + 1}</span>
+            <span class="q-ai-tag">AI-Generated</span>
+            <span class="q-type-meta">${q.type} · ${q.points} pts</span>
+          </div>
+          <div>${statusHtml}</div>
+        </div>
+
+        ${isEditing ? `
+          <div class="inline-editor show">
+            <div style="font-size:12px; font-weight:700; color:var(--action-primary);">Editing AI Question</div>
+            <div>
+              <label class="inline-label">Question Text</label>
+              <input type="text" class="inline-input" id="editStem-${q.id}" value="${q.stem}">
+            </div>
+            <div>
+              <label class="inline-label">Points</label>
+              <input type="number" class="inline-input" id="editPoints-${q.id}" value="${q.points}" style="width:100px;">
+            </div>
+            <div style="display:flex; justify-content:flex-end; gap:8px;">
+              <button class="btn btn-secondary" style="height:30px;" onclick="cancelEdit()">Cancel</button>
+              <button class="btn btn-primary" style="height:30px;" onclick="saveEdit('${q.id}')">Save Changes</button>
+            </div>
+          </div>
+        ` : `
+          <div class="q-stem">${q.stem}</div>
+          ${optionsHtml}
+
+          <div class="exp-toggle" onclick="toggleExplanation('${q.id}')">
+            <span>▶ AI Explanation</span>
+          </div>
+          <div class="exp-body" id="exp-${q.id}">
+            ${q.explanation}
+          </div>
+
+          <div class="q-actions-bar">
+            <div class="q-actions-left">
+              <button class="btn ${isApproved ? 'btn-secondary' : 'btn-primary'}" style="height:30px; font-size:12px;" onclick="toggleApprove('${q.id}')">
+                ${isApproved ? '✓ Approved' : 'Approve'}
+              </button>
+              <button class="btn btn-ghost" style="font-size:12px;" onclick="startEdit('${q.id}')">Edit</button>
+              <button class="btn btn-ghost" style="font-size:12px;" onclick="showRegenPopover('${q.id}')">Regenerate</button>
+            </div>
+            <button class="btn btn-danger-ghost" style="font-size:12px;" onclick="deleteQuestion('${q.id}')">Delete</button>
+
+            <div class="regen-popover" id="regenPopover-${q.id}">
+              <div class="regen-title">Regenerate this question?</div>
+              <div class="regen-desc">The current AI-generated question will be replaced and marked for review.</div>
+              <div class="regen-actions">
+                <button class="btn btn-secondary" style="height:26px; font-size:11px;" onclick="hideRegenPopover('${q.id}')">Cancel</button>
+                <button class="btn btn-primary" style="height:26px; font-size:11px;" onclick="confirmRegenerate('${q.id}')">Regenerate</button>
+              </div>
+            </div>
+          </div>
+        `}
+      `;
+
+      listEl.appendChild(itemEl);
+    });
+
+    const total = QUESTIONS_DATA.length;
+    document.getElementById('approvedNum').textContent = approvedCount;
+    document.getElementById('totalNum').textContent = total;
+    document.getElementById('railTotal').textContent = `${total} questions`;
+    document.getElementById('railApproved').textContent = `${approvedCount} questions`;
+    document.getElementById('railNeedReview').textContent = `${total - approvedCount} questions`;
+    document.getElementById('railPoints').textContent = `${totalPoints} Pts`;
+
+    const ctaText = approvedCount === 0 ? 'Insert Approved Questions' : (approvedCount === total ? `Insert All ${total} Questions →` : `Insert ${approvedCount} Approved Questions →`);
+    
+    const mainBtn = document.getElementById('btnMainInsert');
+    const railBtn = document.getElementById('btnRailInsert');
+
+    mainBtn.textContent = ctaText;
+    railBtn.textContent = ctaText;
+
+    mainBtn.disabled = approvedCount === 0;
+    railBtn.disabled = approvedCount === 0;
+  }
+
+  function toggleApprove(id) {
+    const q = QUESTIONS_DATA.find(x => x.id === id);
+    if (q) {
+      q.status = q.status === 'approved' ? 'review' : 'approved';
+      renderWorkspace();
+    }
+  }
+
+  function approveAll() {
+    QUESTIONS_DATA.forEach(q => q.status = 'approved');
+    renderWorkspace();
+  }
+
+  function toggleExplanation(id) {
+    const el = document.getElementById(`exp-${id}`);
+    if (el) el.classList.toggle('show');
+  }
+
+  function toggleSelect(id, checked) {
+    if (checked) selectedIds.add(id);
+    else selectedIds.delete(id);
+    updateBulkBar();
+  }
+
+  function toggleSelectAll(checked) {
+    selectedIds.clear();
+    if (checked) {
+      QUESTIONS_DATA.forEach(q => selectedIds.add(q.id));
+    }
+    renderWorkspace();
+    updateBulkBar();
+  }
+
+  function updateBulkBar() {
+    const bulkBar = document.getElementById('bulkBar');
+    const count = selectedIds.size;
+    document.getElementById('selectedCountText').textContent = count;
+    if (count > 0) {
+      bulkBar.classList.add('show');
+    } else {
+      bulkBar.classList.remove('show');
+    }
+  }
+
+  function bulkApprove() {
+    selectedIds.forEach(id => {
+      const q = QUESTIONS_DATA.find(x => x.id === id);
+      if (q) q.status = 'approved';
+    });
+    selectedIds.clear();
+    renderWorkspace();
+    updateBulkBar();
+  }
+
+  function bulkDelete() {
+    selectedIds.forEach(id => {
+      const idx = QUESTIONS_DATA.findIndex(x => x.id === id);
+      if (idx !== -1) QUESTIONS_DATA.splice(idx, 1);
+    });
+    selectedIds.clear();
+    renderWorkspace();
+    updateBulkBar();
+  }
+
+  function deleteQuestion(id) {
+    const idx = QUESTIONS_DATA.findIndex(x => x.id === id);
+    if (idx !== -1) {
+      QUESTIONS_DATA.splice(idx, 1);
+      renderWorkspace();
+    }
+  }
+
+  function startEdit(id) {
+    editingId = id;
+    renderWorkspace();
+  }
+
+  function cancelEdit() {
+    editingId = null;
+    renderWorkspace();
+  }
+
+  function saveEdit(id) {
+    const q = QUESTIONS_DATA.find(x => x.id === id);
+    if (q) {
+      q.stem = document.getElementById(`editStem-${id}`).value;
+      q.points = parseInt(document.getElementById(`editPoints-${id}`).value) || 10;
+      q.status = 'approved';
+    }
+    editingId = null;
+    renderWorkspace();
+  }
+
+  function showRegenPopover(id) {
+    document.querySelectorAll('.regen-popover').forEach(el => el.classList.remove('show'));
+    document.getElementById(`regenPopover-${id}`).classList.add('show');
+  }
+
+  function hideRegenPopover(id) {
+    document.getElementById(`regenPopover-${id}`).classList.remove('show');
+  }
+
+  function confirmRegenerate(id) {
+    hideRegenPopover(id);
+    const q = QUESTIONS_DATA.find(x => x.id === id);
+    if (q) {
+      q.stem = "Regenerated Question: What is the worst-case time complexity of lookup in an unbalanced BST?";
+      q.status = 'review';
+      renderWorkspace();
+    }
+  }
+
+  function insertApproved() {
+    const approvedCount = QUESTIONS_DATA.filter(q => q.status === 'approved').length;
+    if (approvedCount > 0) {
+      alert(`Successfully inserted ${approvedCount} approved questions into Assessment Editor!`);
+      location.href = 'assessment-editor.html';
+    }
+  }
+
+  function switchState(state) {
+    const warningArea = document.getElementById('warningArea');
+    warningArea.innerHTML = '';
+
+    if (state === 'setup') {
+      returnToSetup();
+    } else if (state === 'generating') {
+      showLoadingStage();
+    } else if (state === 'review') {
+      showReviewStage();
+    } else if (state === 'partial') {
+      showReviewStage();
+      warningArea.innerHTML = `
+        <div class="alert-box warn">
+          ⚠️ <b>Partial Generation:</b> Generated 5 of 10 requested questions due to limited source text in Module.
+        </div>
+      `;
+    } else if (state === 'error') {
+      returnToSetup();
+      warningArea.innerHTML = `
+        <div class="alert-box error">
+          ❌ <b>AI Generation Failed:</b> Could not process document. Your configuration has been preserved. <button class="btn btn-secondary" style="height:26px; margin-left:10px;" onclick="validateAndGenerate()">Try Again</button>
+        </div>
+      `;
+    }
+  }
+
+  // Initialize Stage 1
+  updateSummary();
+</script>
+</body>
+</html>

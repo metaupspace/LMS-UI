@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Assessment Approval Review</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Assessment Approval Review (In Review Read-Only Mode)
+     UpSpace Design System compliant.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --warning:#ca8a04; --success:#15803d; --info:#2563eb;
+    --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,textarea{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:16px; cursor:pointer; }
+  .back-link:hover{ color:var(--action-primary); }
+
+  /* Locked Review Banner */
+  .locked-banner{ background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-xl); padding:16px 20px; display:flex; align-items:center; gap:14px; color:#854d0e; font-size:13.5px; margin-bottom:24px; }
+  .locked-banner svg{ width:22px; height:22px; flex-shrink:0; color:var(--warning); }
+
+  /* Grid Layout */
+  .review-grid{ display:grid; grid-template-columns:2fr 1fr; gap:24px; }
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; margin-bottom:20px; }
+  .card-title{ font-size:16px; font-weight:700; margin:0 0 14px; }
+
+  /* Readonly Questions */
+  .q-box{ padding:16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); margin-bottom:12px; }
+  .q-title{ font-weight:600; font-size:14px; margin-bottom:6px; }
+
+  .btn{ height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:none; text-decoration:none; }
+  .btn-primary{ background:var(--success); color:#fff; }
+  .btn-primary:hover{ background:#166534; }
+  .btn-warn{ background:var(--warning); color:#fff; }
+  .btn-danger{ background:var(--error); color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Approval+Review" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <a href="assessments-overview.html" class="back-link">&larr; Back to Assessments</a>
+
+    <!-- Locked Banner -->
+    <div class="locked-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div><b>🔒 READ-ONLY — Locked for Academic Review:</b> Midterm Exam: Algorithms & Complexity is currently in review by Dr. Aris (Academic Chair). Editing is disabled until review is completed.</div>
+    </div>
+
+    <div class="review-grid">
+      <!-- Main Content (Read-Only Assessment) -->
+      <div>
+        <div class="card">
+          <h2 style="font-size:20px; font-weight:700; margin:0 0 4px;">Midterm Exam: Algorithms & Complexity</h2>
+          <div style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">CS-301 • 25 Questions • 200 Total Points</div>
+
+          <h3 class="card-title">Questions & Answer Key Review</h3>
+          <div class="q-box">
+            <div class="q-title">Q1. What is the tight bound time complexity of Master Theorem Case 1?</div>
+            <div style="font-size:13px; color:var(--text-secondary);">Answer Options: A) O(N), B) O(N^log_b(a)), C) O(1)</div>
+            <div style="font-size:12px; color:var(--success); font-weight:600; margin-top:4px;">✓ Answer Key: B • Point Value: 10 Pts</div>
+          </div>
+
+          <div class="q-box">
+            <div class="q-title">Q2. Prove the lower bound of comparison-based sorting algorithms.</div>
+            <div style="font-size:13px; color:var(--text-secondary);">Short Essay Question</div>
+            <div style="font-size:12px; color:var(--info); font-weight:600; margin-top:4px;">Rubric Provided: 20 Pts • Requires explanation of decision tree height log(N!).</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Sidebar: Approval Actions Form -->
+      <div>
+        <div class="card">
+          <h3 class="card-title">Approver Action</h3>
+          <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:14px;">
+            <b>Assigned Approver:</b> Dr. Aris (Department Chair)<br>
+            <b>Waiting Time:</b> 1 day 4 hours
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px;">
+            <label style="font-size:13px; font-weight:600;">Review Comments (Mandatory)</label>
+            <textarea rows="4" id="reviewComment" placeholder="Enter academic feedback or approval comments..." style="padding:10px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:13px; width:100%; outline:none;"></textarea>
+          </div>
+
+          <div style="display:flex; flex-direction:column; gap:10px;">
+            <button class="btn btn-primary" onclick="submitApproval('approve')">✓ Approve & Publish</button>
+            <button class="btn btn-warn" onclick="submitApproval('changes')">✏️ Request Changes</button>
+            <button class="btn btn-danger" onclick="submitApproval('reject')">❌ Reject Assessment</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  function submitApproval(action) {
+    const comment = document.getElementById('reviewComment').value.trim();
+    if (!comment) {
+      alert('Review comment is mandatory before taking an approval action.');
+      return;
+    }
+
+    if (action === 'approve') {
+      alert('Assessment approved and published to CS-301 learners!');
+    } else if (action === 'changes') {
+      alert('Requested changes sent back to Prof. Vance (Status updated to Draft).');
+    } else if (action === 'reject') {
+      alert('Assessment rejected.');
+    }
+    location.href = 'assessments-overview.html';
+  }
+</script>
+</body>
+</html>

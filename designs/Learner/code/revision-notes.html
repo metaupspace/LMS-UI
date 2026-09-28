@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Revision Notes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — AI Revision Notes (AI-008) for ONE module of a course.
+     Opened from the module's "Revision notes" row in
+     course-overview.html: ?course=ID&mod=N  (&print=1 → Download PDF).
+     User decision 2026-09-23: notes are module-specific, live inside
+     the course, and download as PDF (FR-05, browser print → PDF).
+     Rules (AI-008): only completed modules; key takeaways, definitions,
+     examples + Focus Areas from the learner's assessment results
+     (AI-005); content only from the module's lesson text (NFR-02);
+     no text → "not enough course content". One note per module;
+     Regenerate replaces it.
+     Layout: module header → main column (create / generating / notes)
+     + sticky rail (on-this-page, sources, results, module switcher).
+     Store: localStorage "upspace-study-v2" → notes["CS-301:1"].
+     Library: Textarea input field, Buttons, Badge, Modal, Toast.
+     Hand-built (approved): AI generation progress, Revision notes
+     document, Skeleton loader. Feedback thumbs = AI-015 pattern
+     from course-player.html.
+     Demo: ?state=fail
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; scroll-behavior:smooth; }
+  .main-inner{ width:100%; padding:28px clamp(20px, 2.6vw, 48px) 72px; } /* fluid, same gutters as assignments.html */
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-lg{ height:48px; padding:0 22px; font-size:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary:disabled{ color:var(--success); cursor:default; background:var(--success-subtle); border-color:#bbf7d0; }
+  .btn-danger{ background:var(--error); color:#fff; }
+  .btn-danger:hover{ background:#b91c1c; }
+  .icon-btn{ width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; color:var(--text-secondary); position:relative; }
+  .icon-btn:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .icon-btn.danger:hover{ background:var(--error-subtle); color:var(--error); border-color:#fecaca; }
+  .icon-btn svg{ width:16px; height:16px; }
+  .icon-btn[data-tip]:hover::after{ content:attr(data-tip); position:absolute; top:calc(100% + 6px); left:50%; transform:translateX(-50%); padding:5px 8px; border-radius:var(--radius-md); background:#171717; color:#fff; font-size:12px; font-weight:500; white-space:nowrap; z-index:10; pointer-events:none; }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); }
+
+  /* Module header */
+  .back{ display:inline-flex; align-items:center; gap:6px; margin-bottom:18px; font-size:14px; font-weight:600; color:var(--text-secondary); padding:6px 10px 6px 6px; margin-left:-6px; border-radius:var(--radius-md); }
+  .back:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .back svg{ width:16px; height:16px; }
+  .mhead{ display:flex; align-items:flex-end; justify-content:space-between; gap:20px 32px; flex-wrap:wrap; padding-bottom:24px; margin-bottom:28px; border-bottom:1px solid var(--border-default); }
+  .mhead-text{ min-width:0; flex:1 1 480px; }
+  .eyebrow{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:13.5px; font-weight:600; color:var(--text-tertiary); margin-bottom:8px; }
+  .eyebrow .dotsep{ width:3px; height:3px; border-radius:50%; background:var(--text-disabled); }
+  .eyebrow .brand{ color:var(--action-primary); display:inline-flex; align-items:center; gap:6px; }
+  .eyebrow .brand svg{ width:14px; height:14px; }
+  .mhead h1{ margin:0; font-size:clamp(26px, 2.4vw, 34px); font-weight:700; letter-spacing:-.8px; line-height:1.15; }
+  .mhead p{ margin:10px 0 0; font-size:16px; line-height:1.6; color:var(--text-secondary); max-width:80ch; }
+  .mhead-acts{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .badge{ display:inline-flex; align-items:center; gap:6px; height:26px; padding:0 10px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; }
+  .badge svg{ width:13px; height:13px; }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) clamp(280px, 22vw, 380px); gap:clamp(20px, 2vw, 36px); align-items:start; }
+  .rail{ position:sticky; top:20px; display:flex; flex-direction:column; gap:16px; max-height:calc(100vh - 120px); overflow-y:auto; scrollbar-width:none; }
+  .rail::-webkit-scrollbar{ display:none; }
+
+  /* Create panel */
+  .create{ padding:clamp(22px, 2.4vw, 40px); }
+  .create-top{ display:flex; gap:16px; align-items:flex-start; margin-bottom:26px; }
+  .ai-mark{ width:44px; height:44px; border-radius:var(--radius-xl); background:linear-gradient(135deg, #6366f1, #4338ca); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 6px 16px rgba(79,70,229,.25); }
+  .ai-mark svg{ width:20px; height:20px; }
+  .create-top h2{ margin:0 0 4px; font-size:20px; font-weight:700; letter-spacing:-.3px; }
+  .create-top p{ margin:0; font-size:15px; color:var(--text-secondary); line-height:1.55; }
+  .tiles{ display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:28px; }
+  .tile{ padding:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-xl); background:var(--surface-canvas); }
+  .tile-ic{ width:32px; height:32px; border-radius:var(--radius-lg); background:#fff; border:1px solid var(--border-default); color:var(--action-primary); display:flex; align-items:center; justify-content:center; margin-bottom:12px; }
+  .tile-ic svg{ width:16px; height:16px; }
+  .tile b{ display:block; font-size:14.5px; margin-bottom:3px; }
+  .tile > span:last-child{ display:block; font-size:13.5px; line-height:1.5; color:var(--text-secondary); }
+  .tile.off{ background:#fff; border-style:dashed; border-color:var(--border-default); }
+  .tile.off .tile-ic{ color:var(--text-tertiary); }
+  .field label{ display:block; font-size:14.5px; font-weight:600; color:var(--text-primary); margin-bottom:8px; }
+  .field .opt{ font-weight:400; color:var(--text-tertiary); }
+  .textarea{ width:100%; min-height:96px; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:15px; line-height:1.5; color:var(--text-primary); outline:none; resize:vertical; box-shadow:0 1px 2px rgba(10,10,10,.04); transition:border-color .15s ease, box-shadow .15s ease; }
+  .textarea::placeholder{ color:var(--text-tertiary); }
+  .textarea:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .suggest{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; margin-top:10px; }
+  .suggest > span{ font-size:13px; color:var(--text-tertiary); margin-right:2px; }
+  .suggest button{ height:30px; padding:0 11px; border:1px solid var(--border-default); background:#fff; border-radius:var(--radius-full); font-size:13px; font-weight:500; color:var(--text-strong); transition:border-color .15s ease, background-color .15s ease, color .15s ease; }
+  .suggest button:hover, .suggest button[aria-pressed="true"]{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+  .create-foot{ display:flex; align-items:center; justify-content:space-between; gap:14px 24px; flex-wrap:wrap; margin-top:28px; padding-top:22px; border-top:1px solid var(--border-subtle); }
+  .ground{ display:flex; gap:10px; align-items:flex-start; flex:1; min-width:240px; font-size:13.5px; color:var(--text-tertiary); line-height:1.5; }
+  .ground svg{ width:16px; height:16px; flex-shrink:0; margin-top:2px; color:var(--success); }
+
+  /* Rail cards */
+  .rcard{ padding:18px; }
+  .rcard h3{ margin:0 0 12px; font-size:13px; font-weight:600; color:var(--text-tertiary); letter-spacing:.2px; }
+  .lessons{ list-style:none; margin:0; padding:0; display:grid; gap:2px; }
+  .lessons li{ display:grid; grid-template-columns:20px minmax(0,1fr) auto; gap:10px; align-items:start; padding:7px 0; font-size:14px; line-height:1.4; }
+  .lessons .ck{ width:18px; height:18px; border-radius:50%; background:var(--success); color:#fff; display:flex; align-items:center; justify-content:center; margin-top:1px; }
+  .lessons .ck svg{ width:10px; height:10px; }
+  .lessons a:hover{ color:var(--action-primary); }
+  .lessons .min{ font-size:12.5px; color:var(--text-tertiary); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .score{ display:flex; align-items:center; gap:14px; }
+  .ring{ width:56px; height:56px; flex-shrink:0; }
+  .score b{ display:block; font-size:15px; }
+  .score span{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:2px; line-height:1.45; }
+  .rnote{ font-size:13.5px; line-height:1.5; color:var(--text-secondary); margin:0; }
+  .mods{ list-style:none; margin:0 -8px; padding:0; }
+  .mods a, .mods div{ display:grid; grid-template-columns:26px minmax(0,1fr) auto; gap:10px; align-items:center; padding:8px; border-radius:var(--radius-lg); font-size:14px; }
+  .mods a:hover{ background:var(--surface-canvas); }
+  .mods .cur{ background:var(--action-primary-subtle); }
+  .mods .n{ width:26px; height:26px; border-radius:var(--radius-md); background:var(--surface-raised); font-size:12.5px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; }
+  .mods .cur .n{ background:#fff; color:var(--action-primary); }
+  .mods .t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+  .mods .locked{ color:var(--text-tertiary); }
+  .mods .st{ font-size:12px; font-weight:600; white-space:nowrap; }
+  .mods .st.ok{ color:var(--success); }
+  .mods .st.new{ color:var(--action-primary); }
+  .mods .st.lock{ color:var(--text-tertiary); display:flex; }
+  .mods .st.lock svg{ width:14px; height:14px; }
+  .toc{ list-style:none; margin:0; padding:0; border-left:2px solid var(--border-subtle); }
+  .toc a{ display:flex; justify-content:space-between; gap:10px; margin-left:-2px; padding:6px 0 6px 14px; border-left:2px solid transparent; font-size:14px; color:var(--text-secondary); transition:color .15s ease, border-color .15s ease; }
+  .toc a:hover{ color:var(--text-primary); }
+  .toc a.on{ border-left-color:var(--action-primary); color:var(--action-primary); font-weight:600; }
+  .toc .c{ font-size:12.5px; color:var(--text-tertiary); font-weight:500; }
+
+  /* AI generation progress (hand-built, approved) + skeleton preview */
+  .gen{ padding:clamp(22px, 2.4vw, 40px); }
+  .gen-head{ display:flex; align-items:center; gap:14px; margin-bottom:24px; }
+  .gen-head h2{ margin:0; font-size:19px; font-weight:700; letter-spacing:-.2px; }
+  .gen-head p{ margin:3px 0 0; font-size:14px; color:var(--text-tertiary); }
+  .steps{ list-style:none; margin:0; padding:0; display:grid; gap:14px; }
+  .steps li{ display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text-tertiary); transition:color .2s ease; }
+  .steps li.active{ color:var(--text-primary); font-weight:500; }
+  .steps li.done{ color:var(--text-secondary); }
+  .steps .dot{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .steps li.active .dot{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:spin .8s linear infinite; }
+  .steps li.done .dot{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .steps li.failed .dot{ border-color:var(--error); background:var(--error); color:#fff; }
+  .steps .dot svg{ width:12px; height:12px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .gen-foot{ margin-top:24px; }
+  .skel{ margin-top:28px; padding-top:26px; border-top:1px solid var(--border-subtle); display:grid; gap:12px; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f3f3f3 25%, #e9e9e9 50%, #f3f3f3 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk.h{ height:18px; width:40%; margin-bottom:6px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  .gen-error{ margin-top:24px; padding:18px; border-radius:var(--radius-xl); background:var(--error-subtle); border:1px solid #fecaca; }
+  .gen-error b{ display:block; font-size:15px; margin-bottom:4px; }
+  .gen-error p{ margin:0 0 14px; font-size:14px; color:var(--text-secondary); }
+  .acts{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Centered empty / blocked states */
+  .state{ max-width:620px; margin:clamp(24px, 6vh, 72px) auto; padding:44px 36px; text-align:center; }
+  .state .ic{ width:56px; height:56px; margin:0 auto 18px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--surface-raised); color:var(--text-secondary); }
+  .state .ic svg{ width:24px; height:24px; }
+  .state b{ display:block; font-size:19px; letter-spacing:-.2px; margin-bottom:8px; }
+  .state p{ margin:0 0 22px; font-size:15px; line-height:1.6; color:var(--text-secondary); }
+  .state .acts{ justify-content:center; }
+
+  /* Revision notes document (hand-built, approved) */
+  .doc{ padding:clamp(24px, 2.6vw, 44px); }
+  .doc-summary{ display:grid; grid-template-columns:repeat(4, minmax(0,1fr)); border:1px solid var(--border-subtle); border-radius:var(--radius-xl); overflow:hidden; margin-bottom:8px; }
+  .doc-summary div{ padding:14px 16px; background:var(--surface-canvas); }
+  .doc-summary div + div{ border-left:1px solid var(--border-subtle); }
+  .doc-summary b{ display:block; font-size:20px; font-weight:700; letter-spacing:-.3px; font-variant-numeric:tabular-nums; }
+  .doc-summary span{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; margin-top:14px; }
+  .chip{ display:inline-flex; align-items:center; gap:6px; height:28px; padding:0 11px; border-radius:var(--radius-full); font-size:13px; font-weight:500; background:var(--surface-raised); color:var(--text-strong); max-width:100%; }
+  .chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip svg{ width:13px; height:13px; flex-shrink:0; }
+  .chip.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .focus-note{ margin:14px 0 0; font-size:14px; color:var(--text-secondary); }
+  .doc section{ margin-top:40px; scroll-margin-top:20px; }
+  .sec-h{ display:flex; align-items:center; gap:12px; margin:0 0 16px; }
+  .sec-h .num{ width:28px; height:28px; border-radius:var(--radius-md); background:var(--action-primary-subtle); color:var(--action-primary); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .sec-h h2{ margin:0; font-size:18px; font-weight:700; letter-spacing:-.2px; }
+  .sec-h .n{ margin-left:auto; font-size:13px; font-weight:500; color:var(--text-tertiary); }
+  .takeaways{ margin:0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap:10px; }
+  .takeaways li{ display:grid; grid-template-columns:22px minmax(0,1fr); gap:12px; padding:14px 16px; border:1px solid var(--border-subtle); border-radius:var(--radius-xl); font-size:16px; line-height:1.6; }
+  .takeaways li svg{ width:18px; height:18px; color:var(--action-primary); margin-top:3px; }
+  .src{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:4px; }
+  .focus-list{ display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap:10px; }
+  .focus-item{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 16px; align-items:center; padding:16px 18px; border:1px solid var(--warning-border); background:var(--warning-subtle); border-radius:var(--radius-xl); }
+  .focus-item b{ font-size:15.5px; }
+  .focus-item p{ margin:4px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .focus-item a{ display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border-radius:var(--radius-lg); background:#fff; border:1px solid var(--warning-border); font-size:13.5px; font-weight:600; color:var(--text-strong); white-space:nowrap; }
+  .focus-item a:hover{ border-color:var(--warning); }
+  .focus-item a svg{ width:14px; height:14px; }
+  .focus-ok{ padding:16px 18px; border-radius:var(--radius-xl); background:var(--success-subtle); color:var(--success); font-size:15px; font-weight:500; }
+  .defs{ margin:0; display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap:10px; }
+  .defs > div{ padding:16px; border:1px solid var(--border-subtle); border-radius:var(--radius-xl); background:#fff; }
+  .defs dt{ font-size:15px; font-weight:700; margin-bottom:4px; }
+  .defs dd{ margin:0; font-size:14.5px; line-height:1.6; color:var(--text-secondary); }
+  .examples{ margin:0; padding:0; list-style:none; display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 380px), 1fr)); gap:10px; }
+  .examples li{ padding:14px 18px; border-left:3px solid var(--action-primary); background:var(--surface-canvas); border-radius:0 var(--radius-lg) var(--radius-lg) 0; font-size:15.5px; line-height:1.6; }
+  .sources{ margin:0; padding:0; list-style:none; display:flex; flex-wrap:wrap; gap:8px; }
+  .sources a{ display:inline-flex; align-items:center; gap:8px; padding:8px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; color:var(--text-strong); }
+  .sources a:hover{ border-color:var(--action-primary-soft); color:var(--action-primary); }
+  .sources svg{ width:15px; height:15px; color:var(--text-tertiary); }
+  .doc-foot{ margin-top:40px; padding-top:18px; border-top:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; font-size:13px; color:var(--text-tertiary); }
+  .rate{ display:flex; align-items:center; gap:2px; font-size:12.5px; color:var(--text-tertiary); }
+  .rate span{ margin-right:4px; }
+  .rate button{ width:30px; height:30px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-tertiary); }
+  .rate button:hover{ background:var(--surface-raised); color:var(--text-secondary); }
+  .rate button[aria-pressed="true"]{ color:var(--action-primary); background:var(--action-primary-subtle); }
+  .rate svg{ width:15px; height:15px; }
+  .print-head{ display:none; }
+
+  /* Modal + Toast (library) */
+  .overlay{ position:fixed; inset:0; z-index:80; background:rgba(10,10,10,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .modal{ width:min(420px, 100%); background:#fff; border-radius:var(--radius-xl); padding:24px; box-shadow:0 24px 48px rgba(10,10,10,.18); }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .modal .acts{ justify-content:flex-end; margin-top:22px; }
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:70; display:flex; align-items:center; gap:12px; padding:10px 14px; min-width:200px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .toast .ic{ width:28px; height:28px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:14px; height:14px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } .main{ scroll-behavior:auto; } }
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+    .rail{ position:static; max-height:none; overflow:visible; display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); align-items:start; }
+    .rail .toc-card{ display:none; }
+  }
+  @media (max-width:760px){
+    .create, .gen, .doc{ padding:22px 18px; }
+    .tile{ display:grid; grid-template-columns:32px minmax(0,1fr); gap:0 12px; }
+    .tile-ic{ margin:0; grid-row:span 2; }
+    .rail{ grid-template-columns:1fr; }
+    .doc-summary{ grid-template-columns:repeat(2, minmax(0,1fr)); }
+    .doc-summary div:nth-child(3){ border-left:0; }
+    .doc-summary div:nth-child(n+3){ border-top:1px solid var(--border-subtle); }
+    .focus-item{ grid-template-columns:1fr; }
+    .focus-item a{ justify-self:start; }
+    .mhead-acts{ width:100%; }
+    .mhead-acts .btn-primary{ flex:1; }
+    .create-foot .btn{ width:100%; }
+    .state{ padding:32px 20px; margin:16px auto; }
+    .toast{ left:16px; right:16px; bottom:16px; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 48px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+
+  /* Download PDF (FR-05): print only the notes document */
+  @media print{
+    body{ background:#fff; }
+    .shell{ display:block; height:auto; }
+    .sidebar-frame, .topbar-frame, .sidebar-backdrop, .back, .mhead, .rail, .rate, .toast{ display:none !important; }
+    .main{ overflow:visible; }
+    .main-inner{ padding:0; max-width:none; }
+    .layout{ display:block; }
+    .doc{ border:0; padding:0; }
+    .print-head{ display:block; margin-bottom:20px; }
+    .print-head b{ display:block; font-size:24px; }
+    .print-head span{ font-size:13px; color:#525252; }
+    .defs{ grid-template-columns:1fr 1fr; }
+    .focus-item, .examples li, .defs > div, .takeaways li{ break-inside:avoid; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" id="topbar" title="Top bar"></iframe>
+  <main class="main" id="main"><div class="main-inner" id="root"></div></main>
+</div>
+
+<div class="overlay" id="delModal" hidden>
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="delTitle">
+    <h3 id="delTitle">Delete these notes?</h3>
+    <p>You can create them again at any time.</p>
+    <div class="acts">
+      <button class="btn btn-secondary" type="button" id="delCancel">Cancel</button>
+      <button class="btn btn-danger" type="button" id="delOk">Delete</button>
+    </div>
+  </div>
+</div>
+<div id="toast" class="toast" role="status" hidden></div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---- Shared study store (same block in course-overview, flashcard-study, coach) ---- */
+  var KEY = 'upspace-study-v2';
+  function seed(){ return { notes:{ 'CS-301:2':{ createdAt:Date.now() - 2 * 36e5, focus:'' } }, decks:{}, plans:[] }; }
+  function load(){ try { var s = JSON.parse(localStorage.getItem(KEY)); if (s && s.notes) return s; } catch(e){} var s0 = seed(); save(s0); return s0; }
+  function save(s){ try { localStorage.setItem(KEY, JSON.stringify(s)); } catch(e){} }
+  function ago(t){
+    var m = Math.round((Date.now() - t) / 6e4);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + (m === 1 ? ' minute ago' : ' minutes ago');
+    var h = Math.round(m / 60);
+    if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago');
+    var d = Math.round(h / 24);
+    return d === 1 ? 'yesterday' : d + ' days ago';
+  }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]; }); }
+
+  /* ---- Module content the AI may use (lesson text/transcripts; matches course-overview.html CS-301 outline) ----
+     c = [term, definition], p = key points, ex = examples, m = minutes. done = module completed by this learner. */
+  var COURSES = {
+    'CS-301':{ title:'Advanced Data Structures', modules:[
+      { title:'Foundations & Complexity', done:true, desc:'Why the choice of data structure decides how fast a program can be, and the notation we use to compare them.', lessons:[
+        { title:'Why data structures matter', m:7, c:[['Data structure','A way of organizing data so the operations you need most are efficient.'],['Trade-off','Every structure makes some operations faster at the cost of others — for example fast lookup versus fast insertion.']], p:['Pick a data structure based on the operations you will perform most often.'], ex:['A contacts list searched by name is better as a hash map or sorted array than an unsorted list.'] },
+        { title:'Big-O refresher', m:10, c:[['Big-O','An upper bound on how running time or memory grows as the input size n grows.'],['O(log n)','Work grows by a constant step each time n doubles — typical of halving strategies like binary search.']], p:['Drop constants and lower-order terms: 3n² + 5n is O(n²).'], ex:['Binary search over 1,000,000 sorted items needs at most about 20 comparisons.'] },
+        { title:'Amortized analysis', m:9, c:[['Amortized cost','The average cost per operation over a worst-case sequence of operations — not a probability average.']], p:['A rare expensive step can still give O(1) amortized cost if it happens seldom enough.'], ex:['Dynamic array doubling: a resize is O(n), but appends are O(1) amortized.'] } ]},
+      { title:'Arrays, Lists & Hashing', done:true, desc:'The workhorse linear structures and the hash table — what they cost and when each one wins.',
+        quiz:{ name:'Knowledge check', correct:2, total:5, gaps:[
+          { concept:'Collision handling', detail:'You answered 1 of 3 questions on chaining vs. open addressing correctly.' },
+          { concept:'Load factor and resizing', detail:'You answered 1 of 2 questions on when a hash table resizes correctly.' } ]},
+        lessons:[
+        { title:'Dynamic arrays', m:8, c:[['Dynamic array','A resizable array that grows by allocating a larger block (often 2×) and copying the elements across.'],['Capacity vs. size','Capacity is the number of allocated slots; size is the number of slots in use.']], p:['Index access is O(1); inserting in the middle is O(n) because later elements shift.'] },
+        { title:'Linked lists in practice', m:9, c:[['Linked list','A sequence of nodes where each node points to the next one.']], p:['Insert or delete at a known node is O(1), but finding a node is O(n) — there is no random access.'], ex:['An LRU cache keeps recency order in a linked list so moving an item to the front is O(1).'] },
+        { title:'Hash tables & collisions', m:12, c:[['Hash function','Maps a key to a bucket index; a good one spreads keys evenly across buckets.'],['Collision','When two different keys map to the same bucket.'],['Chaining','Each bucket holds a small list of all entries that hash to it.'],['Open addressing','On a collision, probe other slots in the array until a free one is found.'],['Load factor','Entries ÷ buckets. When it gets too high the table resizes to keep operations close to O(1).']], p:['Average lookup in a hash table is O(1); the worst case is O(n) when many keys collide.'], ex:['Linear probing: if slot 5 is taken, try 6, then 7, and so on.'] } ]},
+      { title:'Stacks, Queues & Heaps', done:true, desc:'Restricted-access structures that power recursion, scheduling and priority queues.', lessons:[
+        { title:'Stacks and the call stack', m:8, c:[['Stack','A last-in, first-out (LIFO) collection: push and pop both happen at the top.'],['Call stack','The stack of active function calls; each call pushes a frame holding its locals and return address.']], p:['Deep or unbounded recursion can overflow the call stack.'], ex:['Undo in a text editor pops the most recent change first.'] },
+        { title:'Queues & deques', m:8, c:[['Queue','A first-in, first-out (FIFO) collection: add at the back, remove from the front.'],['Deque','A double-ended queue: add or remove at both ends in O(1).']], p:['Use a queue when items must be handled in arrival order.'], ex:['A print queue processes jobs in the order they were sent.'] },
+        { title:'Binary heaps & priority queues', m:12, c:[['Binary heap','A complete binary tree where every parent is ≤ its children (a min-heap).'],['Priority queue','Removes the highest-priority item first; usually built on a binary heap.']], p:['Insert and remove-min are O(log n); peeking at the minimum is O(1).','A heap is stored in an array: the children of index i sit at 2i + 1 and 2i + 2.'] } ]},
+      { title:'Binary Trees', done:false, desc:'The vocabulary of trees, how to build them, and the standard ways to walk through every node.', lessons:[] },
+      { title:'Binary Search Trees', done:false, desc:'Keeping a tree ordered so search, insert and delete stay fast — and keeping it balanced.', lessons:[] },
+      { title:'Graphs', done:false, desc:'Modelling relationships as nodes and edges, and the two searches every graph algorithm builds on.', lessons:[] }
+    ]}
+  };
+
+  var I = {
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    tick:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    save:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></svg>',
+    regen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
+    copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+    book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>',
+    play:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+    target:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg>',
+    list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>',
+    defs:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"/><path d="M8 7h6"/><path d="M8 11h8"/></svg>',
+    shield:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2a3.13 3.13 0 0 1 3 3.88Z"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.12 10 14H4.17a2 2 0 0 1-1.92-2.56l2.33-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.76a2 2 0 0 0-1.79 1.11L12 22a3.13 3.13 0 0 1-3-3.88Z"/></svg>'
+  };
+
+  var $ = function(id){ return document.getElementById(id); };
+  var params = new URLSearchParams(location.search);
+  var courseId = params.get('course') || 'CS-301', modIdx = +(params.get('mod') || 0), demo = params.get('state');
+  var course = COURSES[courseId], mod = course && course.modules[modIdx];
+  var noteKey = courseId + ':' + modIdx;
+  var courseHref = 'course-overview.html?id=' + encodeURIComponent(courseId);
+  var courseTitle = course ? course.title : (params.get('title') || 'Course');
+  var modTitle = mod ? mod.title : (params.get('m') || 'Module ' + (modIdx + 1));
+  $('topbar').src = '../component/topnavbar.html?parent=' + encodeURIComponent(courseTitle) + '&parentHref=' + encodeURIComponent('../code/' + courseHref) + '&current=Revision+notes';
+
+  function mins(l){ return l.reduce(function(a, x){ return a + (x.m || 0); }, 0); }
+
+  /* ---- Shared page chrome: back link + module header + layout(main, rail) ---- */
+  function page(opts){
+    var n = course ? course.modules.length : 0;
+    var badge = !mod ? '' : mod.done ? '<span class="badge success">' + I.tick + 'Module completed</span>' : '<span class="badge gray">' + I.lock + 'Not completed yet</span>';
+    $('root').innerHTML =
+      '<a class="back" href="' + courseHref + '">' + I.back + 'Back to ' + esc(courseTitle) + '</a>' +
+      '<header class="mhead"><div class="mhead-text">' +
+        '<div class="eyebrow"><span class="brand">' + I.doc + 'Revision notes</span><span class="dotsep"></span><span>Module ' + (modIdx + 1) + (n ? ' of ' + n : '') + '</span>' + (badge ? '<span class="dotsep"></span>' + badge : '') + '</div>' +
+        '<h1>' + esc(modTitle) + '</h1>' + (mod && mod.desc ? '<p>' + esc(mod.desc) + '</p>' : '') +
+      '</div>' + (opts.actions ? '<div class="mhead-acts">' + opts.actions + '</div>' : '') + '</header>' +
+      (opts.rail === false ? opts.main : '<div class="layout"><div class="col" id="col">' + opts.main + '</div><aside class="rail" aria-label="Module details">' + rail(opts.toc) + '</aside></div>');
+  }
+
+  function rail(toc){
+    var out = '';
+    if (toc) out += '<section class="card rcard toc-card"><h3>On this page</h3><ul class="toc" id="toc">' + toc.map(function(t){ return '<li><a href="#' + t[0] + '" data-sec="' + t[0] + '"><span>' + t[1] + '</span>' + (t[2] != null ? '<span class="c">' + t[2] + '</span>' : '') + '</a></li>'; }).join('') + '</ul></section>';
+    out += '<section class="card rcard"><h3>Built from ' + mod.lessons.length + ' lessons · ' + mins(mod.lessons) + ' min</h3><ul class="lessons">' +
+      mod.lessons.map(function(l){ return '<li><span class="ck">' + I.check + '</span><a href="course-player.html">' + esc(l.title) + '</a><span class="min">' + l.m + ' min</span></li>'; }).join('') + '</ul></section>';
+    if (mod.quiz){
+      var pct = Math.round(mod.quiz.correct / mod.quiz.total * 100), C = 2 * Math.PI * 22;
+      out += '<section class="card rcard"><h3>Your results</h3><div class="score">' +
+        '<svg class="ring" viewBox="0 0 56 56" role="img" aria-label="' + pct + '%"><circle cx="28" cy="28" r="22" fill="none" stroke="#f0f0f0" stroke-width="6"/><circle cx="28" cy="28" r="22" fill="none" stroke="#ca8a04" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (C * pct / 100).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 28 28)"/><text x="28" y="32.5" text-anchor="middle" font-size="13" font-weight="700" fill="#171717" font-family="DM Sans, sans-serif">' + pct + '%</text></svg>' +
+        '<div><b>' + esc(mod.quiz.name) + '</b><span>' + mod.quiz.correct + ' of ' + mod.quiz.total + ' correct · ' + mod.quiz.gaps.length + ' focus ' + (mod.quiz.gaps.length === 1 ? 'area' : 'areas') + '</span></div></div></section>';
+    } else {
+      out += '<section class="card rcard"><h3>Your results</h3><p class="rnote">This module has no assessment, so the notes cover the lesson content only.</p></section>';
+    }
+    var notes = load().notes;
+    out += '<section class="card rcard"><h3>Other modules</h3><ul class="mods">' + course.modules.map(function(m, i){
+      var st = !m.done ? '<span class="st lock" aria-label="Not completed">' + I.lock + '</span>' : notes[courseId + ':' + i] ? '<span class="st ok">Notes</span>' : '<span class="st new">Create</span>';
+      var inner = '<span class="n">' + (i + 1) + '</span><span class="t">' + esc(m.title) + '</span>' + st;
+      if (i === modIdx) return '<li><div class="cur" aria-current="page">' + inner + '</div></li>';
+      return m.done ? '<li><a href="?course=' + encodeURIComponent(courseId) + '&mod=' + i + '">' + inner + '</a></li>' : '<li><div class="locked">' + inner + '</div></li>';
+    }).join('') + '</ul></section>';
+    return out;
+  }
+
+  function stateCard(icon, title, text, actions){
+    page({ rail:false, main:'<div class="card state" role="status"><span class="ic">' + icon + '</span><b>' + title + '</b><p>' + text + '</p><div class="acts">' + actions + '</div></div>' });
+  }
+
+  /* ---- Create ---- */
+  function renderStart(){
+    var terms = [];
+    mod.lessons.forEach(function(l){ (l.c || []).forEach(function(d){ terms.push(d[0]); }); });
+    var chips = terms.slice(0, 5);
+    page({ main:
+      '<form class="card create" id="startForm">' +
+        '<div class="create-top"><span class="ai-mark">' + I.spark + '</span><div><h2>Create revision notes for this module</h2><p>A short, study-ready summary built from the ' + mod.lessons.length + ' lessons you completed' + (mod.quiz ? ' and your ' + esc(mod.quiz.name) + ' results' : '') + '.</p></div></div>' +
+        '<div class="tiles">' +
+          '<div class="tile"><span class="tile-ic">' + I.list + '</span><b>Key takeaways</b><span>The main ideas to remember, each linked to its lesson.</span></div>' +
+          '<div class="tile"><span class="tile-ic">' + I.defs + '</span><b>Definitions & examples</b><span>' + terms.length + ' terms from this module, explained in plain words.</span></div>' +
+          (mod.quiz ? '<div class="tile"><span class="tile-ic">' + I.target + '</span><b>Focus areas</b><span>' + mod.quiz.gaps.length + ' topics your results say to review.</span></div>'
+                    : '<div class="tile off"><span class="tile-ic">' + I.target + '</span><b>Focus areas</b><span>Not included — this module has no assessment.</span></div>') +
+        '</div>' +
+        '<div class="field"><label for="focus">Anything specific you want to focus on? <span class="opt">(optional)</span></label>' +
+          '<textarea class="textarea" id="focus" maxlength="300" placeholder="e.g. the parts I keep mixing up"></textarea>' +
+          '<div class="suggest" id="suggest"><span>From this module:</span>' + chips.map(function(t){ return '<button type="button" aria-pressed="false" data-term="' + esc(t) + '">' + esc(t) + '</button>'; }).join('') + '</div></div>' +
+        '<div class="create-foot"><span class="ground">' + I.shield + '<span>Built only from this module\'s lessons and your results — nothing is added from outside the course.</span></span>' +
+          '<button class="btn btn-primary btn-lg" type="submit">' + I.spark + 'Generate revision notes</button></div>' +
+      '</form>' });
+    $('suggest').onclick = function(e){
+      var b = e.target.closest('[data-term]'); if (!b) return;
+      var on = b.getAttribute('aria-pressed') !== 'true';
+      b.setAttribute('aria-pressed', String(on));
+      var picked = Array.prototype.filter.call(this.querySelectorAll('[data-term]'), function(x){ return x.getAttribute('aria-pressed') === 'true'; }).map(function(x){ return x.getAttribute('data-term'); });
+      $('focus').value = picked.join(', ');
+    };
+    $('startForm').onsubmit = function(e){ e.preventDefault(); generate($('focus').value.trim()); };
+  }
+
+  /* ---- Build notes from module content only ---- */
+  function build(focus){
+    var words = (focus || '').toLowerCase().split(/[^a-z0-9]+/).filter(function(w){ return w.length > 3; })
+      .map(function(w){ return w.replace(/(es|s)$/, ''); }); // ponytail: plural strip, not real stemming
+    function hit(s){ s = s.toLowerCase(); return words.some(function(w){ return s.indexOf(w) > -1; }); }
+    function byFocus(list, txt){ return words.length ? list.filter(function(x){ return hit(txt(x)); }).concat(list.filter(function(x){ return !hit(txt(x)); })) : list; }
+    var defs = [], points = [], exs = [];
+    mod.lessons.forEach(function(l){
+      (l.c || []).forEach(function(d){ defs.push({ term:d[0], def:d[1] }); });
+      (l.p || []).forEach(function(p){ points.push({ text:p, l:l }); });
+      (l.ex || []).forEach(function(x){ exs.push({ text:x, l:l }); });
+    });
+    return {
+      matched:words.length && (defs.some(function(d){ return hit(d.term + ' ' + d.def); }) || points.some(function(p){ return hit(p.text); })),
+      takeaways:byFocus(points, function(p){ return p.text; }).slice(0, 5),
+      defs:byFocus(defs, function(d){ return d.term + ' ' + d.def; }),
+      exs:byFocus(exs, function(x){ return x.text; })
+    };
+  }
+
+  /* ---- Generating ---- */
+  var run = 0;
+  function generate(focus){
+    var steps = ['Reading ' + mod.lessons.length + ' lessons'];
+    if (mod.quiz) steps.push('Checking your ' + mod.quiz.name + ' results');
+    steps.push('Structuring key concepts', 'Writing your study notes');
+    var id = ++run, wasSaved = !!load().notes[noteKey];
+    var skel = '<div class="skel" aria-hidden="true"><span class="sk h"></span><span class="sk" style="width:92%"></span><span class="sk" style="width:78%"></span><span class="sk" style="width:85%"></span><span class="sk h" style="margin-top:14px;width:30%"></span><span class="sk" style="width:70%"></span><span class="sk" style="width:88%"></span></div>';
+    page({ main:'<div class="card gen" aria-live="polite">' +
+      '<div class="gen-head"><span class="ai-mark">' + I.spark + '</span><div><h2>Generating your revision notes…</h2><p>This usually takes a few seconds.</p></div></div>' +
+      '<ol class="steps" id="steps">' + steps.map(function(s){ return '<li><span class="dot"></span>' + esc(s) + '</li>'; }).join('') + '</ol>' +
+      '<div class="gen-foot" id="genFoot"><button class="btn btn-secondary" type="button" id="cancelGen">Cancel</button></div>' + skel + '</div>' });
+    $('cancelGen').onclick = function(){ run++; init(); };
+    var lis = $('steps').children, i = 0, failAt = demo === 'fail' ? 1 : -1;
+    (function tick(){
+      if (id !== run) return;
+      if (i > 0){ lis[i - 1].className = 'done'; lis[i - 1].firstChild.innerHTML = I.check; }
+      if (i === failAt){
+        lis[i].className = 'failed'; lis[i].firstChild.innerHTML = I.x;
+        var sk = document.querySelector('.skel'); if (sk) sk.remove();
+        $('genFoot').outerHTML = '<div class="gen-error" role="alert"><b>Couldn\'t generate this right now.</b><p>Nothing was saved. Try again in a moment.</p>' +
+          '<div class="acts"><button class="btn btn-primary" type="button" id="retry">Try again</button><a class="btn btn-secondary" href="' + courseHref + '">Back to course</a></div></div>';
+        $('retry').onclick = function(){ generate(focus); };
+        return;
+      }
+      if (i === lis.length) return setTimeout(function(){
+        if (id !== run) return;
+        if (wasSaved){ var s = load(); s.notes[noteKey] = { createdAt:Date.now(), focus:focus }; save(s); toast('Notes regenerated'); }
+        renderDoc(focus, wasSaved);
+      }, 250);
+      lis[i].className = 'active'; i++;
+      setTimeout(tick, 850);
+    })();
+  }
+
+  /* ---- Notes document ---- */
+  function renderDoc(focus, saved){
+    var n = build(focus), rec = load().notes[noteKey];
+    var when = saved && rec ? 'Generated ' + ago(rec.createdAt) : 'Generated just now';
+    var secs = [['takeaways', 'Key takeaways', n.takeaways.length]];
+    if (mod.quiz) secs.push(['focus', 'Focus areas', mod.quiz.gaps.length]);
+    secs.push(['definitions', 'Important definitions', n.defs.length]);
+    if (n.exs.length) secs.push(['examples', 'Examples', n.exs.length]);
+    secs.push(['sources', 'Built from', null]);
+    function head(key, title, count){ var idx = secs.findIndex(function(s){ return s[0] === key; }) + 1; return '<div class="sec-h"><span class="num">' + idx + '</span><h2>' + title + '</h2>' + (count != null ? '<span class="n">' + count + '</span>' : '') + '</div>'; }
+
+    var body =
+      '<article class="card doc" id="doc">' +
+        '<div class="print-head"><b>' + esc(modTitle) + '</b><span>' + esc(courseTitle) + ' · Module ' + (modIdx + 1) + ' · Revision notes</span></div>' +
+        '<div class="doc-summary">' +
+          '<div><b>' + n.takeaways.length + '</b><span>Key takeaways</span></div>' +
+          '<div><b>' + n.defs.length + '</b><span>Definitions</span></div>' +
+          '<div><b>' + (mod.quiz ? mod.quiz.gaps.length : '—') + '</b><span>Focus areas</span></div>' +
+          '<div><b>~' + Math.max(3, Math.round((n.takeaways.length + n.defs.length + n.exs.length) * 0.5)) + ' min</b><span>To review</span></div>' +
+        '</div>' +
+        '<div class="chips">' +
+          (mod.quiz ? '<span class="chip brand">' + I.target + '<span>Personalized with your ' + esc(mod.quiz.name) + ' results</span></span>' : '<span class="chip"><span>From lesson content only</span></span>') +
+          (focus ? '<span class="chip">' + I.spark + '<span>Focus: ' + esc(focus) + '</span></span>' : '') +
+          '<span class="chip"><span>' + when + '</span></span></div>' +
+        (focus && !n.matched ? '<p class="focus-note">Nothing in this module matched “' + esc(focus) + '”, so these notes cover the whole module.</p>' : '') +
+        '<section id="takeaways">' + head('takeaways', 'Key takeaways', null) + '<ol class="takeaways">' + n.takeaways.map(function(p){ return '<li>' + I.tick + '<div>' + esc(p.text) + '<span class="src">' + esc(p.l.title) + '</span></div></li>'; }).join('') + '</ol></section>' +
+        (mod.quiz ? '<section id="focus">' + head('focus', 'Focus areas', 'from your ' + esc(mod.quiz.name)) + (mod.quiz.gaps.length
+          ? '<div class="focus-list">' + mod.quiz.gaps.map(function(g){ return '<div class="focus-item"><div><b>' + esc(g.concept) + '</b><p>' + esc(g.detail) + '</p></div><a href="course-player.html">' + I.play + 'Review lesson</a></div>'; }).join('') + '</div>'
+          : '<div class="focus-ok">Great work — no weak areas detected.</div>') + '</section>' : '') +
+        '<section id="definitions">' + head('definitions', 'Important definitions', n.defs.length + ' terms') + '<dl class="defs">' + n.defs.map(function(d){ return '<div><dt>' + esc(d.term) + '</dt><dd>' + esc(d.def) + '</dd></div>'; }).join('') + '</dl></section>' +
+        (n.exs.length ? '<section id="examples">' + head('examples', 'Examples', null) + '<ul class="examples">' + n.exs.map(function(x){ return '<li>' + esc(x.text) + '<span class="src">' + esc(x.l.title) + '</span></li>'; }).join('') + '</ul></section>' : '') +
+        '<section id="sources">' + head('sources', 'Built from', null) + '<ul class="sources">' + mod.lessons.map(function(l){ return '<li><a href="course-player.html">' + I.book + esc(l.title) + '</a></li>'; }).join('') + '</ul></section>' +
+        '<div class="doc-foot"><span>Generated by AI from your course content. Check key details against the lessons.</span>' +
+          '<div class="rate" role="group" aria-label="Rate these notes"><span>Helpful?</span><button type="button" aria-pressed="false" aria-label="Helpful">' + I.up + '</button><button type="button" aria-pressed="false" aria-label="Not helpful">' + I.down + '</button></div></div>' +
+      '</article>';
+
+    var actions =
+      '<button class="icon-btn" type="button" id="dRegen" aria-label="Regenerate" data-tip="Regenerate">' + I.regen + '</button>' +
+      '<button class="icon-btn" type="button" id="dCopy" aria-label="Copy" data-tip="Copy text">' + I.copy + '</button>' +
+      (saved ? '<button class="icon-btn danger" type="button" id="dDel" aria-label="Delete notes" data-tip="Delete">' + I.trash + '</button>' +
+               '<button class="btn btn-secondary" type="button" disabled>' + I.tick + 'Saved</button>'
+             : '<button class="btn btn-secondary" type="button" id="dSave">' + I.save + 'Save</button>') +
+      '<button class="btn btn-primary" type="button" id="dPdf">' + I.pdf + 'Download PDF</button>';
+
+    page({ main:body, actions:actions, toc:secs });
+
+    $('dRegen').onclick = function(){ generate(focus); };
+    $('dCopy').onclick = function(){ copyText(plain(n)); };
+    $('dPdf').onclick = function(){ window.print(); };
+    if ($('dSave')) $('dSave').onclick = function(){ var s = load(); s.notes[noteKey] = { createdAt:Date.now(), focus:focus }; save(s); renderDoc(focus, true); toast('Notes saved to this module'); };
+    if ($('dDel')) $('dDel').onclick = function(){ $('delModal').hidden = false; $('delCancel').focus(); };
+    document.querySelectorAll('.rate button').forEach(function(b){
+      b.onclick = function(){
+        var on = b.getAttribute('aria-pressed') !== 'true';
+        b.parentNode.querySelectorAll('button').forEach(function(x){ x.setAttribute('aria-pressed', 'false'); });
+        b.setAttribute('aria-pressed', String(on));
+        if (on) toast('Thanks for the feedback');
+      };
+    });
+    spy();
+  }
+
+  // Scroll-spy for "On this page"
+  function spy(){
+    var links = document.querySelectorAll('#toc a');
+    if (!links.length || !('IntersectionObserver' in window)) return;
+    var io = new IntersectionObserver(function(entries){
+      entries.forEach(function(en){
+        if (!en.isIntersecting) return;
+        links.forEach(function(a){ a.classList.toggle('on', a.getAttribute('data-sec') === en.target.id); });
+      });
+    }, { root:$('main'), rootMargin:'0px 0px -65% 0px' });
+    links.forEach(function(a){ var sec = document.getElementById(a.getAttribute('data-sec')); if (sec) io.observe(sec); });
+    links[0].classList.add('on');
+  }
+
+  function plain(n){
+    var out = modTitle + '\n' + courseTitle + ' · Module ' + (modIdx + 1) + '\n\nKEY TAKEAWAYS\n' + n.takeaways.map(function(p, i){ return (i + 1) + '. ' + p.text; }).join('\n') + '\n\n';
+    if (mod.quiz && mod.quiz.gaps.length) out += 'FOCUS AREAS\n' + mod.quiz.gaps.map(function(g){ return '- ' + g.concept + ': ' + g.detail; }).join('\n') + '\n\n';
+    out += 'IMPORTANT DEFINITIONS\n' + n.defs.map(function(d){ return '- ' + d.term + ': ' + d.def; }).join('\n') + '\n';
+    if (n.exs.length) out += '\nEXAMPLES\n' + n.exs.map(function(x){ return '- ' + x.text; }).join('\n') + '\n';
+    return out;
+  }
+  function copyText(t){
+    function fallback(){
+      var ta = document.createElement('textarea'); ta.value = t; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select();
+      try { document.execCommand('copy'); toast('Copied to clipboard'); } catch(e){ toast('Couldn\'t copy — select the text instead'); }
+      ta.remove();
+    }
+    if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(t).then(function(){ toast('Copied to clipboard'); }, fallback);
+    else fallback();
+  }
+
+  function closeDel(){ $('delModal').hidden = true; }
+  $('delCancel').onclick = closeDel;
+  $('delModal').addEventListener('click', function(e){ if (e.target === this) closeDel(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !$('delModal').hidden) closeDel(); });
+  $('delOk').onclick = function(){ var s = load(); delete s.notes[noteKey]; save(s); closeDel(); toast('Notes deleted'); init(); };
+
+  var toastTimer;
+  function toast(msg){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic">' + I.check + '</span>' + esc(msg);
+    t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 2600);
+  }
+
+  function init(){
+    $('main').scrollTop = 0;
+    if (!course || !mod || (mod.done && !mod.lessons.length))
+      return stateCard(I.doc, 'There\'s not enough course content to generate this.', 'This module has no lesson text or transcripts yet, so there\'s nothing to build notes from. We won\'t fill the gap with information from outside the course.', '<a class="btn btn-secondary" href="' + courseHref + '">Back to course</a>');
+    if (!mod.done)
+      return stateCard(I.lock, 'Complete this module to generate revision notes.', 'Revision notes are made once you\'ve finished a module, so they can include your results. Pick up where you left off.', '<a class="btn btn-primary" href="course-player.html">' + I.play + 'Continue module</a><a class="btn btn-secondary" href="' + courseHref + '">Back to course</a>');
+    var rec = load().notes[noteKey];
+    if (rec){
+      renderDoc(rec.focus, true);
+      if (params.get('print')) setTimeout(function(){ window.print(); }, 400);
+    } else renderStart();
+  }
+  init();
+</script>
+</body>
+</html>

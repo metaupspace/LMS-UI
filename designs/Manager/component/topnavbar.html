@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Manager Top Navbar (shared component)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3;
+    --surface-raised:#f5f5f5; --border-default:#e5e5e5;
+    --focus-ring:#6366f1; --error:#dc2626;
+    --radius-lg:8px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:#ffffff; color:var(--text-primary); font-family:var(--font); overflow:hidden; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:var(--font); }
+
+  .topbar{
+    height:80px; display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:0 32px 0 20px;
+  }
+  .topbar-left{ display:flex; align-items:center; gap:14px; min-width:0; }
+  .breadcrumb{ display:flex; align-items:center; gap:6px; font-size:13.5px; min-width:0; overflow:hidden; }
+  .breadcrumb a{ color:var(--text-tertiary); font-weight:600; }
+  .breadcrumb a:hover{ color:var(--text-primary); }
+  .breadcrumb .breadcrumb-sep{ color:var(--text-tertiary); opacity:0.5; }
+  .breadcrumb .breadcrumb-current{ color:var(--text-primary); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  .topbar-actions{ display:flex; align-items:center; gap:10px; }
+  .icon-btn{
+    width:36px; height:36px; border-radius:50%; border:none; background:transparent;
+    color:var(--text-secondary); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0; position:relative;
+    transition:background-color 0.15s ease;
+  }
+  .icon-btn:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .icon-btn:focus-visible{ outline:2px solid var(--focus-ring); outline-offset:1px; }
+  .icon-btn svg{ width:18px; height:18px; }
+  .icon-btn .dot{
+    position:absolute; top:7px; right:7px; width:7px; height:7px; border-radius:50%;
+    background:var(--error); border:1.5px solid #fff;
+  }
+
+  .user-profile{ display:flex; align-items:center; gap:10px; cursor:pointer; padding:4px 8px; border-radius:var(--radius-lg); transition:background-color 0.15s ease; }
+  .user-profile:hover{ background:var(--surface-raised); }
+  .avatar{ width:34px; height:34px; border-radius:50%; background:#4f46e5; color:#ffffff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .user-info{ display:flex; flex-direction:column; text-align:left; }
+  .user-name{ font-size:13.5px; font-weight:700; color:var(--text-primary); line-height:1.2; }
+  .user-role{ font-size:11px; color:var(--text-tertiary); font-weight:500; }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="../code/approvals.html" target="_parent">Manager Workspace</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="current-page-label">Approvals Queue</span>
+    </nav>
+  </div>
+
+  <div class="topbar-actions">
+    <button class="icon-btn" title="Notifications" aria-label="Notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+      <span class="dot"></span>
+    </button>
+    
+    <div class="user-profile" title="Manager Profile">
+      <div class="avatar">ML</div>
+      <div class="user-info">
+        <span class="user-name">Maria Lopez</span>
+        <span class="user-role">Head of People & L&D</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  const current = params.get('current');
+  if (current) {
+    const lbl = document.getElementById('current-page-label');
+    if (lbl) lbl.textContent = current;
+  }
+</script>
+</body>
+</html>

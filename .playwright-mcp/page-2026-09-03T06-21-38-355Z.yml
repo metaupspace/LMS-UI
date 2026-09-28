@@ -1,0 +1,113 @@
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - button [ref=e6]
+      - generic [ref=e11]:
+        - generic [ref=e12]:
+          - button [ref=e14]
+          - button [ref=e19]
+          - button [ref=e25]
+          - button [ref=e32]
+          - button [ref=e38]
+          - button [ref=e46]
+        - generic [ref=e52]:
+          - button [ref=e54]
+          - generic [ref=e58]:
+            - button [ref=e59]
+            - button "100%" [ref=e62]
+            - button [ref=e63]
+    - generic [ref=e66]: Untitled file
+  - generic [ref=e70]:
+    - generic [ref=e71]:
+      - button [ref=e73]
+      - generic [ref=e77]:
+        - button [ref=e79]
+        - button [ref=e85]
+        - button [ref=e92]
+    - generic [ref=e97]:
+      - generic [ref=e101]:
+        - paragraph [ref=e103]: Let's get started
+        - separator [ref=e104]
+      - main [ref=e109]:
+        - generic [ref=e111]:
+          - generic [ref=e114]: Main Scene
+          - generic: 512 × 512
+          - generic [ref=e118]:
+            - button [ref=e120]:
+              - textbox [ref=e122]: 0s 0f
+            - generic [ref=e123]:
+              - button [disabled] [ref=e124]
+              - button [disabled] [ref=e128]
+              - button [ref=e132]
+              - button [ref=e137]
+              - button [ref=e141]
+              - button [ref=e145]
+            - button [ref=e149]
+            - button [disabled] [ref=e153]
+      - generic [ref=e157]: Loading Creator...
+    - generic [ref=e168]:
+      - generic [ref=e169]:
+        - generic [ref=e170]: Main Scene
+        - combobox [ref=e180]:
+          - generic: 512 x 512
+        - generic [ref=e184]:
+          - generic [ref=e185]:
+            - generic [ref=e186]:
+              - button "W" [ref=e187]
+              - generic [ref=e189]:
+                - generic [aria-hidden] [ref=e190]: "512"
+                - textbox [ref=e191]: "512"
+            - separator [ref=e192]
+            - generic [ref=e194]:
+              - button "H" [ref=e195]
+              - generic [ref=e197]:
+                - generic [aria-hidden] [ref=e198]: "512"
+                - textbox [ref=e199]: "512"
+          - button [ref=e201]
+        - generic [ref=e206]:
+          - textbox [ref=e213]: Transparent
+          - button [ref=e215]
+        - generic [ref=e219]: Origin point
+      - generic [ref=e251]:
+        - generic [ref=e252]: Time
+        - generic [ref=e255]:
+          - generic [ref=e256]:
+            - button [ref=e257]
+            - generic [ref=e261]:
+              - generic [aria-hidden] [ref=e262]: 00:05:00
+              - textbox [ref=e263]: 00:05:00
+          - separator [ref=e264]
+          - generic [ref=e266]:
+            - button "FPS" [ref=e267]
+            - generic [ref=e269]:
+              - generic [aria-hidden] [ref=e270]: "30"
+              - textbox [ref=e271]: "30"
+      - generic [ref=e273]:
+        - generic [ref=e274]: Guides
+        - textbox [ref=e287]: FF0000
+      - generic [ref=e293]: Grid
+  - generic [ref=e304]:
+    - generic [ref=e305]:
+      - button [ref=e307]
+      - generic [ref=e311]:
+        - button "Main Scene" [ref=e313]
+        - status [ref=e321]
+    - generic [ref=e322]:
+      - generic [ref=e323]:
+        - button [ref=e324]
+        - button [ref=e327]
+      - generic [ref=e330]:
+        - generic [ref=e331]: "0"
+        - generic [ref=e347]:
+          - generic [ref=e348]: Layers
+          - generic [ref=e367]:
+            - generic: 0s
+            - generic: 1s
+            - generic: 2s
+            - generic: 3s
+            - generic: 4s
+            - generic: 5s
+        - paragraph [ref=e372]: Insert a shape or asset, or drag-and-drop anywhere in the canvas to upload.
+        - status [ref=e374]
+  - region "Notifications (F8)":
+    - list

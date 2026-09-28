@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Manager - Approvals Queue & Workflow</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     UpSpace Manager — Approvals Queue & Workflow (CRS-013, CRS-014, ASM-004)
+     Design System Baseline: UpSpaceDESIGN.md & LEARNER-UI-COMPONENT-REFERENCE.md
+     Library components reused: Buttons, Badges, Inputs, Select, Tables, Modals, Aside, Alerts, Toast, Progress Bar, Tooltip.
+     Approved missing components: Stepper/Workflow Pipeline, Tabs (segmented filter), Skeleton, Empty state, Accordion, Answer key view.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5; --surface-modal:#ffffff;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --purple:#7c3aed; --purple-subtle:#f5f3ff; --purple-border:#ddd6fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --shadow-sm:0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md:0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg:0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+  }
+
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button, input, select, textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  /* App Shell */
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; width:100%; overflow:hidden; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; overflow-x:hidden; min-width:0; }
+  .main-inner{ width:100%; padding:28px clamp(20px, 2.6vw, 48px) 64px; }
+
+  /* Typography & Headers */
+  .page-header{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; margin-bottom:24px; flex-wrap:wrap; }
+  .page-header h1{ margin:0 0 6px; font-size:26px; font-weight:700; letter-spacing:-0.5px; color:var(--text-primary); }
+  .page-header p{ margin:0; font-size:14.5px; color:var(--text-secondary); }
+
+  /* Metrics Cards Row */
+  .metrics-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:28px; }
+  .metric-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:18px 20px; display:flex; flex-direction:column; gap:6px; box-shadow:var(--shadow-sm); }
+  .metric-card .label{ font-size:13px; font-weight:600; color:var(--text-secondary); display:flex; align-items:center; gap:8px; }
+  .metric-card .value{ font-size:28px; font-weight:700; letter-spacing:-0.5px; color:var(--text-primary); line-height:1; }
+  .metric-card .subtext{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* Search & Filter Toolbar */
+  .toolbar{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl) var(--radius-xl) 0 0; padding:16px 20px; display:flex; flex-direction:column; gap:16px; border-bottom:1px solid var(--border-default); }
+  .toolbar-top{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; }
+  .search-wrap{ position:relative; flex:1; min-width:240px; max-width:420px; }
+  .search-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); }
+  .search-input{ width:100%; height:38px; padding:0 12px 0 36px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:var(--surface-canvas); font-size:13.5px; color:var(--text-primary); transition:border-color 0.15s ease, background 0.15s ease; }
+  .search-input:focus{ outline:none; border-color:var(--focus-ring); background:#fff; }
+
+  .filter-controls{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .select-input{ height:38px; padding:0 12px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:13.5px; color:var(--text-strong); font-weight:500; outline:none; cursor:pointer; }
+  .select-input:focus{ border-color:var(--focus-ring); }
+
+  /* Segmented Filter Tabs (Approved Hand-built pattern) */
+  .segmented-tabs{ display:inline-flex; background:var(--surface-raised); padding:3px; border-radius:var(--radius-lg); border:1px solid var(--border-default); }
+  .tab-btn{ height:32px; padding:0 14px; border-radius:var(--radius-md); border:none; background:transparent; font-size:13px; font-weight:600; color:var(--text-secondary); transition:all 0.15s ease; display:flex; align-items:center; gap:6px; }
+  .tab-btn:hover{ color:var(--text-primary); }
+  .tab-btn.active{ background:#fff; color:var(--text-primary); box-shadow:var(--shadow-sm); }
+  .tab-count{ display:inline-flex; align-items:center; justify-content:center; padding:1px 6px; border-radius:999px; background:var(--surface-overlay); font-size:11px; font-weight:700; color:var(--text-strong); }
+  .tab-btn.active .tab-count{ background:var(--action-primary-subtle); color:var(--action-primary); }
+
+  /* Buttons */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; border:1px solid transparent; transition:all 0.15s ease; white-space:nowrap; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); border-color:var(--border-strong); }
+  .btn-success{ background:var(--success); color:#fff; }
+  .btn-success:hover{ background:#166534; }
+  .btn-danger{ background:var(--error); color:#fff; }
+  .btn-danger:hover{ background:#b91c1c; }
+  .btn-warning{ background:#d97706; color:#fff; }
+  .btn-warning:hover{ background:#b45309; }
+  .btn-sm{ height:32px; padding:0 12px; font-size:12.5px; }
+
+  /* Badges */
+  .badge{ display:inline-flex; align-items:center; gap:5px; padding:3px 8px; border-radius:var(--radius-full); font-size:12px; font-weight:600; line-height:1; }
+  .badge-dot{ width:6px; height:6px; border-radius:50%; }
+  .badge-course{ background:var(--info-subtle); color:var(--info); border:1px solid var(--info-border); }
+  .badge-assessment{ background:var(--purple-subtle); color:var(--purple); border:1px solid var(--purple-border); }
+  .badge-pending{ background:var(--warning-subtle); color:var(--warning); border:1px solid var(--warning-border); }
+  .badge-pending .badge-dot{ background:var(--warning); }
+  .badge-approved{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .badge-approved .badge-dot{ background:var(--success); }
+  .badge-rejected{ background:var(--error-subtle); color:var(--error); border:1px solid var(--error-border); }
+  .badge-rejected .badge-dot{ background:var(--error); }
+  .badge-changes{ background:#fff7ed; color:#c2410c; border:1px solid #ffedd5; }
+  .badge-changes .badge-dot{ background:#ea580c; }
+
+  /* Table / Queue Card List */
+  .queue-container{ background:#fff; border:1px solid var(--border-default); border-top:none; border-radius:0 0 var(--radius-xl) var(--radius-xl); box-shadow:var(--shadow-sm); overflow:hidden; }
+  .queue-table{ width:100%; border-collapse:collapse; text-align:left; }
+  .queue-table th{ background:var(--surface-canvas); padding:12px 18px; font-size:12px; font-weight:700; color:var(--text-secondary); text-transform:uppercase; letter-spacing:0.5px; border-bottom:1px solid var(--border-default); }
+  .queue-table td{ padding:16px 18px; border-bottom:1px solid var(--border-subtle); vertical-align:middle; transition:background 0.15s ease; }
+  .queue-table tr:last-child td{ border-bottom:none; }
+  .queue-table tr:hover td{ background:#fafafa; }
+  .queue-table tr.selected td{ background:var(--action-primary-subtle); }
+
+  .item-title-block{ display:flex; flex-direction:column; gap:4px; }
+  .item-title{ font-size:14.5px; font-weight:700; color:var(--text-primary); text-decoration:none; display:flex; align-items:center; gap:8px; }
+  .item-title:hover{ color:var(--action-primary); }
+  .item-meta{ font-size:12.5px; color:var(--text-tertiary); display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+  .user-cell{ display:flex; align-items:center; gap:10px; }
+  .user-avatar{ width:32px; height:32px; border-radius:50%; background:#e0e7ff; color:#4f46e5; font-size:12px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .user-details{ display:flex; flex-direction:column; }
+  .user-name{ font-size:13.5px; font-weight:600; color:var(--text-primary); }
+  .user-dept{ font-size:12px; color:var(--text-tertiary); }
+
+  .step-info{ display:flex; flex-direction:column; gap:2px; }
+  .step-name{ font-size:13px; font-weight:600; color:var(--text-strong); }
+  .step-sub{ font-size:11.5px; color:var(--text-tertiary); }
+
+  .actions-cell{ display:flex; align-items:center; justify-content:flex-end; gap:8px; }
+
+  /* Detail Drawer / Modal Workspace (`ApprovalDetail`) */
+  .drawer-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.4); backdrop-filter:blur(2px); z-index:100; opacity:0; pointer-events:none; transition:opacity 0.25s ease; }
+  .drawer-overlay.active{ opacity:1; pointer-events:auto; }
+
+  .drawer{ position:fixed; top:0; right:0; bottom:0; width:min(90vw, 860px); background:#fff; z-index:101; transform:translateX(100%); transition:transform 0.3s cubic-bezier(0.16, 1, 0.3, 1); display:flex; flex-direction:column; box-shadow:var(--shadow-lg); }
+  .drawer.active{ transform:translateX(0); }
+
+  .drawer-header{ padding:20px 24px; border-bottom:1px solid var(--border-default); display:flex; align-items:flex-start; justify-content:space-between; gap:16px; background:#fff; position:sticky; top:0; z-index:10; }
+  .drawer-title-area{ display:flex; flex-direction:column; gap:6px; }
+  .drawer-close{ background:transparent; border:none; width:36px; height:36px; border-radius:50%; color:var(--text-tertiary); display:flex; align-items:center; justify-content:center; transition:all 0.15s ease; }
+  .drawer-close:hover{ background:var(--surface-raised); color:var(--text-primary); }
+
+  .drawer-body{ flex:1; overflow-y:auto; padding:24px; display:flex; flex-direction:column; gap:28px; background:var(--surface-canvas); }
+
+  .drawer-footer{ padding:16px 24px; border-top:1px solid var(--border-default); background:#fff; display:flex; align-items:center; justify-content:space-between; gap:12px; position:sticky; bottom:0; z-index:10; box-shadow:0 -4px 12px rgba(0,0,0,0.05); }
+
+  /* Read-Only Banner */
+  .readonly-banner{ background:var(--info-subtle); border:1px solid var(--info-border); border-radius:var(--radius-lg); padding:12px 16px; display:flex; align-items:center; gap:12px; font-size:13.5px; color:var(--info); font-weight:500; }
+  .readonly-banner svg{ width:18px; height:18px; flex-shrink:0; }
+
+  /* Workflow Stepper Component (`ApprovalWorkflow`) */
+  .workflow-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; box-shadow:var(--shadow-sm); }
+  .workflow-title{ font-size:14px; font-weight:700; color:var(--text-primary); margin-bottom:16px; display:flex; align-items:center; justify-content:space-between; }
+  .stepper{ display:flex; align-items:flex-start; position:relative; gap:0; }
+  .stepper::before{ content:''; position:absolute; top:16px; left:calc(100% / 6); right:calc(100% / 6); height:2px; background:var(--border-default); z-index:1; }
+  .step-node{ flex:1; display:flex; flex-direction:column; align-items:center; text-align:center; position:relative; z-index:2; padding:0 8px; }
+  .step-circle{ width:32px; height:32px; border-radius:50%; background:#fff; border:2px solid var(--border-strong); display:flex; align-items:center; justify-content:center; font-size:13px; font-weight:700; color:var(--text-secondary); margin-bottom:8px; transition:all 0.2s ease; }
+  .step-node.completed .step-circle{ background:var(--success); border-color:var(--success); color:#fff; }
+  .step-node.active .step-circle{ background:var(--action-primary); border-color:var(--action-primary); color:#fff; box-shadow:0 0 0 4px var(--action-primary-subtle); }
+  .step-node.rejected .step-circle{ background:var(--error); border-color:var(--error); color:#fff; }
+  .step-label{ font-size:12.5px; font-weight:700; color:var(--text-primary); margin-bottom:2px; }
+  .step-approver{ font-size:11.5px; color:var(--text-tertiary); }
+  .step-time{ font-size:11px; font-weight:600; color:var(--warning); margin-top:2px; }
+
+  /* Decision History Timeline (`ApprovalHistory`) */
+  .history-list{ display:flex; flex-direction:column; gap:16px; margin-top:12px; }
+  .history-item{ display:flex; gap:14px; position:relative; }
+  .history-item:not(:last-child)::after{ content:''; position:absolute; top:28px; left:13px; bottom:-12px; width:2px; background:var(--border-default); }
+  .history-icon{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; font-size:12px; color:#fff; z-index:2; }
+  .history-icon.submit{ background:var(--info); }
+  .history-icon.approve{ background:var(--success); }
+  .history-icon.reject{ background:var(--error); }
+  .history-icon.changes{ background:#ea580c; }
+  .history-icon.publish{ background:var(--action-primary); }
+
+  .history-content{ background:var(--surface-canvas); border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:12px 16px; flex:1; }
+  .history-header{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:4px; }
+  .history-step-tag{ display:inline-flex; align-items:center; padding:2px 6px; border-radius:var(--radius-sm); background:var(--surface-overlay); color:var(--text-strong); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:0.3px; }
+  .history-actor{ font-size:13px; font-weight:700; color:var(--text-primary); }
+  .history-date{ font-size:11.5px; color:var(--text-tertiary); }
+  .history-comment{ font-size:13px; color:var(--text-secondary); line-height:1.4; margin-top:6px; padding-top:6px; border-top:1px dashed var(--border-default); }
+
+  /* Content Review Blocks (`ApprovalContentPreview`) */
+  .review-section{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; box-shadow:var(--shadow-sm); display:flex; flex-direction:column; gap:16px; }
+  .section-title{ font-size:15px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--border-subtle); padding-bottom:12px; margin:0; }
+
+  /* Course Structure Accordion */
+  .accordion-item{ border:1px solid var(--border-default); border-radius:var(--radius-lg); overflow:hidden; margin-bottom:10px; }
+  .accordion-header{ background:var(--surface-canvas); padding:14px 16px; display:flex; align-items:center; justify-content:space-between; cursor:pointer; font-weight:700; font-size:13.5px; color:var(--text-primary); user-select:none; }
+  .accordion-header:hover{ background:var(--surface-raised); }
+  .accordion-body{ padding:16px; background:#fff; border-top:1px solid var(--border-default); display:flex; flex-direction:column; gap:12px; }
+
+  .lesson-row{ display:flex; align-items:center; justify-content:space-between; padding:10px 12px; background:var(--surface-canvas); border-radius:var(--radius-md); font-size:13px; }
+  .lesson-left{ display:flex; align-items:center; gap:10px; font-weight:600; color:var(--text-strong); }
+  .ai-tag{ display:inline-flex; align-items:center; gap:4px; padding:2px 6px; border-radius:4px; background:#f3e8ff; color:#7e22ce; font-size:11px; font-weight:700; }
+
+  /* Assessment Question Preview */
+  .question-card{ border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:16px; background:var(--surface-canvas); display:flex; flex-direction:column; gap:12px; }
+  .question-header{ display:flex; align-items:center; justify-content:space-between; font-size:13px; font-weight:700; color:var(--text-primary); }
+  .option-list{ display:flex; flex-direction:column; gap:8px; }
+  .option-item{ display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-radius:var(--radius-md); border:1px solid var(--border-default); background:#fff; font-size:13px; }
+  .option-item.correct{ border-color:var(--success-border); background:var(--success-subtle); font-weight:600; color:var(--success); }
+
+  /* Decision Dialog Modal (`ApprovalDecision`) */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(0,0,0,0.5); backdrop-filter:blur(2px); z-index:200; display:flex; align-items:center; justify-content:center; opacity:0; pointer-events:none; transition:opacity 0.2s ease; }
+  .modal-overlay.active{ opacity:1; pointer-events:auto; }
+
+  .modal{ background:#fff; border-radius:var(--radius-2xl); width:min(90vw, 540px); box-shadow:var(--shadow-lg); overflow:hidden; transform:scale(0.95); transition:transform 0.2s ease; }
+  .modal-overlay.active .modal{ transform:scale(1); }
+
+  .modal-header{ padding:20px 24px; border-bottom:1px solid var(--border-default); display:flex; align-items:center; justify-content:space-between; }
+  .modal-header h3{ margin:0; font-size:17px; font-weight:700; color:var(--text-primary); }
+  .modal-body{ padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .modal-footer{ padding:16px 24px; border-top:1px solid var(--border-default); background:var(--surface-canvas); display:flex; align-items:center; justify-content:flex-end; gap:12px; }
+
+  .form-group{ display:flex; flex-direction:column; gap:6px; }
+  .form-label{ font-size:13px; font-weight:700; color:var(--text-primary); display:flex; align-items:center; justify-content:space-between; }
+  .form-label .required{ color:var(--error); margin-left:2px; }
+  .textarea-input{ width:100%; min-height:100px; padding:12px; border-radius:var(--radius-lg); border:1px solid var(--border-default); font-size:13.5px; color:var(--text-primary); resize:vertical; outline:none; transition:border-color 0.15s ease; }
+  .textarea-input:focus{ border-color:var(--focus-ring); }
+  .textarea-input.error{ border-color:var(--error); background:var(--error-subtle); }
+  .error-text{ font-size:12px; color:var(--error); font-weight:600; display:none; }
+  .error-text.active{ display:block; }
+
+  /* Toast Notification */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-lg); z-index:300; transform:translateY(100px); opacity:0; transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+  .toast.active{ transform:translateY(0); opacity:1; }
+
+  /* Empty & Loading States */
+  .empty-state{ padding:48px 24px; text-align:center; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+  .empty-icon{ width:48px; height:48px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:flex; align-items:center; justify-content:center; margin-bottom:4px; }
+  .empty-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0; }
+  .empty-desc{ font-size:13.5px; color:var(--text-secondary); max-width:360px; margin:0; }
+
+  .skeleton{ background:linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:var(--radius-md); }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* State Switcher Preview Bar (Bottom Left) */
+  .preview-control{ position:fixed; bottom:16px; left:16px; z-index:90; background:#fff; border:1px dashed var(--border-strong); border-radius:var(--radius-lg); padding:8px 12px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow-md); font-size:12px; font-weight:600; }
+  .preview-control select{ font-size:11.5px; height:26px; border-radius:var(--radius-md); border:1px solid var(--border-default); outline:none; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Shared Sidebar Frame -->
+  <iframe src="../component/sidebar.html?active=approvals&count=4" class="sidebar-frame" title="Manager Sidebar"></iframe>
+
+  <!-- Shared Topbar Frame -->
+  <iframe src="../component/topnavbar.html?current=Approvals+Queue" class="topbar-frame" title="Manager Topbar"></iframe>
+
+  <!-- Main Content Workspace -->
+  <main class="main" id="main-content">
+    <div class="main-inner">
+
+      <!-- Page Header -->
+      <header class="page-header">
+        <div>
+          <h1>Manager Approvals</h1>
+          <p>Review submitted courses and assessments waiting for your approval decision.</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button class="btn btn-secondary" onclick="exportQueueCSV()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Export Audit Log
+          </button>
+        </div>
+      </header>
+
+      <!-- Metrics Cards Row -->
+      <section class="metrics-grid">
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--warning);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Pending My Review
+          </span>
+          <span class="value" id="stat-pending">4</span>
+          <span class="subtext">2 courses • 2 assessments</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--info);"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            Avg Response Time
+          </span>
+          <span class="value">1.8 Days</span>
+          <span class="subtext">Target SLA: &lt; 48 hours</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--success);"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+            Approved This Month
+          </span>
+          <span class="value" id="stat-approved">14</span>
+          <span class="subtext">Avg decision time: 1.4 days</span>
+        </div>
+        <div class="metric-card">
+          <span class="label">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#ea580c;"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            Changes Requested
+          </span>
+          <span class="value" id="stat-changes">3</span>
+          <span class="subtext">Resubmission rate: 100%</span>
+        </div>
+      </section>
+
+      <!-- Search & Filters Toolbar -->
+      <section class="toolbar">
+        <div class="toolbar-top">
+          <!-- Segmented Filter Tabs -->
+          <div class="segmented-tabs" role="tablist">
+            <button class="tab-btn active" data-filter="all" onclick="setTabFilter('all', this)">
+              All Items <span class="tab-count" id="count-all">4</span>
+            </button>
+            <button class="tab-btn" data-filter="course" onclick="setTabFilter('course', this)">
+              Courses <span class="tab-count" id="count-course">2</span>
+            </button>
+            <button class="tab-btn" data-filter="assessment" onclick="setTabFilter('assessment', this)">
+              Assessments <span class="tab-count" id="count-assessment">2</span>
+            </button>
+            <button class="tab-btn" data-filter="history" onclick="setTabFilter('history', this)">
+              Action Taken <span class="tab-count" id="count-history">2</span>
+            </button>
+          </div>
+
+          <!-- Search Input -->
+          <div class="search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input type="text" id="search-input" class="search-input" placeholder="Search by title, submitter, or category..." oninput="handleSearch()">
+          </div>
+        </div>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div class="filter-controls">
+            <select id="filter-dept" class="select-input" onchange="applyFilters()">
+              <option value="">All Departments</option>
+              <option value="Management">Management & Leadership</option>
+              <option value="Engineering">Engineering</option>
+              <option value="Sales">Sales & Go-to-Market</option>
+              <option value="Compliance">Compliance & HR</option>
+            </select>
+
+            <select id="filter-status" class="select-input" onchange="applyFilters()">
+              <option value="">All Statuses</option>
+              <option value="pending">Pending Review</option>
+              <option value="changes">Changes Requested</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:12.5px; color:var(--text-tertiary); font-weight:600;">Sort by:</span>
+            <select id="sort-select" class="select-input" onchange="applyFilters()">
+              <option value="oldest">Oldest Submitted (Priority)</option>
+              <option value="newest">Newest Submitted</option>
+              <option value="title">Title A-Z</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- Queue Table Workspace (`ApprovalQueue`) -->
+      <section class="queue-container">
+        <table class="queue-table" id="queue-table">
+          <thead>
+            <tr>
+              <th style="width:34%;">Submission Details</th>
+              <th style="width:20%;">Creator</th>
+              <th style="width:16%;">Current Workflow Step</th>
+              <th style="width:14%;">Status</th>
+              <th style="width:16%; text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="queue-tbody">
+            <!-- Rows injected by JavaScript -->
+          </tbody>
+        </table>
+
+        <!-- Empty State Container -->
+        <div id="empty-state" class="empty-state" hidden>
+          <div class="empty-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+          </div>
+          <h3 class="empty-title">No pending approvals found</h3>
+          <p class="empty-desc">You're all caught up! There are no submissions matching your filter criteria right now.</p>
+          <button class="btn btn-secondary btn-sm" onclick="resetFilters()">Reset All Filters</button>
+        </div>
+
+        <!-- Skeleton Loading Container -->
+        <div id="skeleton-state" style="padding:20px; display:flex; flex-direction:column; gap:16px;" hidden>
+          <div class="skeleton" style="height:48px; width:100%;"></div>
+          <div class="skeleton" style="height:48px; width:100%;"></div>
+          <div class="skeleton" style="height:48px; width:100%;"></div>
+        </div>
+      </section>
+
+    </div>
+  </main>
+</div>
+
+<!-- Approval Item Review Drawer (`ApprovalDetail`) -->
+<div class="drawer-overlay" id="drawer-overlay" onclick="closeDrawer()"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-labelledby="drawer-item-title">
+  <div class="drawer-header">
+    <div class="drawer-title-area">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span class="badge badge-course" id="drawer-item-badge">Course</span>
+        <span style="font-size:12px; color:var(--text-tertiary);" id="drawer-item-id">#CRS-104</span>
+      </div>
+      <h2 style="margin:0; font-size:20px; font-weight:700; color:var(--text-primary);" id="drawer-item-title">Onboarding for New Managers</h2>
+      <div style="font-size:12.5px; color:var(--text-secondary);" id="drawer-item-subtitle">Submitted by <b>Daniel Kim</b> • Management Department</div>
+    </div>
+    <button class="drawer-close" onclick="closeDrawer()" aria-label="Close review panel">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <div class="drawer-body">
+
+    <!-- Read-Only Banner -->
+    <div class="readonly-banner">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <div>
+        <b>Read-Only Mode:</b> Content is locked during review. You are deciding for <b>Step 1 (Department Manager Review)</b>.
+      </div>
+    </div>
+
+    <!-- Workflow Stepper Section -->
+    <section class="workflow-card">
+      <div class="workflow-title">
+        <span>Approval Pipeline Progress</span>
+        <span class="badge badge-pending" id="drawer-workflow-status">In Review</span>
+      </div>
+      <div class="stepper" id="drawer-stepper">
+        <!-- Injected dynamically -->
+      </div>
+    </section>
+
+    <!-- Content Preview Section (`ApprovalContentPreview`) -->
+    <section class="review-section">
+      <h3 class="section-title">
+        <span>Submitted Content Overview</span>
+        <span style="font-size:12px; font-weight:600; color:var(--text-tertiary);" id="drawer-content-count">3 Modules • 8 Lessons</span>
+      </h3>
+
+      <div id="drawer-content-container" style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Course or Assessment details injected here -->
+      </div>
+    </section>
+
+    <!-- Previous Decision Audit History (`ApprovalHistory`) -->
+    <section class="review-section">
+      <h3 class="section-title">
+        <span>Approval History & Feedback Log</span>
+      </h3>
+      <div class="history-list" id="drawer-history-list">
+        <!-- History items injected dynamically -->
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Drawer Footer Action Bar -->
+  <div class="drawer-footer">
+    <button class="btn btn-secondary" onclick="closeDrawer()">Cancel / Close</button>
+    <div style="display:flex; gap:10px;">
+      <button class="btn btn-warning" onclick="openDecisionModal('changes')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Request Changes
+      </button>
+      <button class="btn btn-danger" onclick="openDecisionModal('reject')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+        Reject
+      </button>
+      <button class="btn btn-success" onclick="openDecisionModal('approve')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        Approve Submission
+      </button>
+    </div>
+  </div>
+</aside>
+
+<!-- Reusable Decision Modal (`ApprovalDecision`) -->
+<div class="modal-overlay" id="decision-modal-overlay">
+  <div class="modal" role="dialog" aria-labelledby="modal-title">
+    <div class="modal-header">
+      <h3 id="modal-title">Confirm Approval Decision</h3>
+      <button class="drawer-close" onclick="closeDecisionModal()" aria-label="Close modal">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <div class="modal-body">
+      <div id="modal-banner" class="readonly-banner" style="background:#f0fdf4; border-color:#bbf7d0; color:#15803d;">
+        <!-- Dynamic header prompt -->
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="decision-comment">
+          <span>Decision Comment / Feedback <span class="required" id="comment-required-star">*</span></span>
+          <span style="font-size:11.5px; color:var(--text-tertiary); font-weight:500;" id="char-counter">0 / 500</span>
+        </label>
+        <textarea id="decision-comment" class="textarea-input" placeholder="Provide detailed reasoning for your decision..." oninput="handleCommentInput()"></textarea>
+        <div class="error-text" id="comment-error">A detailed comment is required when rejecting or requesting changes.</div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeDecisionModal()">Cancel</button>
+      <button class="btn btn-primary" id="modal-submit-btn" onclick="submitDecision()">
+        Confirm & Submit Decision
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast Notification Container -->
+<div id="toast" class="toast">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:#4ade80;"><polyline points="20 6 9 17 4 12"/></svg>
+  <span id="toast-message">Decision submitted successfully.</span>
+</div>
+
+<!-- Demo State Switcher Control (Bottom Left) -->
+<div class="preview-control">
+  <span style="color:var(--text-tertiary);">Demo State:</span>
+  <select id="state-select" onchange="switchDemoState(this.value)">
+    <option value="normal">Normal Queue (4 items)</option>
+    <option value="empty">Empty Queue (0 items)</option>
+    <option value="loading">Loading Skeletons</option>
+  </select>
+</div>
+
+<script>
+  /* ---------------------------------------------------------------
+     Mock Data Repository — LMS Approval Items (Courses & Assessments)
+  ----------------------------------------------------------------*/
+  let mockApprovals = [
+    {
+      id: 'CRS-104',
+      type: 'course',
+      title: 'Onboarding for New Managers',
+      category: 'Management & Leadership',
+      submitter: { name: 'Daniel Kim', email: 'daniel.kim@upspace.io', avatar: 'DK', dept: 'Management' },
+      submittedDate: 'Sep 25, 2026 (3 days ago)',
+      timeWaiting: '72h waiting',
+      step: 1,
+      totalSteps: 2,
+      stepName: 'Step 1 of 2: Department Manager Review',
+      status: 'pending',
+      description: 'Comprehensive 100-day roadmap for first-time people managers covering 1:1s, performance feedback, and team alignment.',
+      modulesCount: 3,
+      lessonsCount: 8,
+      aiGenerated: true,
+      modules: [
+        {
+          title: 'Module 1: Foundations of People Leadership',
+          lessons: [
+            { title: 'Lesson 1.1: Mindset Shift from IC to Manager', type: 'video', duration: '12 mins', ai: false },
+            { title: 'Lesson 1.2: Conducting Effective 1:1 Check-ins', type: 'reading', duration: '8 mins', ai: true },
+            { title: 'Lesson 1.3: Manager Ethics & Communication', type: 'quiz', duration: '15 mins', ai: false }
+          ]
+        },
+        {
+          title: 'Module 2: Performance Management & Feedback',
+          lessons: [
+            { title: 'Lesson 2.1: The SBI Feedback Framework', type: 'video', duration: '15 mins', ai: false },
+            { title: 'Lesson 2.2: Continuous Feedback & Goal Setting', type: 'reading', duration: '10 mins', ai: true }
+          ]
+        },
+        {
+          title: 'Module 3: Delegation & Empowering Teams',
+          lessons: [
+            { title: 'Lesson 3.1: Ownership vs Task Delegation', type: 'video', duration: '14 mins', ai: false },
+            { title: 'Lesson 3.2: First 90 Days Execution Plan', type: 'reading', duration: '12 mins', ai: true }
+          ]
+        }
+      ],
+      history: [
+        { step: 'Step 1', actor: 'Daniel Kim (Creator)', action: 'submitted', date: 'Sep 25, 2026 10:30 AM', comment: 'Initial submission for Step 1 manager review. Included updated SBI feedback templates.' }
+      ]
+    },
+    {
+      id: 'ASM-208',
+      type: 'assessment',
+      title: 'Q3 Information Security & Data Protection Exam',
+      category: 'Compliance & HR',
+      submitter: { name: 'Sarah Chen', email: 'sarah.chen@upspace.io', avatar: 'SC', dept: 'Compliance' },
+      submittedDate: 'Sep 26, 2026 (2 days ago)',
+      timeWaiting: '48h waiting',
+      step: 1,
+      totalSteps: 2,
+      stepName: 'Step 1 of 2: Manager Review',
+      status: 'pending',
+      description: 'Mandatory quarterly compliance evaluation testing employee knowledge on phishing prevention, password security, and GDPR policies.',
+      questionsCount: 5,
+      passMark: '80%',
+      timeLimit: '30 mins',
+      attemptsAllowed: '2 attempts',
+      questions: [
+        {
+          num: 1,
+          type: 'Multiple Choice',
+          text: 'What is the primary objective of multi-factor authentication (MFA)?',
+          options: [
+            { text: 'To encrypt local hard disk files', correct: false },
+            { text: 'To add an additional layer of security beyond password verification', correct: true },
+            { text: 'To speed up network login times', correct: false }
+          ],
+          explanation: 'MFA requires two or more evidence mechanisms, preventing unauthorized access even if passwords are leaked.'
+        },
+        {
+          num: 2,
+          type: 'True / False',
+          text: 'It is permissible to share company credentials via encrypted Slack direct messages.',
+          options: [
+            { text: 'True', correct: false },
+            { text: 'False — Credentials must never be transmitted over chat channels.', correct: true }
+          ],
+          explanation: 'All credentials must be shared via approved password vaults (1Password/Vault).'
+        }
+      ],
+      history: [
+        { step: 'Step 1', actor: 'Sarah Chen (Creator)', action: 'submitted', date: 'Sep 26, 2026 02:15 PM', comment: 'Submitted updated compliance assessment for Step 1 review with revised GDPR scenarios.' }
+      ]
+    },
+    {
+      id: 'CRS-109',
+      type: 'course',
+      title: 'Advanced System Architecture & Cloud Microservices',
+      category: 'Engineering',
+      submitter: { name: 'Marcus Vance', email: 'marcus.vance@upspace.io', avatar: 'MV', dept: 'Engineering' },
+      submittedDate: 'Sep 24, 2026 (4 days ago)',
+      timeWaiting: '96h waiting',
+      step: 1,
+      totalSteps: 3,
+      stepName: 'Step 1 of 3: Technical Manager Review',
+      status: 'changes',
+      description: 'Deep dive into distributed system design, gRPC microservices, Kubernetes orchestration, and event-driven architecture.',
+      modulesCount: 4,
+      lessonsCount: 12,
+      aiGenerated: false,
+      modules: [
+        {
+          title: 'Module 1: Microservice Communication Patterns',
+          lessons: [
+            { title: 'Lesson 1.1: REST vs gRPC Benchmark', type: 'video', duration: '20 mins', ai: false },
+            { title: 'Lesson 1.2: Event-Driven Architecture with Kafka', type: 'reading', duration: '15 mins', ai: false }
+          ]
+        }
+      ],
+      history: [
+        { step: 'Step 1', actor: 'Marcus Vance (Creator)', action: 'submitted', date: 'Sep 20, 2026 09:00 AM', comment: 'Submitted draft course for Step 1 Department Review.' },
+        { step: 'Step 1', actor: 'Maria Lopez (Manager)', action: 'changes', date: 'Sep 22, 2026 04:30 PM', comment: 'Step 1 Review: Please add a hands-on coding exercise to Module 2 before approval.' },
+        { step: 'Step 1', actor: 'Marcus Vance (Creator)', action: 'submitted', date: 'Sep 24, 2026 11:15 AM', comment: 'Resubmitted for Step 1 Review: Added Docker & Kubernetes sandbox assignment to Module 2.' }
+      ]
+    },
+    {
+      id: 'ASM-215',
+      type: 'assessment',
+      title: 'Enterprise Consultative Sales Certification Quiz',
+      category: 'Sales & Go-to-Market',
+      submitter: { name: 'Jessica Taylor', email: 'jessica.taylor@upspace.io', avatar: 'JT', dept: 'Sales' },
+      submittedDate: 'Sep 27, 2026 (1 day ago)',
+      timeWaiting: '24h waiting',
+      step: 1,
+      totalSteps: 2,
+      stepName: 'Step 1 of 2: Manager Review',
+      status: 'pending',
+      description: 'Final evaluation for account executives assessing discovery framework mastery, objection handling, and pricing negotiation.',
+      questionsCount: 4,
+      passMark: '85%',
+      timeLimit: '45 mins',
+      attemptsAllowed: '1 attempt',
+      questions: [
+        {
+          num: 1,
+          type: 'Multiple Choice',
+          text: 'During the discovery phase, what is the key purpose of asking open-ended impact questions?',
+          options: [
+            { text: 'To pitch product feature specifications', correct: false },
+            { text: 'To quantify the financial business impact of the prospect\'s current pain point', correct: true },
+            { text: 'To close the contract on the first call', correct: false }
+          ],
+          explanation: 'Impact questions help quantify ROI and urgency.'
+        }
+      ],
+      history: [
+        { step: 'Step 1', actor: 'Jessica Taylor (Creator)', action: 'submitted', date: 'Sep 27, 2026 08:45 AM', comment: 'Submitted sales accreditation quiz for Step 1 review.' }
+      ]
+    }
+  ];
+
+  let currentTab = 'all';
+  let activeItem = null;
+  let activeDecisionAction = null;
+
+  /* Initialize App */
+  document.addEventListener('DOMContentLoaded', () => {
+    renderQueue();
+    updateStats();
+  });
+
+  /* Filter & Search Logic */
+  function renderQueue() {
+    const tbody = document.getElementById('queue-tbody');
+    const emptyState = document.getElementById('empty-state');
+    const searchValue = document.getElementById('search-input').value.toLowerCase().trim();
+    const deptValue = document.getElementById('filter-dept').value;
+    const statusValue = document.getElementById('filter-status').value;
+    const sortValue = document.getElementById('sort-select').value;
+
+    let filtered = mockApprovals.filter(item => {
+      // Tab filter
+      if (currentTab === 'course' && item.type !== 'course') return false;
+      if (currentTab === 'assessment' && item.type !== 'assessment') return false;
+      if (currentTab === 'history' && item.status === 'pending') return false;
+
+      // Search text
+      if (searchValue) {
+        const matchesTitle = item.title.toLowerCase().includes(searchValue);
+        const matchesCreator = item.submitter.name.toLowerCase().includes(searchValue);
+        const matchesCategory = item.category.toLowerCase().includes(searchValue);
+        if (!matchesTitle && !matchesCreator && !matchesCategory) return false;
+      }
+
+      // Department filter
+      if (deptValue && !item.category.toLowerCase().includes(deptValue.toLowerCase())) return false;
+
+      // Status filter
+      if (statusValue && item.status !== statusValue) return false;
+
+      return true;
+    });
+
+    // Sorting logic
+    if (sortValue === 'newest') {
+      filtered.reverse();
+    } else if (sortValue === 'title') {
+      filtered.sort((a, b) => a.title.localeCompare(b.title));
+    }
+
+    if (filtered.length === 0) {
+      tbody.innerHTML = '';
+      emptyState.hidden = false;
+      return;
+    }
+
+    emptyState.hidden = true;
+    tbody.innerHTML = filtered.map(item => `
+      <tr class="${activeItem && activeItem.id === item.id ? 'selected' : ''}">
+        <td>
+          <div class="item-title-block">
+            <a href="#" class="item-title" onclick="openDrawer('${item.id}'); return false;">
+              ${item.title}
+              <span class="badge ${item.type === 'course' ? 'badge-course' : 'badge-assessment'}">
+                ${item.type === 'course' ? 'Course' : 'Assessment'}
+              </span>
+            </a>
+            <div class="item-meta">
+              <span>${item.category}</span>
+              <span>•</span>
+              <span>${item.submittedDate}</span>
+              <span style="color:var(--warning); font-weight:600;">(${item.timeWaiting})</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="user-cell">
+            <div class="user-avatar">${item.submitter.avatar}</div>
+            <div class="user-details">
+              <span class="user-name">${item.submitter.name}</span>
+              <span class="user-dept">${item.submitter.dept}</span>
+            </div>
+          </div>
+        </td>
+        <td>
+          <div class="step-info">
+            <span class="step-name">${item.stepName}</span>
+            <span class="step-sub">Current Approver: Maria Lopez</span>
+          </div>
+        </td>
+        <td>
+          ${getStatusBadgeHTML(item.status)}
+        </td>
+        <td style="text-align:right;">
+          <div class="actions-cell">
+            <button class="btn btn-secondary btn-sm" onclick="openDrawer('${item.id}')">
+              Review
+            </button>
+            ${item.status === 'pending' || item.status === 'changes' ? `
+              <button class="btn btn-success btn-sm" onclick="quickApprove('${item.id}')" title="Quick Approve">
+                Approve
+              </button>
+            ` : ''}
+          </div>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function getStatusBadgeHTML(status) {
+    if (status === 'pending') return `<span class="badge badge-pending"><span class="badge-dot"></span>Pending Review</span>`;
+    if (status === 'approved') return `<span class="badge badge-approved"><span class="badge-dot"></span>Approved</span>`;
+    if (status === 'rejected') return `<span class="badge badge-rejected"><span class="badge-dot"></span>Rejected</span>`;
+    if (status === 'changes') return `<span class="badge badge-changes"><span class="badge-dot"></span>Changes Requested</span>`;
+    return '';
+  }
+
+  function updateStats() {
+    const pending = mockApprovals.filter(i => i.status === 'pending').length;
+    const approved = mockApprovals.filter(i => i.status === 'approved').length + 14;
+    const changes = mockApprovals.filter(i => i.status === 'changes').length;
+
+    document.getElementById('stat-pending').textContent = pending;
+    document.getElementById('stat-approved').textContent = approved;
+    document.getElementById('stat-changes').textContent = changes;
+
+    document.getElementById('count-all').textContent = mockApprovals.length;
+    document.getElementById('count-course').textContent = mockApprovals.filter(i => i.type === 'course').length;
+    document.getElementById('count-assessment').textContent = mockApprovals.filter(i => i.type === 'assessment').length;
+    document.getElementById('count-history').textContent = mockApprovals.filter(i => i.status !== 'pending').length;
+  }
+
+  function setTabFilter(tab, btn) {
+    currentTab = tab;
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderQueue();
+  }
+
+  function handleSearch() {
+    renderQueue();
+  }
+
+  function applyFilters() {
+    renderQueue();
+  }
+
+  function resetFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-dept').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('sort-select').value = 'oldest';
+    currentTab = 'all';
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelector('.tab-btn[data-filter="all"]').classList.add('active');
+    renderQueue();
+  }
+
+  /* Drawer / Detail Review Logic (`ApprovalDetail`) */
+  function openDrawer(id) {
+    activeItem = mockApprovals.find(i => i.id === id);
+    if (!activeItem) return;
+
+    document.getElementById('drawer-item-title').textContent = activeItem.title;
+    document.getElementById('drawer-item-id').textContent = '#' + activeItem.id;
+    document.getElementById('drawer-item-badge').textContent = activeItem.type === 'course' ? 'Course' : 'Assessment';
+    document.getElementById('drawer-item-badge').className = `badge ${activeItem.type === 'course' ? 'badge-course' : 'badge-assessment'}`;
+    document.getElementById('drawer-item-subtitle').innerHTML = `Submitted by <b>${activeItem.submitter.name}</b> (${activeItem.submitter.email}) • ${activeItem.submittedDate}`;
+
+    document.getElementById('drawer-workflow-status').innerHTML = getStatusBadgeHTML(activeItem.status);
+
+    // Render Stepper
+    renderStepper(activeItem);
+
+    // Render Content Preview
+    renderContentPreview(activeItem);
+
+    // Render History
+    renderHistory(activeItem);
+
+    document.getElementById('drawer-overlay').classList.add('active');
+    document.getElementById('drawer').classList.add('active');
+    renderQueue();
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer-overlay').classList.remove('active');
+    document.getElementById('drawer').classList.remove('active');
+    activeItem = null;
+    renderQueue();
+  }
+
+  function renderStepper(item) {
+    const stepperContainer = document.getElementById('drawer-stepper');
+    let stepsHTML = '';
+
+    // Step 1: Department Review
+    const s1Class = item.status === 'approved' || item.step > 1 ? 'completed' : (item.status === 'rejected' ? 'rejected' : 'active');
+    stepsHTML += `
+      <div class="step-node ${s1Class}">
+        <div class="step-circle">${s1Class === 'completed' ? '✓' : '1'}</div>
+        <div class="step-label">Department Review</div>
+        <div class="step-approver">Maria Lopez</div>
+        <div class="step-time">${item.timeWaiting}</div>
+      </div>
+    `;
+
+    // Step 2: L&D Approval
+    const s2Class = item.status === 'approved' && item.step >= 2 ? 'completed' : (item.step === 2 && item.status === 'pending' ? 'active' : '');
+    stepsHTML += `
+      <div class="step-node ${s2Class}">
+        <div class="step-circle">${s2Class === 'completed' ? '✓' : '2'}</div>
+        <div class="step-label">L&D Approval</div>
+        <div class="step-approver">Sarah Jenkins</div>
+      </div>
+    `;
+
+    // Step 3: Publication
+    const s3Class = item.status === 'approved' && item.step === 3 ? 'completed' : '';
+    stepsHTML += `
+      <div class="step-node ${s3Class}">
+        <div class="step-circle">${s3Class === 'completed' ? '✓' : '3'}</div>
+        <div class="step-label">Publication</div>
+        <div class="step-approver">Auto Sync</div>
+      </div>
+    `;
+
+    stepperContainer.innerHTML = stepsHTML;
+  }
+
+  function renderContentPreview(item) {
+    const container = document.getElementById('drawer-content-container');
+    const countLabel = document.getElementById('drawer-content-count');
+
+    if (item.type === 'course') {
+      countLabel.textContent = `${item.modulesCount} Modules • ${item.lessonsCount} Lessons`;
+
+      let modulesHTML = (item.modules || []).map((mod, idx) => `
+        <div class="accordion-item">
+          <div class="accordion-header" onclick="toggleAccordion(this)">
+            <span>${mod.title}</span>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+          <div class="accordion-body">
+            ${mod.lessons.map(lsn => `
+              <div class="lesson-row">
+                <div class="lesson-left">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="color:var(--text-tertiary);"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></svg>
+                  <span>${lsn.title}</span>
+                  ${lsn.ai ? `<span class="ai-tag">✨ AI Content</span>` : ''}
+                </div>
+                <div style="font-size:12px; color:var(--text-tertiary);">${lsn.duration} • Read-only</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div style="font-size:13.5px; color:var(--text-secondary); line-height:1.5; background:var(--surface-canvas); padding:14px; border-radius:var(--radius-lg); border:1px solid var(--border-default);">
+          <b>Course Description:</b> ${item.description}
+        </div>
+        ${modulesHTML || '<div style="font-size:13px; color:var(--text-tertiary);">Module outline ready for review.</div>'}
+      `;
+    } else {
+      countLabel.textContent = `${item.questionsCount} Questions • Pass Mark: ${item.passMark}`;
+
+      let questionsHTML = (item.questions || []).map(q => `
+        <div class="question-card">
+          <div class="question-header">
+            <span>Question ${q.num}: ${q.type}</span>
+            <span style="font-weight:600; color:var(--action-primary);">Read-only Answer Key</span>
+          </div>
+          <div style="font-size:13.5px; font-weight:600; color:var(--text-primary);">${q.text}</div>
+          <div class="option-list">
+            ${q.options.map(opt => `
+              <div class="option-item ${opt.correct ? 'correct' : ''}">
+                <span>${opt.text}</span>
+                ${opt.correct ? `<span style="font-size:11.5px; font-weight:700;">✓ Correct Key</span>` : ''}
+              </div>
+            `).join('')}
+          </div>
+          <div style="font-size:12.5px; color:var(--text-secondary); background:#fff; padding:10px; border-radius:var(--radius-md); border:1px dashed var(--border-default);">
+            <b>Explanation:</b> ${q.explanation}
+          </div>
+        </div>
+      `).join('');
+
+      container.innerHTML = `
+        <div style="font-size:13.5px; color:var(--text-secondary); line-height:1.5; background:var(--surface-canvas); padding:14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); display:flex; justify-content:space-between;">
+          <div><b>Time Limit:</b> ${item.timeLimit}</div>
+          <div><b>Pass Mark:</b> ${item.passMark}</div>
+          <div><b>Max Attempts:</b> ${item.attemptsAllowed}</div>
+        </div>
+        ${questionsHTML || '<div style="font-size:13px; color:var(--text-tertiary);">Questions list ready for review.</div>'}
+      `;
+    }
+  }
+
+  function renderHistory(item) {
+    const list = document.getElementById('drawer-history-list');
+    list.innerHTML = item.history.map(h => `
+      <div class="history-item">
+        <div class="history-icon ${h.action}">
+          ${h.action === 'submitted' ? '⬆' : (h.action === 'approve' || h.action === 'publish' ? '✓' : (h.action === 'reject' ? '✕' : '✎'))}
+        </div>
+        <div class="history-content">
+          <div class="history-header">
+            <div style="display:flex; align-items:center; gap:8px;">
+              <span class="history-step-tag">${h.step || 'Step 1'}</span>
+              <span class="history-actor">${h.actor}</span>
+            </div>
+            <span class="history-date">${h.date}</span>
+          </div>
+          <div class="history-comment">${h.comment}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function toggleAccordion(header) {
+    const body = header.nextElementSibling;
+    const isHidden = body.style.display === 'none';
+    body.style.display = isHidden ? 'flex' : 'none';
+  }
+
+  /* Decision Dialog Modal Logic (`ApprovalDecision`) */
+  function openDecisionModal(action) {
+    if (!activeItem) return;
+    activeDecisionAction = action;
+
+    const modalTitle = document.getElementById('modal-title');
+    const modalBanner = document.getElementById('modal-banner');
+    const requiredStar = document.getElementById('comment-required-star');
+    const submitBtn = document.getElementById('modal-submit-btn');
+    const commentInput = document.getElementById('decision-comment');
+    const commentError = document.getElementById('comment-error');
+
+    commentInput.value = '';
+    commentInput.classList.remove('error');
+    commentError.classList.remove('active');
+    document.getElementById('char-counter').textContent = '0 / 500';
+
+    if (action === 'approve') {
+      modalTitle.textContent = 'Approve Submission';
+      modalBanner.style.background = '#f0fdf4';
+      modalBanner.style.borderColor = '#bbf7d0';
+      modalBanner.style.color = '#15803d';
+      modalBanner.innerHTML = `Confirming approval for <b>"${activeItem.title}"</b>. This moves the item to Step 2 in the approval pipeline.`;
+      requiredStar.style.display = 'none';
+      submitBtn.className = 'btn btn-success';
+      submitBtn.textContent = 'Confirm Approval';
+    } else if (action === 'reject') {
+      modalTitle.textContent = 'Reject Submission';
+      modalBanner.style.background = 'var(--error-subtle)';
+      modalBanner.style.borderColor = 'var(--error-border)';
+      modalBanner.style.color = 'var(--error)';
+      modalBanner.innerHTML = `<b>Warning:</b> Rejecting <b>"${activeItem.title}"</b> returns the submission to the creator as rejected. A required comment must be provided.`;
+      requiredStar.style.display = 'inline';
+      submitBtn.className = 'btn btn-danger';
+      submitBtn.textContent = 'Confirm Rejection';
+    } else if (action === 'changes') {
+      modalTitle.textContent = 'Request Changes';
+      modalBanner.style.background = '#fff7ed';
+      modalBanner.style.borderColor = '#ffedd5';
+      modalBanner.style.color = '#c2410c';
+      modalBanner.innerHTML = `Requesting changes for <b>"${activeItem.title}"</b> returns it to the author for revisions before re-review.`;
+      requiredStar.style.display = 'inline';
+      submitBtn.className = 'btn btn-warning';
+      submitBtn.textContent = 'Submit Change Request';
+    }
+
+    document.getElementById('decision-modal-overlay').classList.add('active');
+  }
+
+  function closeDecisionModal() {
+    document.getElementById('decision-modal-overlay').classList.remove('active');
+    activeDecisionAction = null;
+  }
+
+  function handleCommentInput() {
+    const input = document.getElementById('decision-comment');
+    const counter = document.getElementById('char-counter');
+    const len = input.value.length;
+    counter.textContent = `${len} / 500`;
+
+    if (len > 0) {
+      input.classList.remove('error');
+      document.getElementById('comment-error').classList.remove('active');
+    }
+  }
+
+  function submitDecision() {
+    if (!activeItem || !activeDecisionAction) return;
+
+    const commentInput = document.getElementById('decision-comment');
+    const commentValue = commentInput.value.trim();
+
+    // Validation for Reject & Request Changes
+    if ((activeDecisionAction === 'reject' || activeDecisionAction === 'changes') && !commentValue) {
+      commentInput.classList.add('error');
+      document.getElementById('comment-error').classList.add('active');
+      return;
+    }
+
+    // Perform state update
+    if (activeDecisionAction === 'approve') {
+      activeItem.status = 'approved';
+      activeItem.step = 3;
+      activeItem.history.push({
+        step: 'Step 1',
+        actor: 'Maria Lopez (Manager)',
+        action: 'approve',
+        date: 'Just now',
+        comment: commentValue || 'Step 1 Department Review Approved: Meets quality and curriculum standards.'
+      });
+      activeItem.history.push({
+        step: 'Step 2',
+        actor: 'Sarah Jenkins (VP of L&D)',
+        action: 'approve',
+        date: 'Just now (Auto-routed)',
+        comment: 'Step 2 L&D Approval completed: Organizational scope & compliance verified.'
+      });
+      activeItem.history.push({
+        step: 'Step 3',
+        actor: 'UpSpace System',
+        action: 'publish',
+        date: 'Just now',
+        comment: 'Step 3 Publication complete: Content automatically synced and live in course catalog.'
+      });
+      showToast(`Approved "${activeItem.title}" through all workflow steps.`);
+    } else if (activeDecisionAction === 'reject') {
+      activeItem.status = 'rejected';
+      activeItem.history.push({
+        step: 'Step 1',
+        actor: 'Maria Lopez (Manager)',
+        action: 'reject',
+        date: 'Just now',
+        comment: commentValue
+      });
+      showToast(`Rejected "${activeItem.title}".`);
+    } else if (activeDecisionAction === 'changes') {
+      activeItem.status = 'changes';
+      activeItem.history.push({
+        step: 'Step 1',
+        actor: 'Maria Lopez (Manager)',
+        action: 'changes',
+        date: 'Just now',
+        comment: commentValue
+      });
+      showToast(`Requested changes for "${activeItem.title}".`);
+    }
+
+    closeDecisionModal();
+    openDrawer(activeItem.id);
+    updateStats();
+    renderQueue();
+  }
+
+  function quickApprove(id) {
+    const item = mockApprovals.find(i => i.id === id);
+    if (!item) return;
+
+    item.status = 'approved';
+    item.step = 3;
+    item.history.push({
+      step: 'Step 1',
+      actor: 'Maria Lopez (Manager)',
+      action: 'approve',
+      date: 'Just now',
+      comment: 'Step 1 Department Review: Quick approved from queue overview.'
+    });
+    item.history.push({
+      step: 'Step 2',
+      actor: 'Sarah Jenkins (VP of L&D)',
+      action: 'approve',
+      date: 'Just now (Auto-routed)',
+      comment: 'Step 2 L&D Approval completed.'
+    });
+    item.history.push({
+      step: 'Step 3',
+      actor: 'UpSpace System',
+      action: 'publish',
+      date: 'Just now',
+      comment: 'Step 3 Publication complete.'
+    });
+
+    showToast(`Approved "${item.title}" successfully.`);
+    updateStats();
+    renderQueue();
+  }
+
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    document.getElementById('toast-message').textContent = msg;
+    toast.classList.add('active');
+    setTimeout(() => {
+      toast.classList.remove('active');
+    }, 3500);
+  }
+
+  function exportQueueCSV() {
+    showToast('Exported Manager Approval audit log to CSV.');
+  }
+
+  /* Demo State Switcher */
+  function switchDemoState(val) {
+    const queueTable = document.getElementById('queue-table');
+    const emptyState = document.getElementById('empty-state');
+    const skeletonState = document.getElementById('skeleton-state');
+
+    if (val === 'loading') {
+      queueTable.hidden = true;
+      emptyState.hidden = true;
+      skeletonState.hidden = false;
+    } else if (val === 'empty') {
+      queueTable.hidden = true;
+      skeletonState.hidden = true;
+      emptyState.hidden = false;
+    } else {
+      queueTable.hidden = false;
+      skeletonState.hidden = true;
+      emptyState.hidden = true;
+      renderQueue();
+    }
+  }
+</script>
+</body>
+</html>

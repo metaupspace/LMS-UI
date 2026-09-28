@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Learner Detail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Learner Detail Page
+     UpSpace Design System compliant.
+     Overview, Courses, Assessments, Attendance, Activity tabs + Modals
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  /* Breadcrumb & Navigation Back */
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:16px; cursor:pointer; }
+  .back-link:hover{ color:var(--action-primary); }
+
+  /* Profile Header Card */
+  .profile-header-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:24px; margin-bottom:24px; display:flex; flex-direction:column; gap:20px; }
+  .profile-header-top{ display:flex; align-items:flex-start; justify-content:space-between; gap:20px; flex-wrap:wrap; }
+  .profile-identity{ display:flex; align-items:center; gap:18px; }
+  .avatar-lg{ width:64px; height:64px; border-radius:50%; background:var(--brand-subtle); color:var(--action-primary); border:2px solid var(--brand-border); font-weight:700; font-size:22px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .avatar-lg.at-risk{ background:var(--warning-subtle); color:var(--warning); border-color:var(--warning-border); }
+  .profile-info{ display:flex; flex-direction:column; gap:4px; }
+  .profile-name-row{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .profile-name{ font-size:24px; font-weight:700; color:var(--text-primary); letter-spacing:-0.3px; margin:0; }
+  .profile-meta{ font-size:13.5px; color:var(--text-secondary); display:flex; align-items:center; gap:16px; flex-wrap:wrap; }
+  .meta-item{ display:flex; align-items:center; gap:6px; }
+
+  .header-actions{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
+  .btn{ height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:none; text-decoration:none; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); color:var(--text-primary); }
+
+  .state-preview{ height:36px; min-width:180px; padding:0 28px 0 12px; font-size:12px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance:none; cursor:pointer; }
+
+  /* Status Badges */
+  .status-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; }
+  .status-badge i{ width:6px; height:6px; border-radius:50%; }
+  .status-badge.active{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .status-badge.active i{ background:var(--success); }
+  .status-badge.at-risk{ background:var(--warning-subtle); color:var(--warning); border:1px solid var(--warning-border); }
+  .status-badge.at-risk i{ background:var(--warning); }
+  .status-badge.inactive{ background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .status-badge.inactive i{ background:var(--text-tertiary); }
+
+  /* At-Risk Alert Banner */
+  .at-risk-banner{ background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); padding:16px 20px; display:flex; align-items:flex-start; gap:14px; color:#7c5b06; font-size:13.5px; }
+  .at-risk-banner svg{ width:22px; height:22px; color:var(--warning); flex-shrink:0; margin-top:2px; }
+  .at-risk-banner b{ font-weight:700; color:#854d0e; }
+  .risk-signals-list{ display:flex; flex-wrap:wrap; gap:8px; margin-top:8px; }
+  .risk-pill{ background:#fff; border:1px solid var(--warning-border); color:#854d0e; padding:3px 10px; border-radius:var(--radius-sm); font-size:12px; font-weight:600; display:inline-flex; align-items:center; gap:5px; }
+
+  /* Overview Stat Cards Grid */
+  .stats-grid{ display:grid; grid-template-columns:repeat(auto-fit, minmax(180px, 1fr)); gap:16px; margin-bottom:24px; }
+  .stat-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:16px 20px; display:flex; flex-direction:column; gap:4px; }
+  .stat-card .label{ font-size:12px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:0.3px; }
+  .stat-card .val{ font-size:24px; font-weight:700; color:var(--text-primary); letter-spacing:-0.4px; }
+  .stat-card .desc{ font-size:12px; color:var(--text-secondary); }
+
+  /* Tabs Bar */
+  .tabs-bar{ display:flex; gap:24px; border-bottom:1px solid var(--border-default); margin-bottom:24px; background:transparent; }
+  .tab-btn{ position:relative; padding:12px 4px; border:none; background:transparent; font-size:14px; font-weight:600; color:var(--text-tertiary); cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .tab-btn:hover{ color:var(--text-primary); }
+  .tab-btn.active{ color:var(--action-primary); font-weight:700; }
+  .tab-btn.active:after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--action-primary); }
+  .tab-count{ font-size:11px; font-weight:700; padding:2px 7px; border-radius:var(--radius-full); background:var(--surface-raised); color:var(--text-secondary); }
+  .tab-btn.active .tab-count{ background:var(--info-subtle); color:var(--info); }
+
+  /* Tab Panels */
+  .tab-panel{ display:none; flex-direction:column; gap:24px; }
+  .tab-panel.active{ display:flex; }
+
+  /* Cards & Sections */
+  .section-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
+  .section-header{ padding:16px 20px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; gap:16px; background:#fff; }
+  .section-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0; }
+  .section-sub{ font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+
+  /* Tables inside cards */
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:800px; }
+  thead th{ text-align:left; font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-bottom:1px solid var(--border-default); white-space:nowrap; }
+  tbody tr{ border-bottom:1px solid var(--border-subtle); transition:background-color 0.12s ease; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr.clickable{ cursor:pointer; }
+  tbody tr.clickable:hover{ background:var(--surface-canvas); }
+  td{ padding:14px 20px; font-size:13.5px; color:var(--text-primary); vertical-align:middle; }
+
+  /* Progress Bar Component */
+  .progress-wrap{ display:flex; align-items:center; gap:10px; min-width:140px; }
+  .progress-bar-bg{ flex:1; height:7px; background:var(--surface-raised); border-radius:var(--radius-full); overflow:hidden; border:1px solid var(--border-subtle); }
+  .progress-bar-fill{ height:100%; border-radius:var(--radius-full); background:var(--action-primary); transition:width .3s ease; }
+  .progress-bar-fill.low{ background:var(--warning); }
+  .progress-bar-fill.high{ background:var(--success); }
+  .progress-val{ font-size:12.5px; font-weight:700; color:var(--text-primary); min-width:32px; text-align:right; }
+
+  /* Timeline Stream (Activity) */
+  .timeline-stream{ padding:20px; display:flex; flex-direction:column; gap:20px; position:relative; }
+  .timeline-stream:before{ content:""; position:absolute; left:35px; top:32px; bottom:32px; width:2px; background:var(--border-default); }
+  .timeline-item{ display:flex; align-items:flex-start; gap:16px; position:relative; z-index:1; }
+  .timeline-icon{ width:32px; height:32px; border-radius:50%; background:#fff; border:2px solid var(--border-default); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .timeline-icon.completed{ border-color:var(--success); color:var(--success); background:var(--success-subtle); }
+  .timeline-icon.submitted{ border-color:var(--info); color:var(--info); background:var(--info-subtle); }
+  .timeline-icon.attended{ border-color:var(--action-primary); color:var(--action-primary); background:var(--brand-subtle); }
+  .timeline-content{ display:flex; flex-direction:column; gap:3px; background:#fff; padding:12px 16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); flex:1; }
+  .timeline-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+  .timeline-title{ font-size:14px; font-weight:600; color:var(--text-primary); }
+  .timeline-time{ font-size:12px; color:var(--text-tertiary); white-space:nowrap; }
+  .timeline-desc{ font-size:13px; color:var(--text-secondary); }
+
+  /* Empty State for tabs */
+  .empty-tab-state{ padding:48px 20px; text-align:center; }
+  .empty-tab-icon{ width:40px; height:40px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:12px; }
+  .empty-tab-title{ font-size:15px; font-weight:700; color:var(--text-primary); margin:0 0 4px; }
+  .empty-tab-desc{ font-size:13px; color:var(--text-secondary); max-width:360px; margin:0 auto; }
+
+  /* Modals */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(23,23,23,0.5); backdrop-filter:blur(2px); z-index:100; display:none; align-items:center; justify-content:center; padding:20px; }
+  .modal-overlay.show{ display:flex; }
+  .modal-card{ background:#fff; border-radius:var(--radius-xl); border:1px solid var(--border-default); box-shadow:0 20px 40px -15px rgba(0,0,0,0.2); width:100%; max-width:640px; max-height:90vh; overflow-y:auto; display:flex; flex-direction:column; }
+  .modal-header{ padding:20px 24px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; }
+  .modal-title{ font-size:18px; font-weight:700; margin:0; }
+  .modal-close{ width:32px; height:32px; border-radius:50%; border:none; background:transparent; color:var(--text-tertiary); cursor:pointer; display:flex; align-items:center; justify-content:center; }
+  .modal-close:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .modal-body{ padding:24px; display:flex; flex-direction:column; gap:16px; }
+  .modal-footer{ padding:16px 24px; border-top:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:flex-end; gap:12px; background:var(--surface-canvas); }
+
+  /* Detail Rows in Modal */
+  .detail-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; background:var(--surface-canvas); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); }
+  .detail-item{ display:flex; flex-direction:column; gap:2px; }
+  .detail-item .lbl{ font-size:11.5px; font-weight:600; color:var(--text-tertiary); text-transform:uppercase; }
+  .detail-item .val{ font-size:14px; font-weight:700; color:var(--text-primary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=learners" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Learner+Detail" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <!-- Back Link -->
+    <a href="learners-list.html" class="back-link">&larr; Back to Learners Directory</a>
+
+    <!-- Profile Header Card -->
+    <div class="profile-header-card">
+      <div class="profile-header-top">
+        <div class="profile-identity">
+          <div class="avatar-lg" id="learnerAvatar">MV</div>
+          <div class="profile-info">
+            <div class="profile-name-row">
+              <h1 class="profile-name" id="learnerName">Marcus Vance</h1>
+              <span id="learnerStatusBadge" class="status-badge active"><i></i>Active</span>
+            </div>
+            <div class="profile-meta">
+              <span class="meta-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                <span id="learnerEmail">marcus.vance@university.edu</span>
+              </span>
+              <span class="meta-item">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                <span>Cohort: Fall 2026</span>
+              </span>
+              <span class="meta-item" style="font-family:monospace; color:var(--text-tertiary);" id="learnerId">LNR-001</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <select class="state-preview" id="statePreview" onchange="loadLearnerData(this.value)">
+            <option value="LNR-001">Learner: Marcus Vance (Active / High)</option>
+            <option value="LNR-004">Learner: Elena Rostova (At-Risk)</option>
+            <option value="LNR-007">Learner: Lucas Miller (New / No Data)</option>
+            <option value="LNR-006">Learner: Amara Okafor (Completed)</option>
+            <option value="LNR-999">Learner: Out of Scope (Denied)</option>
+          </select>
+          <button class="btn btn-secondary" onclick="openContactModal()">Email Learner</button>
+          <a href="#" id="reportLink" class="btn btn-primary">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            Learner Report
+          </a>
+        </div>
+      </div>
+
+      <!-- At-Risk Banner (Shown dynamically if learner is flagged) -->
+      <div class="at-risk-banner" id="atRiskBanner" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+        <div>
+          <div><b>Learner Flagged as At-Risk</b> — Contributing signals detected based on course performance criteria:</div>
+          <div class="risk-signals-list" id="riskSignalsList">
+            <!-- Dynamic Risk Signal Pills -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Overview Stat Cards -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="label">Overall Progress</div>
+        <div class="val" id="statProgress">84%</div>
+        <div class="desc">Across assigned courses</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Active Courses</div>
+        <div class="val" id="statActiveCourses">2</div>
+        <div class="desc">Currently enrolled</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Completed Courses</div>
+        <div class="val" id="statCompletedCourses">1</div>
+        <div class="desc">Fully finished</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Assessment Average</div>
+        <div class="val" id="statAssessmentAvg">88.5%</div>
+        <div class="desc">8 graded assessments</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">Attendance Rate</div>
+        <div class="val" id="statAttendance">95.0%</div>
+        <div class="desc">19 of 20 live sessions</div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" onclick="switchTab('overview', this)">
+        Overview
+      </button>
+      <button class="tab-btn" onclick="switchTab('courses', this)">
+        Courses <span class="tab-count" id="badgeCourses">2</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('assessments', this)">
+        Assessments <span class="tab-count" id="badgeAssessments">5</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('attendance', this)">
+        Attendance <span class="tab-count" id="badgeAttendance">20</span>
+      </button>
+      <button class="tab-btn" onclick="switchTab('activity', this)">
+        Activity Timeline
+      </button>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Enrolled Courses & Current State</h3>
+            <div class="section-sub">Courses taught by you that this learner is currently taking</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Course</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Last Activity</th>
+                <th>Completion / Deadline</th>
+              </tr>
+            </thead>
+            <tbody id="overviewCoursesBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:24px;">
+        <!-- Recent Assessments -->
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">Recent Assessment Performance</h3>
+              <div class="section-sub">Latest quiz & assignment scores</div>
+            </div>
+            <button class="btn btn-secondary" style="height:30px; padding:0 10px; font-size:12px;" onclick="switchTab('assessments', document.querySelectorAll('.tab-btn')[2])">View All</button>
+          </div>
+          <div class="table-wrap">
+            <table style="min-width:100%;">
+              <thead>
+                <tr>
+                  <th>Assessment</th>
+                  <th>Score</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="overviewAssessmentsBody">
+                <!-- Injected by JS -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Upcoming Schedule & Deadlines -->
+        <div class="section-card">
+          <div class="section-header">
+            <div>
+              <h3 class="section-title">Upcoming Deadlines & Sessions</h3>
+              <div class="section-sub">Pending items requiring learner attention</div>
+            </div>
+          </div>
+          <div style="padding:16px 20px; display:flex; flex-direction:column; gap:12px;" id="overviewDeadlinesList">
+            <!-- Injected by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: COURSES -->
+    <div class="tab-panel" id="tab-courses">
+      <div class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Course Enrollment & Progress Breakdown</h3>
+            <div class="section-sub">Detailed progress for all assigned instructor courses</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Course Name</th>
+                <th>Code</th>
+                <th>Progress</th>
+                <th>Status</th>
+                <th>Last Active</th>
+                <th>Target Deadline</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="coursesTableBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: ASSESSMENTS -->
+    <div class="tab-panel" id="tab-assessments">
+      <div class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Assessment Activity & Submission History</h3>
+            <div class="section-sub">Quizzes, exams, and project submissions graded or pending</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Assessment</th>
+                <th>Course</th>
+                <th>Score</th>
+                <th>Pass/Fail</th>
+                <th>Attempts</th>
+                <th>Latest Attempt Date</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody id="assessmentsTableBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ATTENDANCE -->
+    <div class="tab-panel" id="tab-attendance">
+      <div class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Live Session Attendance Record</h3>
+            <div class="section-sub">Session participation logs for assigned live classes</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session Title</th>
+                <th>Course</th>
+                <th>Date & Time</th>
+                <th>Attendance Status</th>
+                <th>Duration & Join Time</th>
+              </tr>
+            </thead>
+            <tbody id="attendanceTableBody">
+              <!-- Injected by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: ACTIVITY -->
+    <div class="tab-panel" id="tab-activity">
+      <div class="section-card">
+        <div class="section-header">
+          <div>
+            <h3 class="section-title">Chronological Activity Timeline</h3>
+            <div class="section-sub">Audit stream of learner actions, lesson completions, and submissions</div>
+          </div>
+        </div>
+        <div class="timeline-stream" id="activityTimelineStream">
+          <!-- Injected by JS -->
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Modal 1: Assessment Result Detail -->
+<div class="modal-overlay" id="assessmentModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title" id="modalAssessmentTitle">Quiz 3: Trees & Graphs Result</h3>
+      <button class="modal-close" onclick="closeModal('assessmentModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div class="detail-grid">
+        <div class="detail-item">
+          <span class="lbl">Learner</span>
+          <span class="val" id="modalAssessmentLearner">Marcus Vance</span>
+        </div>
+        <div class="detail-item">
+          <span class="lbl">Course</span>
+          <span class="val" id="modalAssessmentCourse">CS-301</span>
+        </div>
+        <div class="detail-item">
+          <span class="lbl">Score Achieved</span>
+          <span class="val" style="color:var(--success);" id="modalAssessmentScore">92 / 100 (92%)</span>
+        </div>
+        <div class="detail-item">
+          <span class="lbl">Attempt / Status</span>
+          <span class="val" id="modalAssessmentAttempt">Attempt 1 of 3 (Passed)</span>
+        </div>
+      </div>
+
+      <div>
+        <h4 style="margin:12px 0 8px; font-size:14px; font-weight:700;">Question Breakdown & AI Feedback</h4>
+        <div style="display:flex; flex-direction:column; gap:10px;" id="modalQuestionList">
+          <div style="padding:12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas);">
+            <div style="font-weight:600; font-size:13px; margin-bottom:4px;">Q1: Differentiate between BFS and DFS traversal algorithms.</div>
+            <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;"><b>Learner Answer:</b> BFS uses a queue to visit nodes level-by-level, whereas DFS uses a stack or recursion to explore paths deeply first.</div>
+            <div style="font-size:12px; color:var(--success); font-weight:600;">✓ Full Credit (10/10) — AI confidence high (98%).</div>
+          </div>
+          <div style="padding:12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas);">
+            <div style="font-weight:600; font-size:13px; margin-bottom:4px;">Q2: What is the time complexity of Dijkstra's algorithm with a Min-Heap?</div>
+            <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:6px;"><b>Learner Answer:</b> O((V + E) log V).</div>
+            <div style="font-size:12px; color:var(--success); font-weight:600;">✓ Full Credit (10/10).</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('assessmentModal')">Close</button>
+      <a href="grading-overview.html" class="btn btn-primary">Open in Grading UI</a>
+    </div>
+  </div>
+</div>
+
+<!-- Modal 2: Contact Learner Modal -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <h3 class="modal-title">Send Note to Learner</h3>
+      <button class="modal-close" onclick="closeModal('contactModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:13px; font-weight:600;">Recipient</label>
+        <input type="text" id="contactRecipient" readonly style="height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); font-size:13px; color:var(--text-secondary);">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:13px; font-weight:600;">Subject</label>
+        <input type="text" placeholder="e.g. Check-in regarding upcoming CS-301 assignment deadline" style="height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:13px; color:var(--text-primary);">
+      </div>
+      <div style="display:flex; flex-direction:column; gap:6px;">
+        <label style="font-size:13px; font-weight:600;">Message</label>
+        <textarea rows="4" placeholder="Write your message or academic guidance note here..." style="padding:10px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:13px; color:var(--text-primary); outline:none; resize:vertical;"></textarea>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('contactModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="alert('Message sent to learner.'); closeModal('contactModal');">Send Message</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // Complete Mock Learner Datasets
+  const LEARNERS_DB = {
+    "LNR-001": {
+      id: "LNR-001",
+      name: "Marcus Vance",
+      initials: "MV",
+      email: "marcus.vance@university.edu",
+      status: "active",
+      overallProgress: 84,
+      activeCoursesCount: 2,
+      completedCoursesCount: 1,
+      assessmentAvg: "88.5%",
+      attendanceRate: "95.0%",
+      attendanceCount: "19 of 20 sessions",
+      atRisk: false,
+      riskSignals: [],
+      courses: [
+        { code: "CS-301", name: "CS-301: Advanced Data Structures", progress: 88, status: "In Progress", lastActive: "2 hours ago", deadline: "Oct 15, 2026" },
+        { code: "WEB-202", name: "WEB-202: Modern Frontend Frameworks", progress: 80, status: "In Progress", lastActive: "Yesterday", deadline: "Nov 02, 2026" }
+      ],
+      assessments: [
+        { name: "Quiz 3: Trees & Graphs", course: "CS-301", score: "92 / 100", pass: true, attempts: "1 of 3", date: "Sep 19, 2026" },
+        { name: "Assignment 2: Binary Heap", course: "CS-301", score: "85 / 100", pass: true, attempts: "1 of 1", date: "Sep 14, 2026" },
+        { name: "Midterm Exam", course: "WEB-202", score: "88 / 100", pass: true, attempts: "1 of 1", date: "Sep 10, 2026" },
+        { name: "Quiz 1: Dynamic Programming", course: "CS-301", score: "89 / 100", pass: true, attempts: "2 of 3", date: "Aug 28, 2026" }
+      ],
+      attendance: [
+        { title: "Live Lab: Graph Traversals & Dijkstra", course: "CS-301", date: "Sep 18, 2026 • 10:00 AM", status: "Present", duration: "Joined 10:01 AM (89 mins)" },
+        { title: "React State Management & Signals", course: "WEB-202", date: "Sep 16, 2026 • 2:00 PM", status: "Present", duration: "Joined 2:00 PM (90 mins)" },
+        { title: "Heap Operations & Priority Queues", course: "CS-301", date: "Sep 11, 2026 • 10:00 AM", status: "Late", duration: "Joined 10:14 AM (76 mins)" },
+        { title: "CSS Grid & Flexbox Architectures", course: "WEB-202", date: "Sep 09, 2026 • 2:00 PM", status: "Present", duration: "Joined 2:01 PM (90 mins)" }
+      ],
+      activities: [
+        { type: "completed", title: "Completed Lesson: Binary Search Trees (Module 4)", time: "2 hours ago", desc: "Viewed all lecture videos and passed inline check-ins." },
+        { type: "submitted", title: "Submitted Quiz 3: Graphs & Trees", time: "Sep 19, 2026 • 2:15 PM", desc: "Score achieved: 92/100 (Pass)" },
+        { type: "attended", title: "Attended Live Session: Graph Traversals & Dijkstra", time: "Sep 18, 2026 • 10:00 AM", desc: "Verified present • 89 minutes duration" },
+        { type: "submitted", title: "Submitted Assignment 2: Binary Heap", time: "Sep 14, 2026 • 4:30 PM", desc: "Graded score: 85% by Prof. Vance" }
+      ]
+    },
+    "LNR-004": {
+      id: "LNR-004",
+      name: "Elena Rostova",
+      initials: "ER",
+      email: "elena.rostova@university.edu",
+      status: "at-risk",
+      overallProgress: 28,
+      activeCoursesCount: 2,
+      completedCoursesCount: 0,
+      assessmentAvg: "52.0%",
+      attendanceRate: "61.5%",
+      attendanceCount: "8 of 13 sessions",
+      atRisk: true,
+      riskSignals: ["Inactivity > 14 days", "Overall Progress < 30%", "2 Missed Assignment Deadlines", "Failed Quiz 2"],
+      courses: [
+        { code: "CS-301", name: "CS-301: Advanced Data Structures", progress: 24, status: "In Progress", lastActive: "16 days ago", deadline: "Oct 15, 2026" },
+        { code: "UX-204", name: "UX-204: Interaction Design", progress: 32, status: "In Progress", lastActive: "18 days ago", deadline: "Nov 02, 2026" }
+      ],
+      assessments: [
+        { name: "Quiz 2: Dynamic Programming", course: "CS-301", score: "42 / 100", pass: false, attempts: "2 of 3", date: "Sep 02, 2026" },
+        { name: "Assignment 1: Array Algorithms", course: "CS-301", score: "62 / 100", pass: true, attempts: "1 of 1", date: "Aug 20, 2026" }
+      ],
+      attendance: [
+        { title: "Heap Operations & Priority Queues", course: "CS-301", date: "Sep 11, 2026 • 10:00 AM", status: "Absent", duration: "Did not attend" },
+        { title: "Live Lab: Graph Traversals", course: "CS-301", date: "Sep 18, 2026 • 10:00 AM", status: "Absent", duration: "Did not attend" }
+      ],
+      activities: [
+        { type: "submitted", title: "Failed Quiz 2: Dynamic Programming", time: "16 days ago", desc: "Score achieved: 42/100 (Below passing 60% threshold)" },
+        { type: "submitted", title: "Missed Deadline: Assignment 2", time: "12 days ago", desc: "Assignment marked past due" }
+      ]
+    },
+    "LNR-007": {
+      id: "LNR-007",
+      name: "Lucas Miller",
+      initials: "LM",
+      email: "lucas.miller@university.edu",
+      status: "active",
+      overallProgress: 0,
+      activeCoursesCount: 1,
+      completedCoursesCount: 0,
+      assessmentAvg: "N/A",
+      attendanceRate: "0.0%",
+      attendanceCount: "0 of 0 sessions",
+      atRisk: false,
+      riskSignals: [],
+      courses: [
+        { code: "WEB-202", name: "WEB-202: Modern Frontend Frameworks", progress: 0, status: "Not Started", lastActive: "Never", deadline: "Nov 02, 2026" }
+      ],
+      assessments: [],
+      attendance: [],
+      activities: [
+        { type: "attended", title: "Enrolled in WEB-202", time: "3 days ago", desc: "Account created and assigned to class list." }
+      ]
+    },
+    "LNR-006": {
+      id: "LNR-006",
+      name: "Amara Okafor",
+      initials: "AO",
+      email: "amara.okafor@university.edu",
+      status: "active",
+      overallProgress: 96,
+      activeCoursesCount: 1,
+      completedCoursesCount: 2,
+      assessmentAvg: "97.5%",
+      attendanceRate: "96.0%",
+      attendanceCount: "24 of 25 sessions",
+      atRisk: false,
+      riskSignals: [],
+      courses: [
+        { code: "UX-204", name: "UX-204: Interaction Design", progress: 100, status: "Completed", lastActive: "5 hours ago", deadline: "Completed" }
+      ],
+      assessments: [
+        { name: "Portfolio Capstone Project", course: "UX-204", score: "98 / 100", pass: true, attempts: "1 of 1", date: "Sep 20, 2026" },
+        { name: "User Research Synthesis Quiz", course: "UX-204", score: "97 / 100", pass: true, attempts: "1 of 1", date: "Sep 12, 2026" }
+      ],
+      attendance: [
+        { title: "Usability Testing Showcase", course: "UX-204", date: "Sep 19, 2026 • 11:00 AM", status: "Present", duration: "Joined 11:00 AM (120 mins)" }
+      ],
+      activities: [
+        { type: "completed", title: "Completed UX-204: Interaction Design", time: "5 hours ago", desc: "Final course grade issued: A+ (97.5%)" }
+      ]
+    }
+  };
+
+  function getQueryParam(param) {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get(param);
+  }
+
+  function loadLearnerData(id) {
+    if (id === 'LNR-999') {
+      window.location.href = 'learner-access-denied.html';
+      return;
+    }
+
+    const learner = LEARNERS_DB[id] || LEARNERS_DB["LNR-001"];
+
+    // Update Header
+    document.getElementById('learnerAvatar').textContent = learner.initials;
+    document.getElementById('learnerAvatar').className = `avatar-lg ${learner.atRisk ? 'at-risk' : ''}`;
+    document.getElementById('learnerName').textContent = learner.name;
+    document.getElementById('learnerEmail').textContent = learner.email;
+    document.getElementById('learnerId').textContent = learner.id;
+    document.getElementById('reportLink').href = `learner-report.html?id=${learner.id}`;
+    document.getElementById('contactRecipient').value = `${learner.name} <${learner.email}>`;
+    document.getElementById('statePreview').value = learner.id;
+
+    // Status Badge
+    const statusBadge = document.getElementById('learnerStatusBadge');
+    if (learner.status === 'active') {
+      statusBadge.className = 'status-badge active';
+      statusBadge.innerHTML = '<i></i>Active';
+    } else if (learner.status === 'at-risk') {
+      statusBadge.className = 'status-badge at-risk';
+      statusBadge.innerHTML = '<i></i>At-Risk';
+    } else {
+      statusBadge.className = 'status-badge inactive';
+      statusBadge.innerHTML = '<i></i>Inactive';
+    }
+
+    // At-Risk Banner
+    const banner = document.getElementById('atRiskBanner');
+    const signalsList = document.getElementById('riskSignalsList');
+    if (learner.atRisk && learner.riskSignals.length > 0) {
+      banner.style.display = 'flex';
+      signalsList.innerHTML = learner.riskSignals.map(s => `<span class="risk-pill">⚠️ ${s}</span>`).join('');
+    } else {
+      banner.style.display = 'none';
+    }
+
+    // Stats Grid
+    document.getElementById('statProgress').textContent = learner.overallProgress + '%';
+    document.getElementById('statActiveCourses').textContent = learner.activeCoursesCount;
+    document.getElementById('statCompletedCourses').textContent = learner.completedCoursesCount;
+    document.getElementById('statAssessmentAvg').textContent = learner.assessmentAvg;
+    document.getElementById('statAttendance').textContent = learner.attendanceRate;
+
+    // Tab Counts
+    document.getElementById('badgeCourses').textContent = learner.courses.length;
+    document.getElementById('badgeAssessments').textContent = learner.assessments.length;
+    document.getElementById('badgeAttendance').textContent = learner.attendance.length;
+
+    // Overview Courses
+    const overviewCoursesBody = document.getElementById('overviewCoursesBody');
+    if (learner.courses.length === 0) {
+      overviewCoursesBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-tertiary); padding:24px;">No courses assigned yet</td></tr>`;
+    } else {
+      overviewCoursesBody.innerHTML = learner.courses.map(c => `
+        <tr>
+          <td><b style="font-size:14px;">${c.name}</b></td>
+          <td>
+            <div class="progress-wrap">
+              <div class="progress-bar-bg"><div class="progress-bar-fill ${c.progress > 75 ? 'high' : (c.progress < 40 ? 'low' : '')}" style="width:${c.progress}%;"></div></div>
+              <span class="progress-val">${c.progress}%</span>
+            </div>
+          </td>
+          <td><span class="status-badge ${c.status === 'Completed' ? 'active' : 'inactive'}">${c.status}</span></td>
+          <td style="color:var(--text-secondary);">${c.lastActive}</td>
+          <td style="color:var(--text-secondary);">${c.deadline}</td>
+        </tr>
+      `).join('');
+    }
+
+    // Overview Assessments
+    const overviewAssessmentsBody = document.getElementById('overviewAssessmentsBody');
+    if (learner.assessments.length === 0) {
+      overviewAssessmentsBody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:var(--text-tertiary); padding:24px;">No assessment history recorded</td></tr>`;
+    } else {
+      overviewAssessmentsBody.innerHTML = learner.assessments.slice(0, 3).map(a => `
+        <tr class="clickable" onclick="openAssessmentModal('${a.name}', '${a.course}', '${a.score}')">
+          <td><div style="font-weight:600;">${a.name}</div><div style="font-size:12px; color:var(--text-tertiary);">${a.course}</div></td>
+          <td><b style="color:${a.pass ? 'var(--success)' : 'var(--error)'};">${a.score}</b></td>
+          <td><span class="status-badge ${a.pass ? 'active' : 'at-risk'}">${a.pass ? 'Pass' : 'Fail'}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    // Overview Deadlines
+    const overviewDeadlinesList = document.getElementById('overviewDeadlinesList');
+    if (learner.courses.length === 0) {
+      overviewDeadlinesList.innerHTML = `<div style="color:var(--text-tertiary); font-size:13px; text-align:center;">No upcoming deadlines scheduled</div>`;
+    } else {
+      overviewDeadlinesList.innerHTML = `
+        <div style="padding:10px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:13.5px;">Assignment 3: Graph Shortest Path</div>
+            <div style="font-size:12px; color:var(--text-tertiary);">CS-301 • Due Oct 04, 2026 at 11:59 PM</div>
+          </div>
+          <span style="font-size:12px; font-weight:600; color:var(--info); background:var(--info-subtle); padding:3px 8px; border-radius:4px;">Pending</span>
+        </div>
+        <div style="padding:10px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); display:flex; justify-content:space-between; align-items:center;">
+          <div>
+            <div style="font-weight:600; font-size:13.5px;">Live Session: Hash Tables & Collisions</div>
+            <div style="font-size:12px; color:var(--text-tertiary);">CS-301 • Sep 25, 2026 • 10:00 AM</div>
+          </div>
+          <span style="font-size:12px; font-weight:600; color:var(--action-primary); background:var(--brand-subtle); padding:3px 8px; border-radius:4px;">Upcoming</span>
+        </div>
+      `;
+    }
+
+    // Courses Tab
+    const coursesTableBody = document.getElementById('coursesTableBody');
+    coursesTableBody.innerHTML = learner.courses.map(c => `
+      <tr class="clickable">
+        <td><b style="font-size:14px; color:var(--action-primary);">${c.name}</b></td>
+        <td style="font-family:monospace; color:var(--text-tertiary);">${c.code}</td>
+        <td>
+          <div class="progress-wrap">
+            <div class="progress-bar-bg"><div class="progress-bar-fill ${c.progress > 75 ? 'high' : (c.progress < 40 ? 'low' : '')}" style="width:${c.progress}%;"></div></div>
+            <span class="progress-val">${c.progress}%</span>
+          </div>
+        </td>
+        <td><span class="status-badge ${c.status === 'Completed' ? 'active' : 'inactive'}">${c.status}</span></td>
+        <td style="color:var(--text-secondary);">${c.lastActive}</td>
+        <td style="color:var(--text-secondary);">${c.deadline}</td>
+        <td><button class="btn btn-secondary" style="height:30px; padding:0 10px; font-size:12px;" onclick="alert('Viewing module breakdown for ${c.name}')">View Modules</button></td>
+      </tr>
+    `).join('');
+
+    // Assessments Tab
+    const assessmentsTableBody = document.getElementById('assessmentsTableBody');
+    if (learner.assessments.length === 0) {
+      assessmentsTableBody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:var(--text-tertiary); padding:32px;">No assessments submitted by this learner yet</td></tr>`;
+    } else {
+      assessmentsTableBody.innerHTML = learner.assessments.map(a => `
+        <tr class="clickable" onclick="openAssessmentModal('${a.name}', '${a.course}', '${a.score}')">
+          <td><b style="font-size:14px;">${a.name}</b></td>
+          <td style="font-weight:600; color:var(--text-secondary);">${a.course}</td>
+          <td><b style="color:${a.pass ? 'var(--success)' : 'var(--error)'}; font-size:14px;">${a.score}</b></td>
+          <td><span class="status-badge ${a.pass ? 'active' : 'at-risk'}">${a.pass ? 'Pass' : 'Fail'}</span></td>
+          <td style="color:var(--text-secondary);">${a.attempts}</td>
+          <td style="color:var(--text-secondary);">${a.date}</td>
+          <td><button class="btn btn-secondary" style="height:30px; padding:0 10px; font-size:12px;" onclick="event.stopPropagation(); openAssessmentModal('${a.name}', '${a.course}', '${a.score}')">Drill Down</button></td>
+        </tr>
+      `).join('');
+    }
+
+    // Attendance Tab
+    const attendanceTableBody = document.getElementById('attendanceTableBody');
+    if (learner.attendance.length === 0) {
+      attendanceTableBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--text-tertiary); padding:32px;">No live session attendance logs available</td></tr>`;
+    } else {
+      attendanceTableBody.innerHTML = learner.attendance.map(att => {
+        let statusBadge = `<span class="status-badge active"><i></i>Present</span>`;
+        if (att.status === 'Late') statusBadge = `<span class="status-badge at-risk"><i></i>Late</span>`;
+        if (att.status === 'Absent') statusBadge = `<span class="status-badge inactive" style="color:var(--error); border-color:var(--error-border); background:var(--error-subtle);"><i style="background:var(--error);"></i>Absent</span>`;
+
+        return `
+          <tr>
+            <td><b style="font-size:14px;">${att.title}</b></td>
+            <td style="color:var(--text-secondary); font-weight:600;">${att.course}</td>
+            <td style="color:var(--text-secondary);">${att.date}</td>
+            <td>${statusBadge}</td>
+            <td style="color:var(--text-secondary); font-size:13px;">${att.duration}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Activity Stream
+    const activityTimelineStream = document.getElementById('activityTimelineStream');
+    activityTimelineStream.innerHTML = learner.activities.map(act => `
+      <div class="timeline-item">
+        <div class="timeline-icon ${act.type}">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+        </div>
+        <div class="timeline-content">
+          <div class="timeline-header">
+            <div class="timeline-title">${act.title}</div>
+            <div class="timeline-time">${act.time}</div>
+          </div>
+          <div class="timeline-desc">${act.desc}</div>
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function switchTab(tabId, btnEl) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+
+    btnEl.classList.add('active');
+    document.getElementById(`tab-${tabId}`).classList.add('active');
+  }
+
+  function openAssessmentModal(title, course, score) {
+    const learnerId = document.getElementById('statePreview').value;
+    const learner = LEARNERS_DB[learnerId] || LEARNERS_DB["LNR-001"];
+
+    document.getElementById('modalAssessmentTitle').textContent = `${title} Breakdown`;
+    document.getElementById('modalAssessmentLearner').textContent = learner.name;
+    document.getElementById('modalAssessmentCourse').textContent = course;
+    document.getElementById('modalAssessmentScore').textContent = `${score} (${parseInt(score) >= 60 ? 'Passed' : 'Failed'})`;
+
+    document.getElementById('assessmentModal').classList.add('show');
+  }
+
+  function openContactModal() {
+    document.getElementById('contactModal').classList.add('show');
+  }
+
+  function closeModal(modalId) {
+    document.getElementById(modalId).classList.remove('show');
+  }
+
+  // On page load
+  const initialId = getQueryParam('id') || 'LNR-001';
+  loadLearnerData(initialId);
+</script>
+</body>
+</html>

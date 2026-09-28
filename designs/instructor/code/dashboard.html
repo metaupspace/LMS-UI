@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Main Dashboard (RPT-001-FR-04). v2: lightened pass
+     over the first iteration — same 4 widgets (grading, sessions,
+     performance, attendance), fewer per-widget controls, more
+     whitespace, one global "View state" demo switcher in the header
+     instead of four separate ones. Standalone file (CLAUDE.md Rule 7)
+     except sidebar/topbar, which come from ../component/*.html via
+     iframe (Rule 8's documented instructor exception).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --warning:#ca8a04; --warning-subtle:#fefce8;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff;
+    --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:36px 36px 56px; max-width:1180px; }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:28px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 6px; font-size:26px; font-weight:700; letter-spacing:-.4px; }
+  .page-head .sub{ font-size:13.5px; color:var(--text-secondary); }
+  .page-head-right{ display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+  .last-updated{ font-size:12px; color:var(--text-tertiary); white-space:nowrap; }
+
+  /* Dev-only demo control — deliberately understated, not styled like a real product affordance */
+  .dev-state-switcher{ display:flex; align-items:center; gap:6px; }
+  .dev-state-switcher label{ font-size:10.5px; font-weight:600; color:var(--text-disabled); text-transform:uppercase; letter-spacing:.04em; }
+  .dev-state-switcher select{
+    height:24px; padding:0 20px 0 6px; font-size:11px; color:var(--text-tertiary);
+    border:1px dashed var(--border-strong); border-radius:5px; background:transparent
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='11' height='11' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 5px center;
+    appearance:none; cursor:pointer;
+  }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+
+  /* ---- Quick actions ---- */
+  .quick-actions{ display:flex; gap:8px; margin-bottom:24px; flex-wrap:wrap; }
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:var(--radius-lg); font-size:13px; font-weight:600; cursor:pointer; border:none; }
+  .btn svg{ width:15px; height:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+
+  /* ---- Section head shared across widgets ---- */
+  .widget-head{ padding:20px 22px 2px; }
+  .widget-head h2{ margin:0; font-size:15px; font-weight:700; letter-spacing:-.1px; }
+  .view-all{ font-size:12.5px; font-weight:700; color:var(--info); flex-shrink:0; white-space:nowrap; }
+  .view-all:hover{ text-decoration:underline; }
+  .widget-footer{ padding:13px 22px; border-top:1px solid var(--border-subtle); }
+
+  /* ---- Grading widget (top priority — strongest visual weight, whole card is one link) ---- */
+  .grading-widget{ margin-bottom:18px; cursor:pointer; transition:border-color .12s ease; }
+  .grading-widget:hover{ border-color:var(--action-primary); }
+  .grading-body{ padding:6px 22px 24px; }
+  .grading-main-value{ font-size:38px; font-weight:700; letter-spacing:-.6px; font-variant-numeric:tabular-nums; line-height:1.1; }
+  .grading-main-label{ font-size:13.5px; color:var(--text-secondary); margin-top:2px; }
+  .grading-breakdown-line{ font-size:12.5px; color:var(--text-tertiary); margin-top:14px; }
+  .grading-breakdown-line b{ font-weight:700; }
+  .grading-breakdown-line .warn{ color:var(--warning); }
+  .grading-breakdown-line .info{ color:var(--info); }
+
+  /* ---- Two-column layout ---- */
+  .content-row{ display:grid; grid-template-columns:1.2fr 1fr; gap:18px; align-items:start; }
+  @media (max-width:1080px){ .content-row{ grid-template-columns:1fr; } }
+  .stack{ display:flex; flex-direction:column; gap:18px; }
+
+  /* ---- Upcoming sessions ---- */
+  .session-row{ display:flex; align-items:center; gap:14px; padding:13px 22px; border-top:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; }
+  .session-row:hover{ background:var(--surface-canvas); }
+  .session-time{ width:64px; flex-shrink:0; font-size:12.5px; font-weight:700; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  .session-main{ flex:1; min-width:0; }
+  .session-main .name{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .session-main .course{ font-size:12px; color:var(--text-tertiary); margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:11.5px; font-weight:600; line-height:1; padding:4px 8px; border-radius:999px; white-space:nowrap; flex-shrink:0; }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; flex-shrink:0; }
+  .status-pill.upcoming{ background:var(--info-subtle); color:var(--info); } .status-pill.upcoming i{ background:var(--info); }
+  .status-pill.in-progress{ background:var(--success-subtle); color:var(--success); } .status-pill.in-progress i{ background:var(--success); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+
+  /* ---- Compact perf/attendance rows ---- */
+  .perf-row, .attendance-row{ display:flex; align-items:center; gap:12px; padding:13px 22px; border-top:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; }
+  .perf-row:hover, .attendance-row:hover{ background:var(--surface-canvas); }
+  .perf-main, .attendance-main{ flex:1; min-width:0; }
+  .perf-name, .attendance-name{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .perf-stats{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+  .perf-stats b{ color:var(--text-secondary); font-weight:700; }
+  .attendance-date{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+  .attendance-pct{ font-size:14.5px; font-weight:700; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .attendance-pct.low{ color:var(--error); }
+  .attendance-pct.mid{ color:var(--warning); }
+  .attendance-pct.high{ color:var(--success); }
+
+  /* ---- Empty / loading / error states (shared) ---- */
+  .widget-state{ display:none; text-align:center; padding:34px 22px 30px; }
+  .widget-state.show{ display:block; }
+  .widget-state-title{ font-size:13.5px; font-weight:700; margin:0 0 4px; }
+  .widget-state.error .widget-state-title{ color:var(--error); }
+  .widget-state-desc{ font-size:12.5px; color:var(--text-tertiary); }
+  .widget-state button{ margin-top:10px; font-size:12.5px; font-weight:700; color:var(--info); cursor:pointer; background:none; border:none; padding:0; font-family:var(--font); }
+  .widget-state button:hover{ text-decoration:underline; }
+
+  .widget-body[hidden]{ display:none; }
+
+  .skeleton-wrap{ display:none; padding:16px 22px 22px; }
+  .skeleton-wrap.show{ display:block; }
+  .skeleton{ height:13px; border-radius:4px; margin:10px 0; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.5s infinite; }
+  .skeleton.w-30{ width:30%; height:28px; } .skeleton.w-55{ width:55%; } .skeleton.w-75{ width:75%; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=dashboard&amp;pending=24" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Dashboard" title="Top bar"></iframe>
+
+  <main class="main">
+    <div class="page-head">
+      <div>
+        <h1>Good morning, Professor Vance</h1>
+        <div class="sub">Here's what needs your attention today.</div>
+      </div>
+      <div class="page-head-right">
+        <div class="last-updated" id="lastUpdated">Last updated just now</div>
+        <div class="dev-state-switcher">
+          <label for="viewStateSelect">View state</label>
+          <select id="viewStateSelect" name="viewStateSelect" onchange="setViewState(this.value)">
+            <option value="normal">Normal / With data</option>
+            <option value="loading">Loading</option>
+            <option value="empty">Empty</option>
+            <option value="error">Error</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <a class="btn btn-primary" href="live-sessions-overview.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
+        Schedule session
+      </a>
+      <a class="btn btn-secondary" href="grading-overview.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1" ry="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4"/></svg>
+        Open grading
+      </a>
+      <a class="btn btn-secondary" href="assessment-create-type.html">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+        Create assessment
+      </a>
+    </div>
+
+    <!-- 1. Grading queue — top priority, whole card clickable -->
+    <div class="card grading-widget" id="gradingWidget" onclick="location.href='grading-overview.html'">
+      <div class="widget-head"><h2>Grading queue</h2></div>
+      <div class="skeleton-wrap" id="gradingSkeleton"><div class="skeleton w-30"></div><div class="skeleton w-55"></div></div>
+      <div class="widget-body" id="gradingBody">
+        <div class="grading-body">
+          <div class="grading-main-value" id="gradingPendingValue">24</div>
+          <div class="grading-main-label">submissions pending</div>
+          <div class="grading-breakdown-line"><b class="warn" id="gradingManualValue">5</b> Needs manual review &nbsp;&middot;&nbsp; <b class="info" id="gradingAiValue">19</b> AI-assisted</div>
+        </div>
+      </div>
+      <div class="widget-state" id="gradingEmpty">
+        <div class="widget-state-title">You're all caught up.</div>
+        <div class="widget-state-desc">No submissions need grading.</div>
+      </div>
+      <div class="widget-state error" id="gradingError">
+        <div class="widget-state-title">Couldn't load this data.</div>
+        <button type="button" onclick="event.stopPropagation(); document.getElementById('viewStateSelect').value='normal'; setViewState('normal');">Retry</button>
+      </div>
+    </div>
+
+    <div class="content-row">
+      <!-- 2. Upcoming sessions -->
+      <div class="card" id="sessionsWidget">
+        <div class="widget-head"><h2>Upcoming sessions</h2></div>
+        <div class="skeleton-wrap" id="sessionsSkeleton"><div class="skeleton w-75"></div><div class="skeleton w-55"></div><div class="skeleton w-75"></div></div>
+        <div class="widget-body" id="sessionsBody"></div>
+        <div class="widget-state" id="sessionsEmpty">
+          <div class="widget-state-title">No upcoming sessions.</div>
+        </div>
+        <div class="widget-state error" id="sessionsError">
+          <div class="widget-state-title">Couldn't load this data.</div>
+          <button type="button" onclick="document.getElementById('viewStateSelect').value='normal'; setViewState('normal');">Retry</button>
+        </div>
+        <div class="widget-footer"><a class="view-all" href="live-sessions-overview.html">View all sessions &rarr;</a></div>
+      </div>
+
+      <div class="stack">
+        <!-- 3. Recent assessment performance -->
+        <div class="card" id="perfWidget">
+          <div class="widget-head"><h2>Recent assessment performance</h2></div>
+          <div class="skeleton-wrap" id="perfSkeleton"><div class="skeleton w-75"></div><div class="skeleton w-55"></div></div>
+          <div class="widget-body" id="perfBody"></div>
+          <div class="widget-state" id="perfEmpty">
+            <div class="widget-state-title">No assessment results yet.</div>
+          </div>
+          <div class="widget-state error" id="perfError">
+            <div class="widget-state-title">Couldn't load this data.</div>
+            <button type="button" onclick="document.getElementById('viewStateSelect').value='normal'; setViewState('normal');">Retry</button>
+          </div>
+          <div class="widget-footer"><a class="view-all" href="assessments-overview.html">View assessments &rarr;</a></div>
+        </div>
+
+        <!-- 4. Recent attendance -->
+        <div class="card" id="attendanceWidget">
+          <div class="widget-head"><h2>Recent session attendance</h2></div>
+          <div class="skeleton-wrap" id="attendanceSkeleton"><div class="skeleton w-75"></div><div class="skeleton w-55"></div></div>
+          <div class="widget-body" id="attendanceBody"></div>
+          <div class="widget-state" id="attendanceEmpty">
+            <div class="widget-state-title">No recent session data.</div>
+          </div>
+          <div class="widget-state error" id="attendanceError">
+            <div class="widget-state-title">Couldn't load this data.</div>
+            <button type="button" onclick="document.getElementById('viewStateSelect').value='normal'; setViewState('normal');">Retry</button>
+          </div>
+          <div class="widget-footer"><a class="view-all" href="live-sessions-overview.html">View live sessions &rarr;</a></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  document.getElementById('lastUpdated').textContent = 'Last updated ' + new Date().toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+
+  /* ---------------- Data (scoped to this instructor's own courses/sessions only — RPT-001-NFR-01) ---------------- */
+  var GRADING = { pending: 24, needsManualReview: 5, aiAssisted: 19 };
+
+  var NOW = new Date();
+  function addMinutes(d, m){ return new Date(d.getTime() + m*60000); }
+  function fmtTime(d){ return d.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
+
+  var SESSIONS = [
+    { id:'s3', title:'Weekly Standup: Group Projects', course:'UX Research Methods', start:addMinutes(NOW,-10), status:'in-progress' },
+    { id:'s2', title:'Data Structures Lab Session', course:'Data Structures & Algorithms', start:addMinutes(NOW,120), status:'upcoming' },
+    { id:'s4', title:'UX Research Methods Workshop', course:'UX Research Methods', start:addMinutes(NOW,1500), status:'upcoming' }
+  ];
+
+  var PERFORMANCE = [
+    { id:'quiz3-networking', name:'Quiz 3: Networking Basics', avgScore:78, passRate:84 },
+    { id:'midterm-data-structures', name:'Midterm Exam — Data Structures', avgScore:71, passRate:68 },
+    { id:'lab4-binary-trees', name:'Lab 4: Binary Trees', avgScore:88, passRate:95 }
+  ];
+
+  var ATTENDANCE = [
+    { session:'Trees & Graphs', date:'Sep 21', pct:92 },
+    { session:'Data Structures Lab', date:'Sep 19', pct:86 },
+    { session:'UX Research Workshop', date:'Sep 17', pct:64 }
+  ];
+
+  function statusLabel(s){ return s === 'in-progress' ? 'Live now' : 'Upcoming'; }
+  function attendanceClass(p){ return p < 50 ? 'low' : (p < 75 ? 'mid' : 'high'); }
+
+  function renderSessions(){
+    document.getElementById('sessionsBody').innerHTML = SESSIONS.slice(0, 3).map(function(s){
+      return '<div class="session-row" onclick="location.href=\'live-sessions-overview.html?session=' + s.id + '\'">' +
+        '<div class="session-time">' + fmtTime(s.start) + '</div>' +
+        '<div class="session-main"><div class="name">' + s.title + '</div><div class="course">' + s.course + '</div></div>' +
+        '<span class="status-pill ' + s.status + '"><i></i>' + statusLabel(s.status) + '</span>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderPerformance(){
+    document.getElementById('perfBody').innerHTML = PERFORMANCE.slice(0, 4).map(function(a){
+      return '<div class="perf-row" onclick="location.href=\'assessment-detail.html?id=' + a.id + '\'">' +
+        '<div class="perf-main"><div class="perf-name">' + a.name + '</div>' +
+        '<div class="perf-stats">Avg <b>' + a.avgScore + '%</b> &nbsp;&middot;&nbsp; Pass <b>' + a.passRate + '%</b></div></div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function renderAttendance(){
+    document.getElementById('attendanceBody').innerHTML = ATTENDANCE.slice(0, 4).map(function(r){
+      return '<div class="attendance-row" onclick="location.href=\'live-sessions-overview.html\'">' +
+        '<div class="attendance-main"><div class="attendance-name">' + r.session + '</div><div class="attendance-date">' + r.date + '</div></div>' +
+        '<div class="attendance-pct ' + attendanceClass(r.pct) + '">' + r.pct + '%</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ---------------- Global demo state switcher — one control drives all four widgets ---------------- */
+  function applyState(prefix, state){
+    var skeleton = document.getElementById(prefix + 'Skeleton');
+    var body = document.getElementById(prefix + 'Body');
+    var empty = document.getElementById(prefix + 'Empty');
+    var error = document.getElementById(prefix + 'Error');
+    skeleton.classList.remove('show'); empty.classList.remove('show'); error.classList.remove('show');
+    body.hidden = false;
+    if (state === 'loading') { skeleton.classList.add('show'); body.hidden = true; }
+    else if (state === 'empty') { empty.classList.add('show'); body.hidden = true; }
+    else if (state === 'error') { error.classList.add('show'); body.hidden = true; }
+  }
+
+  function setViewState(state){
+    applyState('grading', state);
+    applyState('sessions', state);
+    applyState('perf', state);
+    applyState('attendance', state);
+    if (state === 'normal') { renderSessions(); renderPerformance(); renderAttendance(); }
+  }
+
+  renderSessions();
+  renderPerformance();
+  renderAttendance();
+</script>
+</body>
+</html>

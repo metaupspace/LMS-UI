@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Course Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Course Overview (CDL-002). Opened from any course card
+     on my-courses.html (?id=COURSE_ID). The Continue hero skips this
+     and goes straight to course-player.html.
+     - Main: description + course structure as an accordion — module
+       description and every lesson (title, type, duration, summary),
+       completed lessons marked. Not playable from here (FR-02).
+     - Side card: thumbnail, progress/last lesson, Start/Continue/Review
+       (FR-06/07), assignment details (FR-05), prerequisites (FR-04).
+     - Ask AI: floating bottom bar (Google Docs–style: sparkle pill → input →
+       thinking → answer), ⋮ → side panel / turn off. NOTE: undocumented —
+       AI-006 only defines the tutor inside the player. Built on user
+       request, scoped to this course's outline (same guardrail copy).
+     Library components used as-is: Breadcrumbs, Badge, Buttons,
+     Progress bar, Message, Textarea input field, Dropdown menu, Aside
+     (Right). Hand-built (approved, MISSING_COMPONENTS.md): Accordion,
+     Lesson list item, Chat composer, AI bottom bar.
+     - AI study tools (user decision 2026-09-23): each completed module has a
+       "Revision notes" row (AI-008) → revision-notes.html?course=&mod=; a
+       "Generate flashcards" button under Continue opens a modal with the
+       whole flashcard flow (AI-007, one set per course) → study in
+       flashcard-study.html?course=. #flashcards opens the modal. Demo: &ai=fail.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --warning:#ca8a04; --warning-subtle:#fefce8;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 32px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:44px; padding:0 18px; border-radius:var(--radius-lg); font-size:14.5px; font-weight:600; border:none; transition:background-color .15s ease, transform .1s ease; white-space:nowrap; }
+  .btn:active{ transform:scale(.97); }
+  .btn svg{ width:17px; height:17px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); pointer-events:none; }
+  .btn-block{ width:100%; }
+
+  /* Breadcrumbs — library pattern */
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:20px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Badge — library pattern (sm; Brand / Gray / Warning / Error / Success) */
+  .badge{ display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .badge .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.warning{ background:var(--warning-subtle); color:var(--warning); }
+  .badge.error{ background:var(--error-subtle); color:var(--error); }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+
+  .progress-bar-bg{ height:8px; background:var(--surface-overlay); border-radius:var(--radius-full); overflow:hidden; }
+  .progress-bar-fill{ height:100%; background:var(--action-primary); border-radius:var(--radius-full); }
+
+  /* ---- Layout: content + sticky side card ---- */
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) minmax(320px, 400px); gap:clamp(24px, 2.5vw, 40px); align-items:start; }
+  .side{ position:sticky; top:0; }
+
+  .head .badges{ display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px; }
+  .head h1{ margin:0; font-size:clamp(28px, 2.4vw, 38px); font-weight:700; letter-spacing:-.8px; line-height:1.15; text-wrap:balance; }
+  .head .lead{ margin:14px 0 0; max-width:72ch; font-size:16px; line-height:1.65; color:var(--text-secondary); }
+  .head .lead.muted{ color:var(--text-tertiary); font-style:italic; }
+  .byline{ display:flex; align-items:center; gap:10px; margin-top:18px; font-size:14px; color:var(--text-secondary); }
+  .byline .av{ width:32px; height:32px; border-radius:50%; background:var(--action-primary-soft); color:var(--action-primary); font-size:12.5px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  .byline b{ color:var(--text-primary); font-weight:600; }
+  .stats{ display:flex; flex-wrap:wrap; gap:10px; margin-top:22px; }
+  .stat{ display:flex; align-items:center; gap:10px; padding:10px 14px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .stat svg{ width:18px; height:18px; color:var(--text-tertiary); }
+  .stat b{ display:block; font-size:15px; font-weight:700; font-variant-numeric:tabular-nums; }
+  .stat small{ display:block; font-size:12.5px; color:var(--text-tertiary); }
+
+  .section{ margin-top:40px; }
+  .section-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:12px; margin-bottom:14px; flex-wrap:wrap; }
+  .section-head h2{ margin:0; font-size:20px; font-weight:700; letter-spacing:-.3px; }
+  .section-head .sub{ font-size:13.5px; color:var(--text-tertiary); margin-top:4px; }
+  .link-btn{ border:0; background:transparent; font-size:14px; font-weight:600; color:var(--action-primary); padding:6px 8px; border-radius:var(--radius-md); }
+  .link-btn:hover{ background:var(--action-primary-subtle); }
+
+  /* Accordion (hand-built) */
+  .outline{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); overflow:hidden; }
+  .acc + .acc{ border-top:1px solid var(--border-subtle); }
+  .acc-btn{ width:100%; display:flex; align-items:flex-start; gap:14px; padding:18px 20px; border:0; background:transparent; text-align:left; transition:background-color .15s ease; }
+  .acc-btn:hover{ background:var(--surface-canvas); }
+  .num{ flex-shrink:0; width:32px; height:32px; border-radius:var(--radius-lg); background:var(--surface-raised); font-size:13.5px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .acc.done .num{ background:var(--success-subtle); color:var(--success); }
+  .acc.current .num{ background:var(--action-primary-soft); color:var(--action-primary); }
+  .acc-btn .txt{ flex:1; min-width:0; }
+  .acc-btn .t{ display:block; font-size:16px; font-weight:600; line-height:1.35; }
+  .acc-btn .m{ display:flex; gap:8px; flex-wrap:wrap; align-items:center; font-size:13px; color:var(--text-tertiary); margin-top:4px; }
+  .acc-btn .m .sep{ width:3px; height:3px; border-radius:50%; background:var(--text-disabled); }
+  .chev{ width:20px; height:20px; color:var(--text-tertiary); margin-top:6px; transition:transform .25s var(--ease); }
+  .acc-btn[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .acc-panel{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s var(--ease); }
+  .acc-btn[aria-expanded="true"] + .acc-panel{ grid-template-rows:1fr; }
+  .acc-panel > div{ overflow:hidden; }
+  .acc-body{ padding:0 20px 18px 66px; }
+  .acc-desc{ margin:0 0 12px; max-width:72ch; font-size:14.5px; line-height:1.6; color:var(--text-secondary); }
+  .lessons{ list-style:none; margin:0; padding:0; border:1px solid var(--border-subtle); border-radius:var(--radius-xl); }
+  /* Lesson list item (hand-built; not interactive here — FR-02) */
+  .lesson{ display:flex; gap:12px; padding:12px 14px; }
+  .lesson + .lesson{ border-top:1px solid var(--border-subtle); }
+  .lesson .st{ width:20px; height:20px; margin-top:1px; }
+  .lesson .st svg{ width:20px; height:20px; }
+  .lesson .body{ flex:1; min-width:0; }
+  .lesson .row{ display:flex; align-items:baseline; justify-content:space-between; gap:12px; }
+  .lesson .lt{ font-size:14.5px; font-weight:600; color:var(--text-strong); line-height:1.4; }
+  .lesson .dur{ font-size:13px; color:var(--text-tertiary); white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .lesson .lm{ display:flex; align-items:center; gap:6px; font-size:12.5px; color:var(--text-tertiary); margin-top:2px; }
+  .lesson .lm svg{ width:13px; height:13px; }
+  .lesson .ld{ margin:6px 0 0; font-size:13.5px; line-height:1.55; color:var(--text-secondary); max-width:72ch; }
+  .last-tag{ margin-left:8px; font-size:11.5px; font-weight:600; color:var(--action-primary); background:var(--action-primary-subtle); padding:2px 7px; border-radius:var(--radius-full); vertical-align:2px; white-space:nowrap; }
+
+  /* Side card */
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); overflow:hidden; }
+  .thumb{ aspect-ratio:16/9; background:var(--surface-raised) center/cover no-repeat; }
+  .thumb.placeholder{ display:flex; align-items:center; justify-content:center; color:var(--text-disabled); }
+  .thumb.placeholder svg{ width:40px; height:40px; }
+  .thumb.completed{ filter:grayscale(55%); }
+  .card-body{ padding:20px; }
+  .prog-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:13.5px; color:var(--text-secondary); margin-bottom:8px; }
+  .prog-row b{ font-size:15px; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  .last{ margin:12px 0 16px; font-size:13.5px; color:var(--text-secondary); line-height:1.5; }
+  .last:empty{ margin:0 0 16px; }
+  .last b{ color:var(--text-primary); font-weight:600; }
+  .block-note{ display:flex; gap:8px; margin-top:10px; font-size:13px; line-height:1.5; color:var(--text-secondary); }
+  .block-note svg{ width:16px; height:16px; color:var(--warning); margin-top:1px; }
+  .cert{ display:inline-flex; align-items:center; gap:6px; margin-top:12px; font-size:14px; font-weight:600; color:var(--info); }
+  .cert:hover{ text-decoration:underline; }
+  .cert svg{ width:16px; height:16px; }
+  .dl{ margin:0; padding:16px 20px; border-top:1px solid var(--border-subtle); display:grid; grid-template-columns:auto 1fr; gap:10px 16px; font-size:13.5px; }
+  .dl dt{ color:var(--text-tertiary); }
+  .dl dd{ margin:0; text-align:right; font-weight:600; color:var(--text-strong); }
+  .dl dd.overdue{ color:var(--error); }
+  .prereq{ padding:16px 20px; border-top:1px solid var(--border-subtle); }
+  .prereq h3{ margin:0 0 10px; font-size:12px; font-weight:700; color:var(--text-tertiary); letter-spacing:.06em; text-transform:uppercase; }
+  .prereq ul{ list-style:none; margin:0; padding:0; display:grid; gap:8px; }
+  .prereq li{ display:flex; align-items:center; gap:10px; font-size:14px; }
+  .prereq li svg{ width:18px; height:18px; }
+  .prereq li.met{ color:var(--text-secondary); }
+  .prereq li a{ font-weight:600; }
+  .prereq li a:hover{ text-decoration:underline; }
+
+  /* ---- Ask AI: floating bottom bar (hand-built, user-requested) + side sheet (library Aside · Right) ---- */
+  .ai-dock{ position:sticky; bottom:20px; z-index:15; display:flex; justify-content:center; padding:0 16px; pointer-events:none; margin-top:-8px; }
+  .ai-dock > *{ pointer-events:auto; }
+  .ai-dock[hidden]{ display:none; }
+  .ai-pill{ height:36px; width:88px; border-radius:var(--radius-full); border:1px solid var(--border-default); background:#fff; color:var(--action-primary); display:inline-flex; align-items:center; justify-content:center; box-shadow:0 2px 8px rgba(23,23,17,.06); transition:width .25s var(--ease), background-color .15s ease; }
+  .ai-pill:hover{ background:var(--action-primary-subtle); width:100px; }
+  .ai-pill svg{ width:18px; height:18px; }
+  .ai-card{ width:min(760px, 100%); background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); box-shadow:0 2px 8px rgba(23,23,17,.06); overflow:visible; animation:barIn .25s var(--ease) both; }
+  @keyframes barIn{ from{ opacity:0; transform:translateY(8px) scale(.98); } to{ opacity:1; transform:none; } }
+  .ai-dock[data-state="pill"] .ai-card, .ai-dock[data-state="off"] .ai-card{ display:none; }
+  .ai-dock:not([data-state="pill"]):not([data-state="off"]) .ai-pill{ display:none; }
+
+  .ai-answer{ padding:14px 16px 14px; border-bottom:1px solid var(--border-subtle); max-height:min(46vh, 380px); overflow-y:auto; }
+  .ai-answer[hidden]{ display:none; }
+  .ai-answer-head{ display:flex; align-items:center; gap:2px; margin-bottom:8px; }
+  .ai-answer-head .spark{ color:var(--action-primary); width:20px; height:20px; margin-right:auto; }
+  .ai-q{ font-size:13px; color:var(--text-tertiary); margin-bottom:6px; }
+  .ai-a{ font-size:15px; line-height:1.6; color:var(--text-primary); white-space:pre-wrap; overflow-wrap:anywhere; }
+  .ib{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-secondary); position:relative; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib[aria-pressed="true"]{ color:var(--action-primary); background:var(--action-primary-subtle); }
+  .ib svg{ width:18px; height:18px; }
+
+  .ai-row{ display:flex; align-items:flex-end; gap:6px; padding:8px 8px 8px 16px; }
+  .ai-row .spark{ width:20px; height:20px; color:var(--action-primary); margin-bottom:9px; flex-shrink:0; }
+  .ai-row textarea{ flex:1; border:0; outline:none; resize:none; font-size:15px; line-height:1.5; padding:8px 4px; max-height:120px; color:var(--text-primary); background:transparent; }
+  .ai-row textarea::placeholder{ color:var(--text-tertiary); }
+  .send{ width:36px; height:36px; border:0; border-radius:50%; background:var(--action-primary); color:#fff; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; transition:background-color .15s ease, opacity .15s ease; }
+  .send:hover{ background:var(--action-primary-hover); }
+  .send:disabled{ opacity:.3; cursor:default; }
+  .send svg{ width:17px; height:17px; }
+  .ai-thinking{ display:none; align-items:center; gap:12px; padding:10px 10px 10px 16px; }
+  .ai-dock[data-state="thinking"] .ai-thinking{ display:flex; }
+  .ai-dock[data-state="thinking"] .ai-row{ display:none; }
+  .ai-thinking .spark{ width:22px; height:22px; color:var(--action-primary); animation:spin 1.4s linear infinite; }
+  .ai-thinking span{ flex:1; font-size:14.5px; font-weight:600; color:var(--text-strong); }
+  .stop{ width:36px; height:36px; border:0; border-radius:50%; background:var(--action-primary-subtle); color:var(--action-primary); display:inline-flex; align-items:center; justify-content:center; }
+  .stop:hover{ background:var(--action-primary-soft); }
+  .stop svg{ width:12px; height:12px; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Dropdown menu — library pattern (Dropdown menu / _Dropdown list item) */
+  .menu-wrap{ position:relative; }
+  .menu{ position:absolute; right:0; bottom:calc(100% + 6px); z-index:30; min-width:220px; padding:4px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .menu.down{ bottom:auto; top:calc(100% + 6px); }
+  .menu button{ width:100%; display:flex; align-items:center; gap:10px; height:40px; padding:0 10px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:500; color:var(--text-strong); text-align:left; }
+  .menu button:hover, .menu button:focus-visible{ background:var(--surface-raised); outline:none; }
+  .menu button svg{ width:16px; height:16px; color:var(--text-secondary); }
+
+  /* Side sheet (Aside · Right) */
+  .sheet-backdrop{ position:fixed; inset:0; z-index:60; background:rgba(15,23,42,.32); opacity:0; pointer-events:none; transition:opacity .25s ease; }
+  .sheet{ position:fixed; top:0; right:0; bottom:0; z-index:61; width:min(440px, 100vw); background:#fff; border-left:1px solid var(--border-default); display:flex; flex-direction:column; transform:translateX(100%); transition:transform .3s var(--ease); visibility:hidden; }
+  body.sheet-open .sheet{ transform:none; visibility:visible; }
+  body.sheet-open .sheet-backdrop{ opacity:1; pointer-events:auto; }
+  .sheet-head{ display:flex; align-items:center; gap:10px; padding:14px 12px 14px 20px; border-bottom:1px solid var(--border-subtle); }
+  .sheet-head .spark{ width:22px; height:22px; color:var(--action-primary); }
+  .sheet-head h2{ margin:0; font-size:16px; font-weight:700; letter-spacing:-.2px; }
+  .sheet-head .hint{ font-size:12.5px; color:var(--text-tertiary); }
+  .sheet-head .spacer{ flex:1; }
+  .thread{ flex:1; overflow-y:auto; padding:20px; display:flex; flex-direction:column; gap:18px; }
+  .sheet-empty{ margin-top:auto; }
+  .sheet-empty p{ margin:0 0 12px; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .sheet-foot{ padding:12px 16px 16px; border-top:1px solid var(--border-subtle); }
+  .composer-box{ display:flex; align-items:flex-end; gap:8px; padding:6px 6px 6px 14px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; transition:border-color .15s ease, box-shadow .15s ease; }
+  .composer-box:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .composer-box textarea{ flex:1; border:0; outline:none; resize:none; font-size:15px; line-height:1.5; padding:7px 0; max-height:140px; color:var(--text-primary); background:transparent; }
+  .composer-box textarea::placeholder{ color:var(--text-tertiary); }
+
+  /* Message — library pattern */
+  .msg{ display:flex; gap:12px; max-width:94%; animation:rise .3s var(--ease) both; }
+  .msg.sent{ align-self:flex-end; }
+  .msg .avatar{ width:40px; height:40px; border-radius:50%; flex-shrink:0; }
+  .msg .mc{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .msg .meta{ display:flex; align-items:baseline; gap:8px; }
+  .msg.sent .meta{ justify-content:space-between; }
+  .msg .name{ font-size:14px; font-weight:500; color:var(--text-strong); }
+  .msg .when{ font-size:12px; color:var(--text-secondary); }
+  .msg .bubble{ padding:10px 14px; font-size:15px; line-height:1.55; background:var(--surface-raised); border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg); white-space:pre-wrap; overflow-wrap:anywhere; }
+  .msg.sent .bubble{ background:var(--action-primary-soft); border-radius:var(--radius-lg) 0 var(--radius-lg) var(--radius-lg); }
+  .rate{ display:flex; align-items:center; gap:2px; font-size:12px; color:var(--text-tertiary); }
+  .rate span{ margin-right:4px; }
+  .rate .ib{ width:28px; height:28px; }
+  .rate .ib svg{ width:15px; height:15px; }
+  .typing{ display:inline-flex; gap:4px; padding:12px 10px; background:var(--surface-raised); border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg); width:max-content; }
+  .typing i{ width:4px; height:4px; border-radius:50%; background:#737373; animation:blink 1s infinite; }
+  .typing i:nth-child(2){ background:#a3a3a3; animation-delay:.15s; }
+  .typing i:nth-child(3){ animation-delay:.3s; }
+  @keyframes blink{ 0%,100%{ opacity:.35; transform:translateY(0); } 50%{ opacity:1; transform:translateY(-2px); } }
+  @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .suggest{ display:flex; flex-wrap:wrap; gap:8px; }
+  .suggest button{ border:1px solid var(--border-default); background:#fff; border-radius:var(--radius-full); padding:7px 12px; font-size:13px; font-weight:500; color:var(--text-strong); transition:border-color .15s ease, background-color .15s ease, color .15s ease; }
+  .suggest button:hover{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+  .ai-suggest{ padding:0 16px 12px; }
+  .ai-suggest:empty{ display:none; }
+
+  .not-found{ text-align:center; padding:80px 20px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); }
+  .not-found h1{ font-size:20px; margin:0 0 8px; }
+  .not-found p{ color:var(--text-tertiary); margin:0 0 18px; }
+
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+    .side{ position:static; order:-1; }
+    .card{ display:grid; grid-template-columns:minmax(0, 1fr) minmax(0, 1fr); }
+    .card .thumb{ grid-row:1 / span 3; aspect-ratio:auto; min-height:220px; }
+  }
+  @media (max-width:700px){
+    .card{ display:block; }
+    .card .thumb{ aspect-ratio:16/9; min-height:0; }
+    .acc-body{ padding:0 16px 16px; }
+    .acc-btn{ padding:16px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 40px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+
+  /* ---- Revision notes row per module (AI-008) + course Flashcards (AI-007) — user decision 2026-09-23 ---- */
+  .nr{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:12px; padding:12px 14px; border:1px solid var(--border-subtle); border-radius:var(--radius-xl); background:var(--surface-canvas); }
+  .nr-ic{ width:32px; height:32px; border-radius:var(--radius-md); background:#fff; border:1px solid var(--border-default); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .nr-ic svg{ width:16px; height:16px; }
+  .nr-txt{ flex:1; min-width:180px; }
+  .nr-txt b{ display:block; font-size:14.5px; font-weight:600; }
+  .nr-txt span{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:1px; }
+  .nr.locked .nr-ic{ color:var(--text-tertiary); }
+  .nr-acts{ display:flex; gap:6px; flex-wrap:wrap; }
+  .sbtn{ display:inline-flex; align-items:center; gap:6px; height:34px; padding:0 12px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; border:1px solid var(--border-default); background:#fff; color:var(--text-strong); white-space:nowrap; }
+  .sbtn:hover{ background:var(--surface-raised); }
+  .sbtn.primary{ background:var(--action-primary); border-color:var(--action-primary); color:#fff; }
+  .sbtn.primary:hover{ background:var(--action-primary-hover); }
+  .sbtn svg{ width:15px; height:15px; }
+  .fc{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:22px; }
+  .fc-form{ display:grid; grid-template-columns:140px minmax(0,1fr) auto; gap:12px; align-items:end; }
+  .fc-field{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .fc-field label{ font-size:13.5px; font-weight:500; color:var(--text-strong); }
+  .fc-field .opt{ font-weight:400; color:var(--text-tertiary); }
+  .fc-in{ height:44px; width:100%; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:15px; color:var(--text-primary); outline:none; box-shadow:0 1px 2px rgba(10,10,10,.04); }
+  select.fc-in{ appearance:none; padding-right:34px; cursor:pointer; background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center; }
+  .fc-in:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .fc-in::placeholder{ color:var(--text-tertiary); }
+  .fc-hint{ margin:12px 0 0; font-size:13px; color:var(--text-tertiary); }
+  .fc-head{ display:flex; align-items:center; gap:12px; margin-bottom:16px; }
+  .fc-mark{ width:32px; height:32px; border-radius:var(--radius-lg); background:linear-gradient(135deg, #6366f1, #4338ca); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .fc-mark svg{ width:16px; height:16px; }
+  .fc-head div b{ display:block; font-size:16px; }
+  .fc-head div span{ display:block; font-size:13.5px; color:var(--text-tertiary); margin-top:1px; }
+  .gsteps{ list-style:none; margin:0; padding:0; display:grid; gap:10px; }
+  .gsteps li{ display:flex; align-items:center; gap:12px; font-size:14.5px; color:var(--text-tertiary); }
+  .gsteps li.active{ color:var(--text-primary); font-weight:500; }
+  .gsteps li.done{ color:var(--text-secondary); }
+  .gsteps .d{ width:18px; height:18px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .gsteps li.active .d{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:gspin .8s linear infinite; }
+  .gsteps li.done .d{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .gsteps li.failed .d{ border-color:var(--error); background:var(--error); color:#fff; }
+  .gsteps .d svg{ width:11px; height:11px; }
+  @keyframes gspin{ to{ transform:rotate(360deg); } }
+  .fc-err{ margin-top:16px; padding-top:16px; border-top:1px solid var(--border-subtle); }
+  .fc-err b{ display:block; font-size:15px; margin-bottom:4px; }
+  .fc-err p{ margin:0 0 12px; font-size:14px; color:var(--text-secondary); }
+  .fc-peek{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:10px; margin:0 0 18px; padding:0; list-style:none; }
+  .fc-peek li{ padding:14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); min-width:0; }
+  .fc-peek b{ display:block; font-size:14.5px; margin-bottom:4px; }
+  .fc-peek span{ font-size:13px; line-height:1.5; color:var(--text-secondary); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden; }
+  .fc-note{ margin:0 0 16px; padding:10px 14px; border-radius:var(--radius-lg); background:var(--surface-raised); font-size:13.5px; color:var(--text-secondary); line-height:1.5; }
+  .fc-foot{ display:flex; align-items:center; justify-content:space-between; gap:10px 16px; flex-wrap:wrap; }
+  .fc-foot small{ font-size:12.5px; color:var(--text-tertiary); }
+  .fc-acts{ display:flex; gap:8px; flex-wrap:wrap; }
+  .fc-empty b{ display:block; font-size:15px; margin-bottom:4px; }
+  .fc-empty p{ margin:0; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  @media (prefers-reduced-motion:reduce){ .gsteps li.active .d{ animation:none; } }
+  @media (max-width:760px){
+    .fc{ padding:18px 16px; }
+    .fc-form{ grid-template-columns:1fr; }
+    .fc-peek{ grid-template-columns:1fr; }
+  }
+  .fc-open{ margin-top:10px; }
+  .fc-open svg{ color:var(--action-primary); }
+  .fc-modal.fc-dialog{ width:min(680px, 100%); max-height:calc(100vh - 32px); padding:0; display:flex; flex-direction:column; overflow:hidden; }
+  .fc-dlg-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; padding:22px 24px 16px; border-bottom:1px solid var(--border-subtle); }
+  .fc-dlg-head p{ margin:4px 0 0; font-size:14px; color:var(--text-tertiary); }
+  .fc-x{ width:36px; height:36px; flex-shrink:0; margin:-6px -8px 0 0; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-tertiary); display:flex; align-items:center; justify-content:center; }
+  .fc-x:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .fc-x svg{ width:18px; height:18px; }
+  .fc-dlg-body{ padding:22px 24px 24px; overflow-y:auto; }
+  .fc-dlg-body .fc-form{ grid-template-columns:140px minmax(0,1fr); }
+  .fc-dlg-body .fc-form .fc-acts{ grid-column:1 / -1; justify-content:flex-end; }
+  @media (max-width:560px){
+    .fc-dlg-body .fc-form{ grid-template-columns:1fr; }
+    .fc-dlg-body .fc-peek{ grid-template-columns:1fr; }
+    .fc-dlg-head, .fc-dlg-body{ padding-left:18px; padding-right:18px; }
+  }
+  .fc-overlay{ position:fixed; inset:0; z-index:90; background:rgba(10,10,10,.5); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .fc-overlay[hidden]{ display:none; }
+  .fc-modal{ width:min(420px, 100%); background:#fff; border-radius:var(--radius-xl); padding:24px; box-shadow:0 24px 48px rgba(10,10,10,.18); }
+  .fc-modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .fc-modal p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=My+Courses" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner" id="root">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="my-courses.html">My Courses</a>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span id="crumbTitle" aria-current="page"></span>
+    </nav>
+
+    <div class="layout">
+      <div>
+        <section class="head">
+          <div class="badges" id="badges"></div>
+          <h1 id="title"></h1>
+          <p class="lead" id="desc"></p>
+          <div class="byline"><span class="av" id="avatar"></span><span>Created by <b id="instructor"></b></span></div>
+          <div class="stats" id="stats"></div>
+        </section>
+
+        <section class="section" aria-labelledby="outlineTitle">
+          <div class="section-head">
+            <div><h2 id="outlineTitle">Course content</h2><div class="sub" id="outlineSub"></div></div>
+            <button class="link-btn" id="toggleAll" type="button">Expand all</button>
+          </div>
+          <div class="outline" id="outline"></div>
+        </section>
+
+      </div>
+
+      <aside class="side" aria-label="Course status">
+        <div class="card">
+          <div class="thumb" id="thumb" role="img"></div>
+          <div class="card-body" id="cta"></div>
+          <dl class="dl" id="assign"></dl>
+          <div class="prereq" id="prereq" hidden><h3>Prerequisites</h3><ul id="prereqList"></ul></div>
+        </div>
+      </aside>
+    </div>
+  </div>
+  <!-- Ask AI — floating bottom bar. States: pill → input → thinking → answer; "off" = pill opens side panel only -->
+  <div class="ai-dock" id="aiDock" data-state="pill">
+    <button class="ai-pill" id="aiPill" type="button" aria-label="Ask AI about this course"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 4.9 3.1 7.6 8 8-4.9.4-7.6 3.1-8 8-.4-4.9-3.1-7.6-8-8 4.9-.4 7.6-3.1 8-8Z"/></svg></button>
+    <div class="ai-card" role="region" aria-label="Ask AI about this course">
+      <div class="ai-answer" id="aiAnswer" hidden>
+        <div class="ai-answer-head">
+          <svg class="spark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 4.9 3.1 7.6 8 8-4.9.4-7.6 3.1-8 8-.4-4.9-3.1-7.6-8-8 4.9-.4 7.6-3.1 8-8Z"/></svg>
+          <button class="ib" type="button" id="aiUp" aria-label="Helpful" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9Z"/></svg></button>
+          <button class="ib" type="button" id="aiDown" aria-label="Not helpful" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9Z"/></svg></button>
+          <button class="ib" type="button" id="aiToPanel" aria-label="Switch to side panel" title="Switch to side panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg></button>
+          <button class="ib" type="button" id="aiClose" aria-label="Close" title="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+        </div>
+        <div class="ai-q" id="aiQ"></div>
+        <div class="ai-a" id="aiA"></div>
+      </div>
+      <div class="ai-suggest suggest" id="aiSuggest"></div>
+      <form class="ai-row" id="aiForm">
+        <svg class="spark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 4.9 3.1 7.6 8 8-4.9.4-7.6 3.1-8 8-.4-4.9-3.1-7.6-8-8 4.9-.4 7.6-3.1 8-8Z"/></svg>
+        <label for="aiInput" class="sr">Ask AI about this course</label>
+        <textarea id="aiInput" rows="1" placeholder="Ask anything about this course…"></textarea>
+        <div class="menu-wrap">
+          <button class="ib" type="button" id="aiMore" aria-label="More options" aria-haspopup="menu" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="12" cy="19" r="1.8"/></svg></button>
+          <div class="menu" id="aiMenu" role="menu" hidden>
+            <button type="button" role="menuitem" data-act="panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg> Switch to side panel</button>
+            <button type="button" role="menuitem" data-act="off"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.9 4.2A10 10 0 0 1 22 12a10 10 0 0 1-1.6 3.4M6.6 6.6A10 10 0 0 0 2 12s3 7 10 7a9.7 9.7 0 0 0 5.4-1.6M2 2l20 20"/></svg> Turn off bottom bar</button>
+          </div>
+        </div>
+        <button class="send" id="aiSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+      </form>
+      <div class="ai-thinking" role="status">
+        <svg class="spark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 4.9 3.1 7.6 8 8-4.9.4-7.6 3.1-8 8-.4-4.9-3.1-7.6-8-8 4.9-.4 7.6-3.1 8-8Z"/></svg><span>Thinking…</span>
+        <button class="stop" id="aiStop" type="button" aria-label="Stop"><svg viewBox="0 0 12 12" fill="currentColor"><rect width="12" height="12" rx="2"/></svg></button>
+      </div>
+    </div>
+  </div>
+  </main>
+</div>
+
+<div class="sheet-backdrop" id="sheetBackdrop"></div>
+<aside class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-head">
+    <svg class="spark" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2c.4 4.9 3.1 7.6 8 8-4.9.4-7.6 3.1-8 8-.4-4.9-3.1-7.6-8-8 4.9-.4 7.6-3.1 8-8Z"/></svg>
+    <div><h2 id="sheetTitle">Ask AI</h2><div class="hint">Answers come from this course only</div></div>
+    <span class="spacer"></span>
+    <button class="ib" type="button" id="sheetClear" hidden title="Clear conversation" aria-label="Clear conversation"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+    <button class="ib" type="button" id="sheetToBar" title="Switch to bottom bar" aria-label="Switch to bottom bar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 15h18"/></svg></button>
+    <button class="ib" type="button" id="sheetClose" aria-label="Close panel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+  </div>
+  <div class="thread" id="thread" aria-live="polite"></div>
+  <form class="sheet-foot" id="sheetForm">
+    <div class="composer-box">
+      <label for="sheetInput" class="sr">Ask AI about this course</label>
+      <textarea id="sheetInput" rows="1" placeholder="Ask anything about this course…"></textarea>
+      <button class="send" id="sheetSend" type="submit" aria-label="Send" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg></button>
+    </div>
+  </form>
+</aside>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (mirrors my-courses.html) ---------------- */
+  var P = function(pid){ return 'https://images.unsplash.com/photo-' + pid + '?auto=format&fit=crop&w=1000&h=560&q=70'; };
+  var PHOTOS = { algorithms:P('1504639725590-34d0984388bd'), math:P('1509228468518-180dd4864904'), data:P('1551288049-bebda4e38f71'), ux:P('1522202176988-66273c2fd55f'), cloud:P('1544197150-b99a580bb7a8'), web:P('1517694712202-14dd9538aa97'), product:P('1454165804606-c3d57bc86b40'), systems:P('1550751827-4bd374c3f58b'), mobile:P('1512941937669-90a1b58e7e9c'), business:P('1553028826-f4804a6dba3b'), analytics:P('1556155092-490a1ba16284'), security:P('1526374965328-7f61d4dc18c5') };
+  var TODAY = new Date('2026-09-23T00:00:00'); // ponytail: fixed mock "today", same as my-courses.html
+  var ASSIGNER = 'Priya Nair · L&D';
+
+  var COURSES = {
+    'CS-301':{ title:'Advanced Data Structures', tag:'Computer Science', instructor:'Prof. Vance', photo:PHOTOS.algorithms, status:'in-progress', progress:68, mandatory:true, deadline:'2026-09-30', lastLesson:'4-3',
+      desc:'Go beyond arrays and lists. Learn how trees, heaps, hash tables and graphs work under the hood, when to reach for each, and how to reason about their time and space costs.' },
+    'DS-210':{ title:'Data Visualization Techniques', tag:'Analytics', instructor:'Dr. Aris', photo:PHOTOS.analytics, status:'in-progress', progress:77, mandatory:true, deadline:'2026-10-03' },
+    'WEB-303':{ title:'Modern Web Architecture', tag:'Web Development', instructor:'Dr. Aris', photo:PHOTOS.web, status:'in-progress', progress:52 },
+    'AI-101':{ title:'Intro to Machine Learning', tag:'Machine Learning', instructor:'Dr. Aris', photo:PHOTOS.math, status:'in-progress', progress:34 },
+    'MOB-201':{ title:'iOS App Development Basics', tag:'Mobile', instructor:'Prof. Vance', photo:PHOTOS.mobile, status:'in-progress', progress:18 },
+    'UX-204':{ title:'Interaction Design', tag:'Design', instructor:'Prof. Vance', photo:PHOTOS.ux, status:'not-started', progress:0, mandatory:true, deadline:'2026-09-18', prereqs:['UX-101'],
+      desc:'Design how products behave, not just how they look. Covers feedback, affordances, states and transitions, and how to prototype and test interactions before they ship.' },
+    'SEC-310':{ title:'Applied Cryptography', tag:'Security', instructor:'Dr. Aris', photo:PHOTOS.security, status:'not-started', progress:0, prereqs:['SEC-201','CS-301'],
+      desc:'How modern encryption, hashing and signatures are actually used in software — and the common mistakes that break them.' },
+    'PM-101':{ title:'Product Management Foundations', tag:'Product', instructor:'Prof. Vance', photo:PHOTOS.product, status:'not-started', progress:0 },
+    'WEB-202':{ title:'Modern Frontend Frameworks', tag:'Web Development', instructor:'Dr. Aris', photo:PHOTOS.web, status:'completed', progress:100, completedDate:'Sep 10, 2026', cert:true },
+    'CLOUD-FUND':{ title:'Cloud Fundamentals', tag:'Cloud', instructor:'Prof. Vance', photo:PHOTOS.cloud, status:'completed', progress:100, completedDate:'Aug 20, 2026', cert:true },
+    'CS-210':{ title:'Algorithms & Complexity', tag:'Computer Science', instructor:'Prof. Vance', photo:PHOTOS.algorithms, status:'completed', progress:100, completedDate:'Aug 15, 2026', cert:true },
+    'NET-201':{ title:'Networking Essentials', tag:'Cloud', instructor:'Dr. Aris', photo:PHOTOS.cloud, status:'completed', progress:100, completedDate:'Aug 2, 2026', cert:true },
+    'UX-101':{ title:'Design Fundamentals', tag:'Design', instructor:'Prof. Vance', photo:PHOTOS.ux, status:'completed', progress:100, completedDate:'Jul 28, 2026', cert:true },
+    'DS-101':{ title:'Intro to Data Science', tag:'Analytics', instructor:'Dr. Aris', photo:PHOTOS.data, status:'completed', progress:100, completedDate:'Jul 20, 2026', cert:true },
+    'SEC-201':{ title:'Cybersecurity Basics', tag:'Security', instructor:'Prof. Vance', photo:PHOTOS.security, status:'completed', progress:100, completedDate:'Jul 12, 2026', cert:true },
+    'PM-201':{ title:'Agile & Scrum Practices', tag:'Product', instructor:'Dr. Aris', photo:PHOTOS.business, status:'completed', progress:100, completedDate:'Jun 30, 2026', cert:true },
+    'WEB-101':{ title:'HTML & CSS Foundations', tag:'Web Development', instructor:'Prof. Vance', photo:PHOTOS.web, status:'completed', progress:100, completedDate:'Jun 18, 2026', cert:true },
+    'AI-201':{ title:'Neural Networks Basics', tag:'Machine Learning', instructor:'Dr. Aris', photo:PHOTOS.math, status:'completed', progress:100, completedDate:'Jun 5, 2026', cert:true },
+    'SYS-201':{ title:'Embedded Systems Intro', tag:'Systems', instructor:'Prof. Vance', photo:PHOTOS.systems, status:'completed', progress:100, completedDate:'May 22, 2026', cert:true },
+    'BUS-101':{ title:'Business Analytics Essentials', tag:'Analytics', instructor:'Dr. Aris', photo:PHOTOS.analytics, status:'completed', progress:100, completedDate:'May 10, 2026', cert:false }
+  };
+
+  // Detailed outline for CS-301 (matches course-player.html). Lesson: [id, title, type, minutes, status c|p|'', summary]
+  var OUTLINES = {
+    'CS-301':[
+      { title:'Foundations & Complexity', desc:'Why the choice of data structure decides how fast a program can be, and the notation we use to compare them.', lessons:[
+        ['1-1','Why data structures matter','video',7,'c','Real examples where the same task runs 1,000× faster with a better structure.'],
+        ['1-2','Big-O refresher','video',10,'c','Reading and comparing O(1), O(log n), O(n) and O(n²) growth.'],
+        ['1-3','Amortized analysis','reading',9,'c','Why some operations are "usually cheap" and how to prove it.'] ]},
+      { title:'Arrays, Lists & Hashing', desc:'The workhorse linear structures and the hash table — what they cost and when each one wins.', lessons:[
+        ['2-1','Dynamic arrays','video',8,'c','How resizing works and why appends are amortized O(1).'],
+        ['2-2','Linked lists in practice','video',9,'c','Singly vs. doubly linked lists and where they still make sense.'],
+        ['2-3','Hash tables & collisions','video',12,'c','Hash functions, chaining, open addressing and load factor.'],
+        ['2-4','Knowledge check','quiz',5,'c','Five questions on arrays, lists and hashing.'] ]},
+      { title:'Stacks, Queues & Heaps', desc:'Restricted-access structures that power recursion, scheduling and priority queues.', lessons:[
+        ['3-1','Stacks and the call stack','video',8,'c','LIFO order and how your language uses a stack for every function call.'],
+        ['3-2','Queues & deques','video',8,'c','FIFO order, circular buffers and double-ended queues.'],
+        ['3-3','Binary heaps & priority queues','video',12,'c','Heap order, sift-up / sift-down, and heapsort.'] ]},
+      { title:'Binary Trees', desc:'The vocabulary of trees, how to build them, and the standard ways to walk through every node.', lessons:[
+        ['4-1','Tree vocabulary','video',6,'c','Root, parent, child, leaf, depth and height.'],
+        ['4-2','Building a binary tree','video',9,'c','Nodes with left and right references, built up from a single root.'],
+        ['4-3','Tree traversals: in-order, pre-order, post-order','video',13,'p','The three depth-first orders, traced step by step, with their time and space costs.'],
+        ['4-4','Level-order traversal with a queue','video',9,'','Breadth-first traversal using a queue instead of recursion.'],
+        ['4-5','Traversal practice','quiz',5,'','Trace traversals on three trees and write an iterative in-order.'] ]},
+      { title:'Binary Search Trees', desc:'Keeping a tree ordered so search, insert and delete stay fast — and keeping it balanced.', lessons:[
+        ['5-1','BST insert & search','video',10,'','The ordering rule and how it turns search into O(h).'],
+        ['5-2','Deleting nodes','video',11,'','The three delete cases, including the in-order successor trick.'],
+        ['5-3','Balancing: AVL rotations','video',14,'','Why trees degrade and how rotations restore O(log n).'] ]},
+      { title:'Graphs', desc:'Modelling relationships as nodes and edges, and the two searches every graph algorithm builds on.', lessons:[
+        ['6-1','Graph representations','video',9,'','Adjacency lists vs. matrices and their trade-offs.'],
+        ['6-2','BFS & DFS','video',12,'','Breadth- and depth-first search on graphs, with cycle detection.'],
+        ['6-3','Final assessment','quiz',20,'','Covers every module. Pass mark 70%.'] ]}
+    ]
+  };
+  // ponytail: other courses get a generic 4-module outline so every card opens; real outlines come from course authoring
+  function genericOutline(c){
+    var total = 10, done = Math.round(c.progress / 100 * total), n = 0;
+    var mods = [['Getting started','Orientation, goals and the tools you’ll use.',2],['Core concepts','The key ideas of ' + c.title + ', one at a time.',3],['Applying it','Worked examples and a guided exercise.',3],['Wrap-up','Review, final check and next steps.',2]];
+    return mods.map(function(m, mi){
+      var lessons = [];
+      for (var i = 0; i < m[2]; i++){
+        var last = mi === 3 && i === m[2] - 1;
+        var st = n < done ? 'c' : (n === done && c.status === 'in-progress' ? 'p' : '');
+        lessons.push([mi + '-' + i, last ? 'Final check' : m[0] + ' · part ' + (i + 1), last ? 'quiz' : 'video', 6 + ((mi * 3 + i * 5) % 8), st, '']);
+        n++;
+      }
+      return { title:m[0], desc:m[1], lessons:lessons };
+    });
+  }
+
+  /* ---------------- Helpers ---------------- */
+  var I = {
+    check:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" fill="#15803d"/><path d="m6 10.2 2.6 2.6L14 7.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    todo:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="none" stroke="#d4d4d4" stroke-width="1.8"/></svg>',
+    progress:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="none" stroke="#e0e7ff" stroke-width="2"/><path d="M10 1.5a8.5 8.5 0 0 1 8.5 8.5" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/></svg>',
+    video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    reading:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/></svg>',
+    quiz:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>',
+    layers:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 2 10 5-10 5L2 7Z"/><path d="m2 17 10 5 10-5"/><path d="m2 12 10 5 10-5"/></svg>',
+    chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    arrow:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    info:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    award:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>',
+    image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
+    up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9Z"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9Z"/></svg>'
+  };
+  var TYPE_LABEL = { video:'Video', reading:'Reading', quiz:'Quiz' };
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  var AI_AVATAR = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#4338ca"/></linearGradient></defs><circle cx="20" cy="20" r="20" fill="url(#g)"/><path d="M20 10l2.1 5.4 5.4 2.1-5.4 2.1L20 25l-2.1-5.4-5.4-2.1 5.4-2.1Z" fill="#fff"/></svg>');
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(ch){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]; }); }
+  function parseDate(s){ return new Date(s + 'T00:00:00'); }
+  function longDate(s){ var d = parseDate(s); return MONTHS[d.getMonth()] + ' ' + d.getDate() + ', ' + d.getFullYear(); }
+  function daysUntil(s){ return Math.round((parseDate(s) - TODAY) / 86400000); }
+  function hm(min){ var h = Math.floor(min / 60), m = min % 60; return h ? h + 'h' + (m ? ' ' + m + 'm' : '') : m + 'm'; }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){} }
+  function clockNow(){ return new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
+  var $ = function(i){ return document.getElementById(i); };
+
+
+  /* ---------------- Revision notes (per module) + Flashcards (per course) ----------------
+     User decision 2026-09-23: AI study tools live inside the course, not a separate section.
+     Store "upspace-study-v2" is shared with revision-notes.html, flashcard-study.html, coach.html. */
+  var STUDY_KEY = 'upspace-study-v2';
+  function study(){ var s = load(STUDY_KEY); if (s && s.notes) return s; s = { notes:{ 'CS-301:2':{ createdAt:Date.now() - 2 * 36e5, focus:'' } }, decks:{}, plans:[] }; save(STUDY_KEY, s); return s; }
+  function agoText(t){ var m = Math.round((Date.now() - t) / 6e4); if (m < 1) return 'just now'; if (m < 60) return m + ' min ago'; var h = Math.round(m / 60); if (h < 24) return h + (h === 1 ? ' hour ago' : ' hours ago'); var d = Math.round(h / 24); return d === 1 ? 'yesterday' : d + ' days ago'; }
+  var SI = {
+    notes:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/></svg>',
+    pdf:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    spark:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/></svg>',
+    cards:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></svg>',
+    regen:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></svg>',
+    ok:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>'
+  };
+
+  function notesRow(mi, allDone, m){
+    var href = 'revision-notes.html?course=' + encodeURIComponent(id) + '&mod=' + mi + '&m=' + encodeURIComponent(m.title);
+    var rec = study().notes[id + ':' + mi];
+    if (!allDone) return '<div class="nr locked"><span class="nr-ic">' + SI.notes + '</span><div class="nr-txt"><b>Revision notes</b><span>Available once you complete this module.</span></div></div>';
+    if (rec) return '<div class="nr"><span class="nr-ic">' + SI.notes + '</span><div class="nr-txt"><b>Revision notes</b><span>Created ' + agoText(rec.createdAt) + '</span></div>' +
+      '<div class="nr-acts"><a class="sbtn" href="' + href + '">View</a><a class="sbtn" href="' + href + '&print=1">' + SI.pdf + 'Download PDF</a></div></div>';
+    return '<div class="nr"><span class="nr-ic">' + SI.notes + '</span><div class="nr-txt"><b>Revision notes</b><span>Key takeaways and focus areas for this module, made by AI.</span></div>' +
+      '<div class="nr-acts"><a class="sbtn primary" href="' + href + '">' + SI.spark + 'Create revision notes</a></div></div>';
+  }
+
+  // Lesson text/transcript terms the AI may turn into cards (CS-301 only; other mock courses have no lesson text yet)
+  var CARD_SOURCE = {
+    'CS-301':[
+      ['Data structure','A way of organizing data so the operations you need most are efficient.'],
+      ['Trade-off','Every structure makes some operations faster at the cost of others — for example fast lookup versus fast insertion.'],
+      ['Big-O','An upper bound on how running time or memory grows as the input size n grows.'],
+      ['O(log n)','Work grows by a constant step each time n doubles — typical of halving strategies like binary search.'],
+      ['Amortized cost','The average cost per operation over a worst-case sequence of operations — not a probability average.'],
+      ['Dynamic array','A resizable array that grows by allocating a larger block (often 2×) and copying the elements across.'],
+      ['Capacity vs. size','Capacity is the number of allocated slots; size is the number of slots in use.'],
+      ['Linked list','A sequence of nodes where each node points to the next one. Finding a node is O(n).'],
+      ['Hash function','Maps a key to a bucket index; a good one spreads keys evenly across buckets.'],
+      ['Collision','When two different keys map to the same bucket.'],
+      ['Chaining','Each bucket holds a small list of all entries that hash to it.'],
+      ['Open addressing','On a collision, probe other slots in the array until a free one is found.'],
+      ['Load factor','Entries ÷ buckets. When it gets too high the table resizes to keep operations close to O(1).'],
+      ['Stack','A last-in, first-out (LIFO) collection: push and pop both happen at the top.'],
+      ['Call stack','The stack of active function calls; each call pushes a frame holding its locals and return address.'],
+      ['Queue','A first-in, first-out (FIFO) collection: add at the back, remove from the front.'],
+      ['Deque','A double-ended queue: add or remove at both ends in O(1).'],
+      ['Binary heap','A complete binary tree where every parent is ≤ its children (a min-heap).'],
+      ['Priority queue','Removes the highest-priority item first; usually built on a binary heap.'],
+      ['Root','The single node at the top of a tree; it has no parent.'],
+      ['Leaf','A node with no children.'],
+      ['Height of a tree','The number of edges on the longest path from the root down to a leaf.'],
+      ['Depth of a node','The number of edges from the root to that node.'],
+      ['Binary tree','A tree where each node has at most two children, called left and right.'],
+      ['In-order traversal','Visit the left subtree, then the node, then the right subtree. On a BST this gives keys in sorted order.'],
+      ['Pre-order traversal','Visit the node first, then the left and right subtrees. Useful for copying a tree.'],
+      ['Post-order traversal','Visit both subtrees before the node. Useful for deleting a tree or evaluating an expression tree.']
+    ]
+  };
+  var fcLastFocus = null;
+  function openFlashcards(){ fcLastFocus = document.activeElement; renderFlashcards(); $('fcDialog').hidden = false; document.body.style.overflow = 'hidden'; var f = $('fc').querySelector('select, input, a, button'); (f || $('fcDlgClose')).focus({ preventScroll:true }); }
+  function closeFlashcards(){ fcRun++; $('fcDialog').hidden = true; document.body.style.overflow = ''; syncFcEntry(); if (fcLastFocus) fcLastFocus.focus(); }
+  function syncFcEntry(){
+    var b = $('fcOpen'); if (!b) return;
+    var deck = study().decks[id];
+    b.innerHTML = deck ? SI.cards + 'Flashcards · ' + deck.cards.length + ' cards' : SI.spark + 'Generate flashcards';
+  }
+  var fcRun = 0, fcFail = new URLSearchParams(location.search).get('ai') === 'fail';
+  function renderFlashcards(){
+    var box = $('fc'), deck = study().decks[id], src = CARD_SOURCE[id];
+    if (!src){
+      box.innerHTML = '<div class="fc-empty" role="status"><b>There\'s not enough course content to generate flashcards.</b><p>This course\'s lessons don\'t have text or transcripts yet. Flashcards are only made from the course itself.</p></div>';
+      return;
+    }
+    if (deck){
+      box.innerHTML = '<div class="fc-head"><span class="fc-mark">' + SI.cards + '</span><div><b>' + deck.cards.length + ' flashcards</b><span>Generated ' + agoText(deck.createdAt) + (deck.focus ? ' · focus: ' + esc(deck.focus) : '') + '</span></div></div>' +
+        (deck.short ? '<p class="fc-note">Only ' + deck.cards.length + ' cards could be made from this course\'s content. Sets aren\'t padded with material from outside the course.</p>' : '') +
+        '<ul class="fc-peek">' + deck.cards.slice(0, 3).map(function(k){ return '<li><b>' + esc(k.f) + '</b><span>' + esc(k.b) + '</span></li>'; }).join('') + '</ul>' +
+        '<div class="fc-foot"><div class="fc-acts"><a class="btn btn-primary" href="flashcard-study.html?course=' + encodeURIComponent(id) + '">' + SI.cards + 'Study flashcards</a>' +
+          '<button class="btn btn-secondary" type="button" id="fcRegen">' + SI.regen + 'Regenerate</button>' +
+          '<button class="btn btn-secondary" type="button" id="fcDel" aria-label="Delete flashcards">' + SI.trash + '</button></div>' +
+          '<small>Generated by AI from this course\'s lessons.</small></div>';
+      $('fcRegen').onclick = function(){ fcForm(deck.cards.length >= 20 ? 20 : deck.cards.length, deck.focus); };
+      $('fcDel').onclick = function(){ $('fcModal').hidden = false; $('fcModalCancel').focus(); };
+      return;
+    }
+    fcForm(12, '');
+  }
+  function fcForm(count, focus){
+    var box = $('fc'), deck = study().decks[id];
+    box.innerHTML = '<form class="fc-form" id="fcForm">' +
+        '<div class="fc-field"><label for="fcCount">Number of cards</label><select class="fc-in" id="fcCount">' + [8, 12, 16, 20].map(function(n){ return '<option' + (n === count ? ' selected' : '') + '>' + n + '</option>'; }).join('') + '</select></div>' +
+        '<div class="fc-field"><label for="fcFocus">What should these flashcards focus on? <span class="opt">(optional)</span></label><input class="fc-in" id="fcFocus" maxlength="120" placeholder="e.g. hashing and trees" value="' + esc(focus || '') + '"></div>' +
+        '<div class="fc-acts"><button class="btn btn-primary" type="submit">' + SI.spark + (deck ? 'Regenerate' : 'Generate flashcards') + '</button>' + (deck ? '<button class="btn btn-secondary" type="button" id="fcCancel">Cancel</button>' : '') + '</div>' +
+      '</form><p class="fc-hint">Cards are made from this course\'s lesson text and transcripts only.</p>';
+    if ($('fcCancel')) $('fcCancel').onclick = renderFlashcards;
+    $('fcForm').onsubmit = function(e){ e.preventDefault(); fcGenerate(+$('fcCount').value, $('fcFocus').value.trim()); };
+  }
+  function fcGenerate(count, focus){
+    var box = $('fc'), run = ++fcRun, steps = ['Analyzing course content', 'Picking key terms and concepts', 'Writing question and answer cards'];
+    box.innerHTML = '<div class="fc-head"><span class="fc-mark">' + SI.spark + '</span><div><b>Generating your flashcards…</b><span>' + esc(c.title) + '</span></div></div>' +
+      '<ol class="gsteps" id="fcSteps">' + steps.map(function(t){ return '<li><span class="d"></span>' + t + '</li>'; }).join('') + '</ol>';
+    var lis = $('fcSteps').children, i = 0;
+    (function tick(){
+      if (run !== fcRun) return;
+      if (i > 0){ lis[i - 1].className = 'done'; lis[i - 1].firstChild.innerHTML = SI.ok; }
+      if (fcFail && i === 1){
+        lis[i].className = 'failed'; lis[i].firstChild.innerHTML = SI.x;
+        box.insertAdjacentHTML('beforeend', '<div class="fc-err" role="alert"><b>Couldn\'t generate this right now.</b><p>Nothing was saved. Try again in a moment.</p><div class="fc-acts"><button class="btn btn-primary" type="button" id="fcRetry">Try again</button><button class="btn btn-secondary" type="button" id="fcBack">Cancel</button></div></div>');
+        $('fcRetry').onclick = function(){ fcFail = false; fcGenerate(count, focus); };
+        $('fcBack').onclick = renderFlashcards;
+        return;
+      }
+      if (i === lis.length) return setTimeout(function(){
+        if (run !== fcRun) return;
+        var words = focus.toLowerCase().split(/[^a-z0-9]+/).filter(function(w){ return w.length > 3; }).map(function(w){ return w.replace(/(es|s)$/, ''); });
+        var all = CARD_SOURCE[id].map(function(k){ return { f:k[0], b:k[1] }; });
+        if (words.length){ var hit = function(k){ var t = (k.f + ' ' + k.b).toLowerCase(); return words.some(function(w){ return t.indexOf(w) > -1; }); }; all = all.filter(hit).concat(all.filter(function(k){ return !hit(k); })); }
+        var s = study();
+        s.decks[id] = { course:c.title, createdAt:Date.now(), focus:focus, short:all.length < count, cards:all.slice(0, count) };
+        save(STUDY_KEY, s); renderFlashcards(); syncFcEntry();
+      }, 250);
+      lis[i].className = 'active'; i++;
+      setTimeout(tick, 800);
+    })();
+  }
+
+  /* ---------------- Resolve course ---------------- */
+  var id = new URLSearchParams(location.search).get('id') || 'CS-301';
+  var c = COURSES[id];
+  if (!c){
+    $('root').innerHTML = '<div class="not-found"><h1>Course not found</h1><p>This course may have been removed, or you no longer have access to it.</p><a class="btn btn-primary" href="my-courses.html">Back to My Courses</a></div>';
+  } else {
+    render();
+    syncFcEntry();
+  }
+
+  function render(){
+    var outline = OUTLINES[id] || genericOutline(c);
+    var allLessons = [].concat.apply([], outline.map(function(m){ return m.lessons; }));
+    var totalMin = allLessons.reduce(function(s, l){ return s + l[3]; }, 0);
+    var lastLessonId = c.lastLesson || (allLessons.find(function(l){ return l[4] === 'p'; }) || [])[0];
+    var lastLesson = allLessons.find(function(l){ return l[0] === lastLessonId; });
+    var unmet = (c.prereqs || []).filter(function(p){ return COURSES[p] && COURSES[p].status !== 'completed'; });
+    var futureStart = c.startDate && daysUntil(c.startDate) > 0;
+    var overdue = c.deadline && c.status !== 'completed' && daysUntil(c.deadline) < 0;
+    document.title = c.title + ' — Course Overview';
+
+    /* Head (FR-01, FR-03) */
+    $('crumbTitle').textContent = c.title;
+    $('title').textContent = c.title;
+    $('desc').textContent = c.desc || 'No description available.';
+    $('desc').classList.toggle('muted', !c.desc);
+    $('instructor').textContent = c.instructor;
+    $('avatar').textContent = c.instructor.replace(/^(Prof\.|Dr\.)\s*/, '').slice(0, 2).toUpperCase();
+    var badges = ['<span class="badge brand">' + esc(c.tag) + '</span>'];
+    if (c.status === 'completed') badges.push('<span class="badge success"><span class="dot"></span>Completed</span>');
+    else badges.push(c.mandatory ? '<span class="badge warning">Mandatory</span>' : '<span class="badge gray">Optional</span>');
+    if (c.status === 'in-progress') badges.push('<span class="badge brand"><span class="dot"></span>In progress</span>');
+    if (overdue) badges.push('<span class="badge error"><span class="dot"></span>Overdue</span>');
+    $('badges').innerHTML = badges.join('');
+    $('stats').innerHTML = [[I.clock, hm(totalMin), 'Total duration'], [I.list, allLessons.length, 'Lessons'], [I.layers, outline.length, 'Modules']]
+      .map(function(s){ return '<div class="stat">' + s[0] + '<div><b>' + s[1] + '</b><small>' + s[2] + '</small></div></div>'; }).join('');
+
+    /* Outline accordion (FR-02) */
+    $('outlineSub').textContent = outline.length + ' modules · ' + allLessons.length + ' lessons · ' + hm(totalMin);
+    $('outline').innerHTML = outline.map(function(m, mi){
+      var done = m.lessons.filter(function(l){ return l[4] === 'c'; }).length;
+      var mins = m.lessons.reduce(function(s, l){ return s + l[3]; }, 0);
+      var isCurrent = c.status === 'in-progress' && m.lessons.some(function(l){ return l[0] === lastLessonId; });
+      var allDone = done === m.lessons.length;
+      var open = isCurrent || (c.status !== 'in-progress' && mi === 0);
+      return '<div class="acc' + (allDone ? ' done' : isCurrent ? ' current' : '') + '">' +
+        '<button class="acc-btn" type="button" aria-expanded="' + open + '" aria-controls="m' + mi + '">' +
+          '<span class="num">' + (allDone ? '✓' : mi + 1) + '</span>' +
+          '<span class="txt"><span class="t">' + esc(m.title) + '</span>' +
+            '<span class="m"><span>' + m.lessons.length + ' lessons</span><span class="sep"></span><span>' + hm(mins) + '</span>' +
+            (c.status !== 'not-started' ? '<span class="sep"></span><span>' + done + '/' + m.lessons.length + ' done</span>' : '') + '</span></span>' + I.chev +
+        '</button>' +
+        '<div class="acc-panel" id="m' + mi + '"><div><div class="acc-body">' +
+          (m.desc ? '<p class="acc-desc">' + esc(m.desc) + '</p>' : '') +
+          '<ul class="lessons">' + m.lessons.map(function(l){
+            var st = l[4] === 'c' ? I.check : l[4] === 'p' ? I.progress : I.todo;
+            return '<li class="lesson">' +
+              '<span class="st" role="img" aria-label="' + (l[4] === 'c' ? 'Completed' : l[4] === 'p' ? 'In progress' : 'Not started') + '">' + st + '</span>' +
+              '<div class="body"><div class="row"><span class="lt">' + esc(l[1]) + (l[0] === lastLessonId && c.status === 'in-progress' ? '<span class="last-tag">Last accessed</span>' : '') + '</span><span class="dur">' + l[3] + ' min</span></div>' +
+                '<div class="lm">' + I[l[2]] + TYPE_LABEL[l[2]] + '</div>' +
+                (l[5] ? '<p class="ld">' + esc(l[5]) + '</p>' : '') +
+              '</div></li>';
+          }).join('') + '</ul>' + notesRow(mi, allDone, m) +
+        '</div></div></div>' +
+      '</div>';
+    }).join('');
+    function syncToggleAll(){
+      var allOpen = Array.prototype.every.call(document.querySelectorAll('.acc-btn'), function(b){ return b.getAttribute('aria-expanded') === 'true'; });
+      $('toggleAll').textContent = allOpen ? 'Collapse all' : 'Expand all';
+    }
+    $('outline').addEventListener('click', function(e){
+      var b = e.target.closest('.acc-btn'); if (!b) return;
+      b.setAttribute('aria-expanded', b.getAttribute('aria-expanded') !== 'true');
+      syncToggleAll();
+    });
+    $('toggleAll').addEventListener('click', function(){
+      var open = this.textContent === 'Expand all';
+      document.querySelectorAll('.acc-btn').forEach(function(b){ b.setAttribute('aria-expanded', open); });
+      syncToggleAll();
+    });
+    syncToggleAll();
+
+    /* Side card: CTA (FR-04, FR-06, FR-07 + completed edge case) */
+    var thumb = $('thumb');
+    thumb.setAttribute('aria-label', c.title + ' thumbnail');
+    if (c.photo) thumb.style.backgroundImage = 'url(' + c.photo + ')';
+    else { thumb.classList.add('placeholder'); thumb.innerHTML = I.image; }
+    thumb.classList.toggle('completed', c.status === 'completed');
+
+    var playerHref = 'course-player.html?id=' + encodeURIComponent(id);
+    var cta = '', blockMsg = '';
+    if (c.status !== 'not-started')
+      cta += '<div class="prog-row"><span>Your progress</span><b>' + c.progress + '%</b></div><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:' + c.progress + '%"></div></div>';
+    if (c.status === 'in-progress'){
+      cta += '<p class="last">' + (lastLesson ? 'Last accessed: <b>' + esc(lastLesson[1]) + '</b>' : '') + '</p>';
+      cta += '<a class="btn btn-primary btn-block" href="' + playerHref + '">Continue' + I.arrow + '</a>';
+    } else if (c.status === 'completed'){
+      cta += '<p class="last">Completed on <b>' + esc(c.completedDate) + '</b></p>';
+      cta += '<a class="btn btn-secondary btn-block" href="' + playerHref + '">Review course</a>';
+      if (c.cert) cta += '<a class="cert" href="certificates.html">' + I.award + 'View certificate</a>';
+    } else {
+      blockMsg = unmet.length ? 'Complete ' + unmet.map(function(p){ return COURSES[p].title; }).join(' and ') + ' to unlock this course.'
+                   : futureStart ? 'This course opens on ' + longDate(c.startDate) + '.' : '';
+      cta += blockMsg
+        ? '<span class="btn btn-primary btn-block" aria-disabled="true">' + I.lock + 'Start course</span><div class="block-note">' + I.info + '<span>' + esc(blockMsg) + '</span></div>'
+        : '<a class="btn btn-primary btn-block" href="' + playerHref + '">Start course' + I.arrow + '</a>';
+    }
+    if (!(c.status === 'not-started' && blockMsg)) cta += '<button class="btn btn-secondary btn-block fc-open" id="fcOpen" type="button" aria-haspopup="dialog"></button>';
+    $('cta').innerHTML = cta;
+    if ($('fcOpen')) $('fcOpen').onclick = openFlashcards;
+
+    /* Assignment details (FR-05) */
+    var rows = [['Type', c.mandatory ? 'Mandatory' : 'Optional'], ['Assigned by', c.mandatory ? ASSIGNER : 'Self-enrolled']];
+    if (c.deadline) rows.push(['Deadline', longDate(c.deadline) + (overdue ? ' · overdue' : ''), overdue ? 'overdue' : '']);
+    if (c.startDate) rows.push(['Starts', longDate(c.startDate)]);
+    $('assign').innerHTML = rows.map(function(r){ return '<dt>' + r[0] + '</dt><dd class="' + (r[2] || '') + '">' + esc(r[1]) + '</dd>'; }).join('');
+
+    /* Prerequisites (FR-04) */
+    if (c.prereqs && c.prereqs.length){
+      $('prereq').hidden = false;
+      $('prereqList').innerHTML = c.prereqs.map(function(p){
+        var pc = COURSES[p], met = pc.status === 'completed';
+        return '<li class="' + (met ? 'met' : '') + '">' + (met ? I.check : I.todo) + '<a href="course-overview.html?id=' + p + '">' + esc(pc.title) + '</a></li>';
+      }).join('');
+    }
+
+    initAsk(outline, allLessons, totalMin, overdue);
+  }
+
+  /* ---------------- Ask AI about this course (undocumented — see header) ----------------
+     One conversation, two surfaces: the floating bottom bar (latest answer only) and the
+     side sheet (full thread). ⋮ menu → Switch to side panel / Turn off bottom bar.
+     When off, the sparkle pill stays and its only action is opening the side panel. */
+  function initAsk(outline, allLessons, totalMin, overdue){
+    var CHAT_KEY = 'upspace-course-ai-' + id, OFF_KEY = 'upspace-ai-bar-off';
+    var log = load(CHAT_KEY) || [];
+    var barOff = !!load(OFF_KEY);
+    var DECLINE = 'I can only help with content from this course. Try rephrasing your question about the topic';
+    var STOP = /^(what|does|this|that|with|about|course|have|will|from|your|when|where|which|there|they|would|could|should|like|tell|know|explain|much|many)$/;
+    var corpus = (c.title + ' ' + c.tag + ' ' + outline.map(function(m){ return m.title + ' ' + m.desc + ' ' + m.lessons.map(function(l){ return l[1] + ' ' + l[5]; }).join(' '); }).join(' ')).toLowerCase();
+    var modMins = function(m){ return m.lessons.reduce(function(x, l){ return x + l[3]; }, 0); };
+    var SUGGEST = ['What will I learn?', 'How long does it take?', 'Are there prerequisites?'];
+
+    function reply(q){
+      var s = q.toLowerCase();
+      if (/\b(answers?|solutions?|correct option)\b/.test(s)) return 'I can’t share assessment answers. Review the lessons before the “' + outline[outline.length - 1].title + '” module — that’s where the final check sits.';
+      if (/how long|duration|hours|minutes|time (does|will)/.test(s)) return 'About ' + hm(totalMin) + ' in total, across ' + allLessons.length + ' lessons. The longest module is “' + outline.slice().sort(function(a, b){ return modMins(b) - modMins(a); })[0].title + '”.';
+      if (/prereq|before i start|need to know|required/.test(s)) return c.prereqs && c.prereqs.length ? 'You need: ' + c.prereqs.map(function(p){ return COURSES[p].title + (COURSES[p].status === 'completed' ? ' (done)' : ' (not done yet)'); }).join(', ') + '.' : 'This course has no prerequisites — you can start any time.';
+      if (/deadline|due|finish by/.test(s)) return c.deadline ? 'It’s due ' + longDate(c.deadline) + (overdue ? ' — that date has passed, but you can still take it.' : '.') : 'There’s no deadline on this course.';
+      if (/cover|learn|topics?|modules?|syllabus|outline|what.*(in|inside)/.test(s)) return 'It has ' + outline.length + ' modules:\n' + outline.map(function(m, i){ return (i + 1) + '. ' + m.title + (m.desc ? ' — ' + m.desc : ''); }).join('\n');
+      var hit = (s.match(/[a-z]{4,}/g) || []).find(function(w){ return !STOP.test(w) && corpus.indexOf(w) !== -1; });
+      if (!hit) return DECLINE;
+      var where = [];
+      outline.forEach(function(m, mi){ m.lessons.forEach(function(l){ if ((l[1] + ' ' + l[5]).toLowerCase().indexOf(hit) !== -1) where.push('Module ' + (mi + 1) + ' · ' + l[1]); }); });
+      return where.length ? '“' + hit + '” is covered in:\n' + where.slice(0, 4).map(function(w){ return '• ' + w; }).join('\n') + '\n\nOpen the lesson in the player to ask the AI Tutor about it in detail.' : DECLINE;
+    }
+
+    var dock = $('aiDock'), barInput = $('aiInput'), sheetInput = $('sheetInput');
+    var pending = null, sheetOpen = false;
+    function setState(st){ dock.dataset.state = st; }
+    function lastAi(){ for (var i = log.length - 1; i >= 0; i--) if (log[i].role === 'ai') return i; return -1; }
+
+    /* ---- Bottom bar ---- */
+    function renderBar(){
+      var i = lastAi(), show = i !== -1 && dock.dataset.state === 'answer';
+      $('aiAnswer').hidden = !show;
+      if (show){
+        var q = log[i - 1] && log[i - 1].role === 'user' ? log[i - 1].text : '';
+        $('aiQ').textContent = q ? '“' + q + '”' : '';
+        $('aiA').textContent = log[i].text;
+        $('aiUp').setAttribute('aria-pressed', log[i].rating === 'up');
+        $('aiDown').setAttribute('aria-pressed', log[i].rating === 'down');
+        $('aiAnswer').scrollTop = 0;
+      }
+      barInput.placeholder = show ? 'Ask a follow-up…' : 'Ask anything about this course…';
+      $('aiSuggest').innerHTML = dock.dataset.state === 'input' && !log.length ? SUGGEST.map(function(s){ return '<button type="button">' + s + '</button>'; }).join('') : '';
+    }
+    function openBar(){
+      if (barOff){ openSheet(); return; }          // off: pill only opens the side panel
+      setState(lastAi() !== -1 ? 'answer' : 'input');
+      renderBar();
+      barInput.focus();
+    }
+    function collapseBar(){ if (pending) return; closeMenu(); setState(barOff ? 'off' : 'pill'); renderBar(); }
+    $('aiPill').addEventListener('click', openBar);
+    $('aiPill').setAttribute('aria-label', barOff ? 'Open AI side panel' : 'Ask AI about this course');
+    $('aiClose').addEventListener('click', collapseBar);
+    $('aiToPanel').addEventListener('click', openSheet);
+    // Empty + click away → shrink back to the sparkle pill (answer card stays until closed)
+    dock.addEventListener('focusout', function(){
+      setTimeout(function(){
+        if (dock.contains(document.activeElement) || pending || !$('aiMenu').hidden) return;
+        if (dock.dataset.state === 'input' && !barInput.value.trim()) collapseBar();
+      }, 120);
+    });
+    ['aiUp', 'aiDown'].forEach(function(bid){
+      $(bid).addEventListener('click', function(){
+        var i = lastAi(); if (i === -1) return;
+        var v = bid === 'aiUp' ? 'up' : 'down';
+        log[i].rating = log[i].rating === v ? null : v; save(CHAT_KEY, log); render();
+      });
+    });
+
+    /* ---- ⋮ menu ---- */
+    function closeMenu(){ $('aiMenu').hidden = true; $('aiMore').setAttribute('aria-expanded', 'false'); }
+    $('aiMore').addEventListener('click', function(){
+      var open = $('aiMenu').hidden;
+      $('aiMenu').hidden = !open; this.setAttribute('aria-expanded', open);
+      if (open) $('aiMenu').querySelector('button').focus();
+    });
+    $('aiMenu').addEventListener('click', function(e){
+      var b = e.target.closest('[data-act]'); if (!b) return;
+      closeMenu();
+      if (b.dataset.act === 'panel') openSheet();
+      if (b.dataset.act === 'off'){ barOff = true; save(OFF_KEY, true); $('aiPill').setAttribute('aria-label', 'Open AI side panel'); setState('off'); renderBar(); }
+    });
+    document.addEventListener('click', function(e){ if (!e.target.closest('.menu-wrap')) closeMenu(); });
+
+    /* ---- Side sheet ---- */
+    function openSheet(){
+      closeMenu();
+      sheetOpen = true;
+      document.body.classList.add('sheet-open');
+      dock.hidden = true;
+      renderSheet();
+      setTimeout(function(){ sheetInput.focus(); }, 50);
+    }
+    function closeSheet(){
+      sheetOpen = false;
+      document.body.classList.remove('sheet-open');
+      dock.hidden = false;
+      setState(barOff ? 'off' : 'pill');
+      renderBar();
+      $('aiPill').focus();
+    }
+    $('sheetClose').addEventListener('click', closeSheet);
+    $('sheetBackdrop').addEventListener('click', closeSheet);
+    $('sheetToBar').addEventListener('click', function(){
+      barOff = false; save(OFF_KEY, false);
+      $('aiPill').setAttribute('aria-label', 'Ask AI about this course');
+      closeSheet(); openBar();
+    });
+    $('sheetClear').addEventListener('click', function(){ log = []; save(CHAT_KEY, log); render(); });
+    document.addEventListener('keydown', function(e){
+      if (e.key !== 'Escape') return;
+      if (!$('aiMenu').hidden) closeMenu(); else if (sheetOpen) closeSheet(); else if (dock.dataset.state !== 'pill' && dock.dataset.state !== 'off') collapseBar();
+    });
+
+    function msgHtml(m, i){
+      if (m.role === 'user') return '<div class="msg sent"><div class="mc"><div class="meta"><span class="name">You</span><span class="when">' + esc(m.when) + '</span></div><div class="bubble">' + esc(m.text) + '</div></div></div>';
+      return '<div class="msg"><img class="avatar" src="' + AI_AVATAR + '" alt=""><div class="mc"><div class="meta"><span class="name">UpSpace AI</span><span class="when">' + esc(m.when) + '</span></div><div class="bubble">' + esc(m.text) + '</div>' +
+        '<div class="rate"><span>Helpful?</span><button class="ib" type="button" data-rate="up" data-i="' + i + '" aria-label="Helpful" aria-pressed="' + (m.rating === 'up') + '">' + I.up + '</button><button class="ib" type="button" data-rate="down" data-i="' + i + '" aria-label="Not helpful" aria-pressed="' + (m.rating === 'down') + '">' + I.down + '</button></div></div></div>';
+    }
+    function renderSheet(){
+      var t = $('thread');
+      t.innerHTML = log.length ? log.map(msgHtml).join('')
+        : '<div class="sheet-empty"><p>Ask about what this course covers, how long it takes, prerequisites or deadlines.</p><div class="suggest">' + SUGGEST.map(function(s){ return '<button type="button">' + s + '</button>'; }).join('') + '</div></div>';
+      if (pending) t.insertAdjacentHTML('beforeend', '<div class="msg"><img class="avatar" src="' + AI_AVATAR + '" alt=""><div class="mc"><div class="meta"><span class="name">UpSpace AI</span></div><div class="typing" role="status" aria-label="AI is writing"><i></i><i></i><i></i></div></div></div>');
+      t.scrollTop = t.scrollHeight;
+      $('sheetClear').hidden = !log.length;
+    }
+    $('thread').addEventListener('click', function(e){
+      var s = e.target.closest('.suggest button'); if (s){ ask(s.textContent); return; }
+      var r = e.target.closest('[data-rate]'); if (!r) return;
+      var m = log[r.dataset.i]; m.rating = m.rating === r.dataset.rate ? null : r.dataset.rate; save(CHAT_KEY, log); render();
+    });
+    $('aiSuggest').addEventListener('click', function(e){ var b = e.target.closest('button'); if (b) ask(b.textContent); });
+
+    function render(){ renderBar(); if (sheetOpen) renderSheet(); }
+
+    /* ---- Ask / stop ---- */
+    function ask(q){
+      q = q.trim(); if (!q || pending) return;
+      log.push({ role:'user', text:q, when:clockNow() }); save(CHAT_KEY, log);
+      if (!sheetOpen) setState('thinking');
+      pending = setTimeout(function(){
+        pending = null;
+        log.push({ role:'ai', text:reply(q), when:clockNow() }); save(CHAT_KEY, log);
+        if (!sheetOpen){ setState('answer'); barInput.focus(); }
+        render();
+      }, 900 + Math.random() * 700);
+      render();
+    }
+    $('aiStop').addEventListener('click', function(){
+      clearTimeout(pending); pending = null;
+      var last = log.pop();                       // put the question back so it can be edited
+      save(CHAT_KEY, log);
+      barInput.value = last ? last.text : '';
+      barInput.dispatchEvent(new Event('input'));
+      setState(lastAi() !== -1 ? 'answer' : 'input'); render(); barInput.focus();
+    });
+
+    function wire(input, form, send){
+      input.addEventListener('input', function(){ this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 140) + 'px'; $(send).disabled = !this.value.trim(); });
+      input.addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); $(form).requestSubmit(); } });
+      $(form).addEventListener('submit', function(e){
+        e.preventDefault(); if (pending || !input.value.trim()) return;
+        ask(input.value); input.value = ''; input.style.height = 'auto'; $(send).disabled = true;
+      });
+    }
+    wire(barInput, 'aiForm', 'aiSend');
+    wire(sheetInput, 'sheetForm', 'sheetSend');
+
+    setState(barOff ? 'off' : 'pill');
+    renderBar();
+  }
+</script>
+
+<!-- Modal (library) — course flashcards: form → generating → set / errors -->
+<div class="fc-overlay" id="fcDialog" hidden>
+  <div class="fc-modal fc-dialog" role="dialog" aria-modal="true" aria-labelledby="fcDlgTitle">
+    <div class="fc-dlg-head">
+      <div><h3 id="fcDlgTitle">Flashcards</h3><p>Question-and-answer cards made from this course's lessons.</p></div>
+      <button class="fc-x" type="button" id="fcDlgClose" aria-label="Close"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button>
+    </div>
+    <div class="fc-dlg-body" id="fc" aria-live="polite"></div>
+  </div>
+</div>
+
+<!-- Modal (library) — delete flashcards -->
+<div class="fc-overlay" id="fcModal" style="z-index:95" hidden>
+  <div class="fc-modal" role="dialog" aria-modal="true" aria-labelledby="fcModalTitle">
+    <h3 id="fcModalTitle">Delete this course's flashcards?</h3>
+    <p>You can generate them again at any time.</p>
+    <div class="fc-acts" style="justify-content:flex-end;margin-top:20px"><button class="btn btn-secondary" type="button" id="fcModalCancel">Cancel</button><button class="btn btn-primary" type="button" id="fcModalOk" style="background:var(--error)">Delete</button></div>
+  </div>
+</div>
+<script>
+  (function(){
+    var m = document.getElementById('fcModal');
+    function close(){ m.hidden = true; }
+    document.getElementById('fcModalCancel').onclick = close;
+    m.addEventListener('click', function(e){ if (e.target === m) close(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !m.hidden){ e.stopImmediatePropagation(); close(); } }, true);
+    var d = document.getElementById('fcDialog');
+    document.getElementById('fcDlgClose').onclick = closeFlashcards;
+    d.addEventListener('click', function(e){ if (e.target === d) closeFlashcards(); });
+    document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && !d.hidden) closeFlashcards(); });
+    if (location.hash === '#flashcards' && document.getElementById('fcOpen')) openFlashcards();
+    document.getElementById('fcModalOk').onclick = function(){ var s = study(); delete s.decks[id]; save(STUDY_KEY, s); close(); renderFlashcards(); syncFcEntry(); };
+  })();
+</script>
+</body>
+</html>

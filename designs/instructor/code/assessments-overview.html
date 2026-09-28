@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Assessments</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Assessments Directory (Overview)
+     UpSpace Design System compliant.
+     Uses Instructor Shell via iframe components (sidebar.html & topnavbar.html)
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --icon-muted:#a3a3a3; --icon-primary:#404040;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --brand-subtle:#eef2ff; --brand-border:#c7d2fe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
+
+  /* Header */
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 6px; font-size:32px; font-weight:700; letter-spacing:-.4px; }
+  .page-head .sub{ font-size:14.5px; color:var(--text-secondary); max-width:680px; }
+
+  .header-actions{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .btn{ height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:none; text-decoration:none; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); color:var(--text-primary); }
+
+  .state-preview{ height:36px; min-width:180px; padding:0 28px 0 12px; font-size:12.5px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance:none; cursor:pointer; }
+  .state-preview:focus{ outline:2px solid var(--focus-ring); }
+
+  /* KPI Cards Row (Homepage/Integrations Style) */
+  .kpi-row{ display:grid; grid-template-columns:repeat(4, 1fr); gap:16px; margin-bottom:24px; }
+  .card{ background:#ffffff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .kpi-card{ padding:20px 22px; display:flex; flex-direction:column; }
+  .kpi-top{ display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .kpi-title{ display:flex; align-items:center; gap:10px; min-width:0; }
+  .kpi-icon{ width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .kpi-icon svg{ width:15px; height:15px; }
+  .kpi-title span{ font-size:13px; font-weight:600; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  
+  .pill{ display:inline-flex; align-items:center; gap:3px; font-size:11.5px; font-weight:700; padding:4px 10px; border-radius:999px; flex-shrink:0; }
+  .pill.up{ background:var(--success-subtle); color:var(--success); }
+  .pill.warn{ background:var(--warning-subtle); color:var(--warning); }
+  .pill.neutral{ background:var(--surface-raised); color:var(--text-secondary); }
+
+  .kpi-value{ font-size:28px; font-weight:700; letter-spacing:-.4px; font-variant-numeric:tabular-nums; color:var(--text-primary); }
+  .kpi-sub{ font-size:12.5px; color:var(--text-tertiary); margin-top:4px; }
+
+  @media (max-width: 1200px){ .kpi-row{ grid-template-columns:repeat(2, 1fr); } }
+
+  /* Section Tabs Bar (Active vs Archived) */
+  .tabs-bar{ display:flex; gap:24px; border-bottom:1px solid var(--border-default); margin-bottom:20px; background:transparent; }
+  .tab-btn{ position:relative; padding:12px 4px; border:none; background:transparent; font-size:14px; font-weight:600; color:var(--text-tertiary); cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+  .tab-btn:hover{ color:var(--text-primary); }
+  .tab-btn.active{ color:var(--action-primary); font-weight:700; }
+  .tab-btn.active:after{ content:""; position:absolute; left:0; right:0; bottom:-1px; height:2px; background:var(--action-primary); }
+  .tab-count{ font-size:11.5px; font-weight:700; padding:2px 7px; border-radius:var(--radius-full); background:var(--surface-raised); color:var(--text-secondary); }
+  .tab-btn.active .tab-count{ background:var(--info-subtle); color:var(--info); }
+
+  /* Toolbar */
+  .toolbar{ display:flex; align-items:center; gap:12px; padding:16px 20px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; background:#fff; }
+  .search-input-wrap{ position:relative; flex:1; min-width:240px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:15px; height:15px; color:var(--text-tertiary); pointer-events:none; }
+  .search-input-wrap input{ width:100%; height:36px; padding:0 12px 0 34px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13.5px; color:var(--text-primary); outline:none; }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+  
+  .filter-select{ height:36px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:0 28px 0 12px; appearance:none; cursor:pointer; }
+  .filter-select:focus{ outline:2px solid var(--focus-ring); }
+  
+  .btn-reset{ height:36px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; display:inline-flex; align-items:center; gap:6px; }
+  .btn-reset:hover{ background:var(--surface-raised); }
+
+  .toolbar-spacer{ flex:1; }
+  .result-count{ font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+  .result-count b{ color:var(--text-primary); font-weight:700; }
+
+  /* Table */
+  .table-wrap{ overflow-x:auto; }
+  table{ width:100%; border-collapse:collapse; min-width:1040px; }
+  thead th{ text-align:left; font-size:12px; font-weight:600; color:var(--text-secondary); background:var(--surface-canvas); padding:12px 20px; border-bottom:1px solid var(--border-default); white-space:nowrap; user-select:none; }
+  th.sortable{ cursor:pointer; }
+  th.sortable:hover{ color:var(--text-primary); background:var(--surface-raised); }
+  th .th-inner{ display:inline-flex; align-items:center; gap:5px; }
+  th .sort-icon{ width:13px; height:13px; opacity:.4; transition:opacity .15s ease, transform .15s ease; }
+  th.sort-asc .sort-icon{ opacity:1; }
+  th.sort-desc .sort-icon{ opacity:1; transform:rotate(180deg); }
+
+  tbody tr{ border-bottom:1px solid var(--border-subtle); cursor:pointer; transition:background-color .12s ease; height:60px; }
+  tbody tr:last-child{ border-bottom:none; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+
+  td{ padding:12px 20px; font-size:13.5px; color:var(--text-primary); vertical-align:middle; white-space:nowrap; }
+
+  /* Assessment Cell */
+  .asm-title{ font-weight:600; font-size:14px; color:var(--text-primary); }
+  .asm-title:hover{ color:var(--action-primary); }
+  .asm-code{ font-size:11.5px; color:var(--text-tertiary); font-family:monospace; }
+
+  /* Type Pill */
+  .type-pill{ display:inline-flex; align-items:center; gap:4px; font-size:12px; font-weight:600; padding:3px 8px; border-radius:var(--radius-md); background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .type-pill.quiz{ background:var(--brand-subtle); color:var(--action-primary); border-color:var(--brand-border); }
+  .type-pill.test{ background:var(--info-subtle); color:var(--info); border-color:var(--info-border); }
+  .type-pill.assignment{ background:var(--product-1-subtle); color:var(--product-1); border-color:var(--product-1-border); }
+
+  /* Status Badges */
+  .status-badge{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; }
+  .status-badge i{ width:6px; height:6px; border-radius:50%; }
+  .status-badge.published{ background:var(--success-subtle); color:var(--success); border:1px solid var(--success-border); }
+  .status-badge.published i{ background:var(--success); }
+  .status-badge.in-review{ background:var(--warning-subtle); color:var(--warning); border:1px solid var(--warning-border); }
+  .status-badge.in-review i{ background:var(--warning); }
+  .status-badge.draft{ background:var(--surface-raised); color:var(--text-secondary); border:1px solid var(--border-default); }
+  .status-badge.draft i{ background:var(--text-tertiary); }
+  .status-badge.archived{ background:var(--surface-overlay); color:var(--text-tertiary); border:1px solid var(--border-default); }
+  .status-badge.archived i{ background:var(--text-tertiary); }
+
+  /* Pagination */
+  .pagination-bar{ display:flex; align-items:center; justify-content:space-between; gap:16px; padding:14px 20px; border-top:1px solid var(--border-default); background:#fff; flex-wrap:wrap; }
+  .pagination-info{ font-size:13px; color:var(--text-secondary); }
+  .pagination-controls{ display:flex; align-items:center; gap:4px; }
+  .page-btn{ height:32px; min-width:32px; padding:0 8px; border:1px solid var(--border-default); border-radius:var(--radius-md); background:#fff; color:var(--text-secondary); font-size:12.5px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+  .page-btn:hover:not(:disabled){ background:var(--surface-raised); color:var(--text-primary); }
+  .page-btn.active{ background:var(--action-primary); color:#fff; border-color:var(--action-primary); }
+  .page-btn:disabled{ opacity:0.5; cursor:not-allowed; }
+
+  /* Empty / Error States */
+  .state-box{ padding:64px 24px; text-align:center; display:none; }
+  .state-box.show{ display:block; }
+  .state-icon{ width:48px; height:48px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:inline-flex; align-items:center; justify-content:center; margin-bottom:16px; }
+  .state-title{ font-size:16px; font-weight:700; color:var(--text-primary); margin:0 0 6px; }
+  .state-desc{ font-size:13.5px; color:var(--text-secondary); max-width:440px; margin:0 auto 20px; line-height:1.5; }
+
+  .action-arrow{ color:var(--text-tertiary); font-weight:700; transition:transform 0.15s ease, color 0.15s ease; }
+  tr:hover .action-arrow{ transform:translateX(3px); color:var(--action-primary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Instructor Navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Assessments" title="Top Navbar"></iframe>
+
+  <main class="main">
+    <!-- Page Header -->
+    <div class="page-head">
+      <div>
+        <h1>Assessments</h1>
+        <div class="sub">Create, configure, and evaluate quizzes, exams, and assignments across your assigned courses.</div>
+      </div>
+      <div class="header-actions">
+        <select class="state-preview" id="statePreview" onchange="switchState(this.value)">
+          <option value="normal">State: Active Directory (12)</option>
+          <option value="empty">State: Empty Directory (0)</option>
+          <option value="no-results">State: No Search Results</option>
+          <option value="error">State: Server Error</option>
+        </select>
+
+        <a href="question-bank.html" class="btn btn-secondary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Question Bank
+        </a>
+
+        <a href="assessment-create-type.html" class="btn btn-primary">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Create Assessment
+        </a>
+      </div>
+    </div>
+
+    <!-- KPI Cards -->
+    <div class="kpi-row" id="kpiArea">
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--brand-subtle); color:var(--action-primary);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+            </div>
+            <span>Total Assessments</span>
+          </div>
+          <span class="pill neutral">Active Scope</span>
+        </div>
+        <div class="kpi-value">14</div>
+        <div class="kpi-sub">Across 4 assigned courses</div>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--success-subtle); color:var(--success);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span>Published</span>
+          </div>
+          <span class="pill up">Live</span>
+        </div>
+        <div class="kpi-value">9</div>
+        <div class="kpi-sub">Available to learners</div>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--warning-subtle); color:var(--warning);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <span>Drafts / In Review</span>
+          </div>
+          <span class="pill warn">3 Pending</span>
+        </div>
+        <div class="kpi-value">3</div>
+        <div class="kpi-sub">Needs approval or editing</div>
+      </div>
+
+      <div class="card kpi-card">
+        <div class="kpi-top">
+          <div class="kpi-title">
+            <div class="kpi-icon" style="background:var(--info-subtle); color:var(--info);">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+            </div>
+            <span>Total Submissions</span>
+          </div>
+          <span class="pill up">+34 this week</span>
+        </div>
+        <div class="kpi-value">418</div>
+        <div class="kpi-sub">Submissions graded & queue</div>
+      </div>
+    </div>
+
+    <!-- Active vs Archived Tabs -->
+    <div class="tabs-bar">
+      <button class="tab-btn active" id="tabActive" onclick="switchSection('active')">
+        Active Assessments <span class="tab-count" id="activeCount">12</span>
+      </button>
+      <button class="tab-btn" id="tabArchived" onclick="switchSection('archived')">
+        Archived Assessments <span class="tab-count" id="archivedCount">2</span>
+      </button>
+    </div>
+
+    <!-- Content Card -->
+    <div class="card">
+      <!-- Toolbar -->
+      <div class="toolbar" id="toolbarArea">
+        <div class="search-input-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input type="text" id="searchInput" placeholder="Search assessment by title or course..." oninput="applyFilters()">
+        </div>
+
+        <select class="filter-select" id="typeFilter" onchange="applyFilters()">
+          <option value="">All Types</option>
+          <option value="Quiz">Quiz</option>
+          <option value="Test">Test</option>
+          <option value="Assignment">Assignment</option>
+        </select>
+
+        <select class="filter-select" id="statusFilter" onchange="applyFilters()">
+          <option value="">All Statuses</option>
+          <option value="Published">Published</option>
+          <option value="In Review">In Review</option>
+          <option value="Draft">Draft</option>
+        </select>
+
+        <select class="filter-select" id="courseFilter" onchange="applyFilters()">
+          <option value="">All Courses</option>
+          <option value="CS-301">CS-301: Advanced Data Structures</option>
+          <option value="UX-204">UX-204: Interaction Design</option>
+          <option value="AI-101">AI-101: Intro to Machine Learning</option>
+          <option value="WEB-202">WEB-202: Modern Frontend Frameworks</option>
+        </select>
+
+        <button class="btn-reset" onclick="resetFilters()">Reset</button>
+
+        <div class="toolbar-spacer"></div>
+        <div class="result-count">Showing <b id="visibleCount">12</b> items</div>
+      </div>
+
+      <!-- Table -->
+      <div class="table-wrap" id="tableContainer">
+        <table id="assessmentsTable">
+          <thead>
+            <tr>
+              <th class="sortable" onclick="sortTable('title')">
+                <span class="th-inner">Assessment Title <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th>Type</th>
+              <th>Course / Module</th>
+              <th>Questions / Pts</th>
+              <th class="sortable" onclick="sortTable('submissions')">
+                <span class="th-inner">Submissions <svg class="sort-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg></span>
+              </th>
+              <th>Status</th>
+              <th>Availability / Deadline</th>
+              <th style="width:40px;"></th>
+            </tr>
+          </thead>
+          <tbody id="assessmentsBody">
+            <!-- Dynamically populated -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- State Boxes -->
+      <div class="state-box" id="noResultsState">
+        <div class="state-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        </div>
+        <div class="state-title">No matching assessments found</div>
+        <div class="state-desc">Try clearing your search query or altering filters.</div>
+        <button class="btn btn-primary" onclick="resetFilters()">Reset Filters</button>
+      </div>
+
+      <div class="state-box" id="emptyState">
+        <div class="state-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m3 17 2 2 4-4"/><path d="M13 6h8"/><path d="M13 12h8"/><path d="M13 18h8"/></svg>
+        </div>
+        <div class="state-title">No assessments created yet</div>
+        <div class="state-desc">Build your first quiz, midterm exam, or assignment to evaluate your learners.</div>
+        <a href="assessment-create-type.html" class="btn btn-primary">+ Create Assessment</a>
+      </div>
+
+      <!-- Pagination -->
+      <div class="pagination-bar" id="paginationBar">
+        <div class="pagination-info">Showing <b>1</b> to <b id="pageEnd">12</b> of <b id="totalItems">12</b> items</div>
+        <div class="pagination-controls">
+          <button class="page-btn" disabled>&laquo;</button>
+          <button class="page-btn active">1</button>
+          <button class="page-btn">&raquo;</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  const ASSESSMENTS_DATA = [
+    {
+      id: "ASM-001",
+      title: "Quiz 3: Trees & Graphs",
+      type: "Quiz",
+      course: "CS-301",
+      module: "Module 4: Non-linear Data Structures",
+      questions: 12,
+      points: 100,
+      submissions: 48,
+      status: "Published",
+      deadline: "Oct 15, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-002",
+      title: "Assignment 2: Binary Heap Implementation",
+      type: "Assignment",
+      course: "CS-301",
+      module: "Module 3: Heaps & Priority Queues",
+      questions: 3,
+      points: 100,
+      submissions: 46,
+      status: "Published",
+      deadline: "Sep 28, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-003",
+      title: "Midterm Exam: Algorithms & Complexity",
+      type: "Test",
+      course: "CS-301",
+      module: "Comprehensive Assessment",
+      questions: 25,
+      points: 200,
+      submissions: 0,
+      status: "In Review",
+      deadline: "Oct 20, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-004",
+      title: "Quiz 1: Dynamic Programming Principles",
+      type: "Quiz",
+      course: "CS-301",
+      module: "Module 5: Dynamic Programming",
+      questions: 10,
+      points: 50,
+      submissions: 0,
+      status: "Draft",
+      deadline: "Nov 05, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-005",
+      title: "Portfolio Capstone: Interaction System",
+      type: "Assignment",
+      course: "UX-204",
+      module: "Final Design Project",
+      questions: 4,
+      points: 150,
+      submissions: 32,
+      status: "Published",
+      deadline: "Nov 12, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-006",
+      title: "Usability Heuristics Check-in",
+      type: "Quiz",
+      course: "UX-204",
+      module: "Module 2: Heuristic Evaluation",
+      questions: 8,
+      points: 40,
+      submissions: 35,
+      status: "Published",
+      deadline: "Sep 20, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-007",
+      title: "Neural Networks & Backprop Quiz",
+      type: "Quiz",
+      course: "AI-101",
+      module: "Module 3: Neural Networks",
+      questions: 15,
+      points: 100,
+      submissions: 54,
+      status: "Published",
+      deadline: "Oct 01, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-008",
+      title: "AI Ethics & Responsible ML Essay",
+      type: "Assignment",
+      course: "AI-101",
+      module: "Module 6: Governance & Ethics",
+      questions: 2,
+      points: 80,
+      submissions: 51,
+      status: "Published",
+      deadline: "Oct 18, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-009",
+      title: "React Component Architecture Test",
+      type: "Test",
+      course: "WEB-202",
+      module: "Module 4: React Patterns",
+      questions: 20,
+      points: 150,
+      submissions: 42,
+      status: "Published",
+      deadline: "Sep 30, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-010",
+      title: "TypeScript Fundamentals Checkpoint",
+      type: "Quiz",
+      course: "WEB-202",
+      module: "Module 1: Type Systems",
+      questions: 10,
+      points: 50,
+      submissions: 45,
+      status: "Published",
+      deadline: "Sep 10, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-011",
+      title: "Draft Test: Advanced Graph Theory",
+      type: "Test",
+      course: "CS-301",
+      module: "Module 7: Advanced Graphs",
+      questions: 15,
+      points: 120,
+      submissions: 0,
+      status: "Draft",
+      deadline: "Dec 01, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-012",
+      title: "State Management Coding Challenge",
+      type: "Assignment",
+      course: "WEB-202",
+      module: "Module 5: Global State",
+      questions: 3,
+      points: 100,
+      submissions: 65,
+      status: "Published",
+      deadline: "Oct 25, 2026",
+      archived: false
+    },
+    {
+      id: "ASM-099",
+      title: "Archived Quiz: Legacy Data Structures (Spring 2025)",
+      type: "Quiz",
+      course: "CS-301",
+      module: "Legacy Module",
+      questions: 10,
+      points: 50,
+      submissions: 120,
+      status: "Archived",
+      deadline: "Archived",
+      archived: true
+    },
+    {
+      id: "ASM-098",
+      title: "Archived Test: Intro C++ Syntax (Fall 2024)",
+      type: "Test",
+      course: "CS-301",
+      module: "Legacy Module",
+      questions: 15,
+      points: 100,
+      submissions: 85,
+      status: "Archived",
+      deadline: "Archived",
+      archived: true
+    }
+  ];
+
+  let currentSection = 'active';
+
+  function switchSection(sec) {
+    currentSection = sec;
+    document.getElementById('tabActive').classList.toggle('active', sec === 'active');
+    document.getElementById('tabArchived').classList.toggle('active', sec === 'archived');
+    applyFilters();
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('assessmentsBody');
+    tbody.innerHTML = '';
+
+    if (data.length === 0) {
+      document.getElementById('tableContainer').style.display = 'none';
+      document.getElementById('noResultsState').classList.add('show');
+      document.getElementById('visibleCount').textContent = '0';
+      return;
+    }
+
+    document.getElementById('tableContainer').style.display = 'block';
+    document.getElementById('noResultsState').classList.remove('show');
+    document.getElementById('visibleCount').textContent = data.length;
+
+    data.forEach(item => {
+      const tr = document.createElement('tr');
+      tr.onclick = function() {
+        window.location.href = `assessment-detail.html?id=${item.id}`;
+      };
+
+      let typeClass = item.type.toLowerCase();
+      let statusClass = item.status.toLowerCase().replace(' ', '-');
+
+      tr.innerHTML = `
+        <td>
+          <div>
+            <a href="assessment-detail.html?id=${item.id}" class="asm-title" onclick="event.stopPropagation()">${item.title}</a>
+            <div class="asm-code">${item.id}</div>
+          </div>
+        </td>
+        <td><span class="type-pill ${typeClass}">${item.type}</span></td>
+        <td>
+          <div style="font-weight:600; font-size:13px;">${item.course}</div>
+          <div style="font-size:11.5px; color:var(--text-tertiary);">${item.module}</div>
+        </td>
+        <td>
+          <div style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;">${item.questions} Qs</div>
+          <div style="font-size:11.5px; color:var(--text-tertiary);">${item.points} Pts</div>
+        </td>
+        <td>
+          <span style="font-weight:700; font-size:13px; font-variant-numeric:tabular-nums;">${item.submissions}</span>
+          <span style="font-size:12px; color:var(--text-tertiary);"> subs</span>
+        </td>
+        <td>
+          <span class="status-badge ${statusClass}"><i></i>${item.status}</span>
+        </td>
+        <td style="color:var(--text-secondary); font-size:13px;">${item.deadline}</td>
+        <td style="text-align:right;">
+          <span class="action-arrow">&rarr;</span>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function applyFilters() {
+    const search = document.getElementById('searchInput').value.toLowerCase().trim();
+    const type = document.getElementById('typeFilter').value;
+    const status = document.getElementById('statusFilter').value;
+    const course = document.getElementById('courseFilter').value;
+
+    let filtered = ASSESSMENTS_DATA.filter(item => {
+      // Tab filter
+      if (currentSection === 'active' && item.archived) return false;
+      if (currentSection === 'archived' && !item.archived) return false;
+
+      if (search && !item.title.toLowerCase().includes(search) && !item.course.toLowerCase().includes(search) && !item.id.toLowerCase().includes(search)) return false;
+      if (type && item.type !== type) return false;
+      if (status && item.status !== status) return false;
+      if (course && item.course !== course) return false;
+
+      return true;
+    });
+
+    renderTable(filtered);
+  }
+
+  function resetFilters() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('typeFilter').value = '';
+    document.getElementById('statusFilter').value = '';
+    document.getElementById('courseFilter').value = '';
+    applyFilters();
+  }
+
+  function switchState(state) {
+    const tableContainer = document.getElementById('tableContainer');
+    const emptyState = document.getElementById('emptyState');
+    const noResultsState = document.getElementById('noResultsState');
+
+    tableContainer.style.display = 'none';
+    emptyState.classList.remove('show');
+    noResultsState.classList.remove('show');
+
+    if (state === 'normal') {
+      applyFilters();
+    } else if (state === 'empty') {
+      emptyState.classList.add('show');
+    } else if (state === 'no-results') {
+      noResultsState.classList.add('show');
+    }
+  }
+
+  // Initialize
+  applyFilters();
+</script>
+</body>
+</html>

@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Dashboard (Creator home). New 2026-09-24; no
+     earlier creator dashboard existed (sidebar "Dashboard" was "#").
+     Answers: "What courses do I need to work on, and what next?"
+     Content lifecycle only: CREATE → EDIT → REVIEW → SUBMIT → PUBLISH.
+     No instructor/learner data, no analytics.
+     Sections, by priority: Continue working (one course) · Needs your
+     attention (changes requested, drafts to finish / submit) · Awaiting
+     approval (In Review + Approved, read-only) · My courses summary
+     (tabs + search, max 6 rows → my-courses.html) · Recently published.
+     Data: localStorage `upspace.cd.courses.v1`, shared with My Courses /
+     Course Builder / AI page. Seed duplicated from my-courses.html
+     (Rule 7). Statuses from STATUS map in my-courses.html.
+     Links: Continue editing → course-builder.html?id=&lesson= (next
+     empty lesson) · Review changes → course-builder.html?id=&changes=1
+     (opens reviewer feedback) · approval → my-courses.html?tab=review
+     (approval tracker CRS-013 isn't designed yet) · Preview →
+     course-preview.html?id= · Create → same modal as My Courses.
+     Withdraw submission (CRS-012-FR-07) isn't implemented anywhere
+     yet, so it isn't offered here.
+     Library reused: Buttons, Badge, Table, Input field, Progress bar,
+     Modal, Radio group (Icon card), Alerts, Toast. Approved hand-built:
+     Tabs (segmented), Empty state, Skeleton.
+     Demo states: ?state=loading | error | empty | caught-up, or the
+     dashed Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a; --warning-text:#a16207;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; max-width:1440px; padding:28px clamp(20px, 2.6vw, 48px) 56px; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary[disabled]{ background:#a5b4fc; cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-lg); background:transparent; color:var(--text-secondary); }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:18px; height:18px; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .link{ display:inline-flex; align-items:center; gap:4px; font-size:13.5px; font-weight:600; color:var(--action-primary); white-space:nowrap; }
+  .link:hover{ color:var(--action-primary-hover); text-decoration:underline; }
+  .link svg{ width:14px; height:14px; }
+
+  /* Badge (library) — status colors from my-courses.html */
+  .badge{ display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .badge i{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .badge.sm{ height:20px; padding:0 7px; font-size:11.5px; }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.warning{ background:var(--warning-subtle); color:var(--warning-text); }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+  .badge.blue{ background:var(--info-subtle); color:var(--info); }
+
+  /* Header */
+  .page-h{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px; }
+  .page-h h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .page-h p{ margin:0; font-size:15px; color:var(--text-secondary); }
+  .page-h p b{ color:var(--text-primary); font-weight:600; }
+  .head-acts{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  /* Layout */
+  .top{ display:grid; grid-template-columns:minmax(0, 1.55fr) minmax(320px, 1fr); gap:24px; align-items:start; margin-bottom:32px; }
+  .side{ display:grid; gap:24px; min-width:0; }
+  .top > *, .side > *, .bottom > *{ min-width:0; }
+  .bottom{ display:grid; grid-template-columns:minmax(0, 1.55fr) minmax(320px, 1fr); gap:24px; align-items:start; margin-top:32px; }
+  .sec-h{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin:0 0 10px; min-height:24px; }
+  .sec-h h2{ margin:0; font-size:15px; font-weight:700; letter-spacing:-.1px; }
+  .sec-h h2 .n{ margin-left:6px; font-weight:600; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  .panel{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); min-width:0; }
+
+  /* Continue working — the primary section */
+  .cw{ padding:22px 24px; }
+  .cw-meta{ display:flex; align-items:center; gap:8px 10px; flex-wrap:wrap; font-size:13px; color:var(--text-tertiary); }
+  .cw h3{ margin:10px 0 4px; font-size:21px; font-weight:700; letter-spacing:-.3px; line-height:1.3; overflow-wrap:anywhere; }
+  .cw-desc{ margin:0; font-size:14.5px; color:var(--text-secondary); line-height:1.5; }
+  .cw-prog{ margin-top:18px; display:grid; gap:8px; }
+  .cw-prog-top{ display:flex; justify-content:space-between; gap:12px; font-size:13.5px; color:var(--text-secondary); flex-wrap:wrap; }
+  .cw-prog-top b{ color:var(--text-primary); font-weight:600; }
+  .cw-next{ display:flex; align-items:flex-start; gap:8px; margin-top:14px; font-size:14px; color:var(--text-strong); overflow-wrap:anywhere; line-height:1.45; }
+  .cw-next svg{ width:16px; height:16px; color:var(--text-tertiary); flex-shrink:0; margin-top:2px; }
+  .cw-next span{ color:var(--text-tertiary); }
+  .cw-acts{ display:flex; gap:8px; flex-wrap:wrap; margin-top:20px; }
+  /* Progress bar (library) */
+  .bar{ height:6px; border-radius:var(--radius-full); background:var(--surface-overlay); overflow:hidden; }
+  .bar i{ display:block; height:100%; border-radius:inherit; background:var(--action-primary); }
+  .bar.done i{ background:var(--success); }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); font-size:14px; line-height:1.5; color:var(--text-strong); }
+  .alert > svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning > svg{ color:var(--warning); }
+  .alert .fb{ display:block; margin-top:4px; color:var(--text-strong); }
+  .alert small{ display:block; margin-top:4px; font-size:12.5px; color:var(--text-tertiary); }
+  .cw .alert{ margin-top:16px; }
+
+  /* Compact action rows (attention / approval / recent) */
+  .rows{ list-style:none; margin:0; padding:0; }
+  .row{ display:flex; align-items:center; gap:12px; padding:13px 16px; border-top:1px solid var(--border-subtle); min-width:0; }
+  .row:first-child{ border-top:0; }
+  .row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+  .dot.warning{ background:var(--warning); } .dot.gray{ background:var(--text-tertiary); } .dot.brand{ background:var(--action-primary); } .dot.blue{ background:var(--info); } .dot.success{ background:var(--success); }
+  .row .txt{ flex:1; min-width:0; }
+  .row .txt b{ display:block; font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .row .txt span{ display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; margin-top:2px; font-size:13px; color:var(--text-secondary); overflow:hidden; line-height:1.4; }
+  .row .txt small{ display:flex; align-items:center; gap:4px; margin-top:2px; font-size:12.5px; color:var(--text-tertiary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .row .txt small svg{ width:12px; height:12px; flex-shrink:0; }
+  .row .btn{ flex-shrink:0; }
+  .more-row{ padding:10px 16px; }
+
+  /* Compact empty states (approved Empty state, small) */
+  .mini-empty{ display:flex; align-items:center; gap:10px; padding:16px; font-size:14px; color:var(--text-secondary); }
+  .mini-empty svg{ width:18px; height:18px; color:var(--success); flex-shrink:0; }
+
+  /* My courses summary — Tabs (approved) + search + Table (library) */
+  .mc-tools{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); max-width:100%; overflow-x:auto; scrollbar-width:none; }
+  .tabs::-webkit-scrollbar{ display:none; }
+  .tab{ height:32px; padding:0 12px; border:0; border-radius:var(--radius-md); background:transparent; font-size:13.5px; font-weight:600; color:var(--text-secondary); white-space:nowrap; }
+  .tab:hover{ color:var(--text-primary); }
+  .tab[aria-selected="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .tab .n{ margin-left:6px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  .search{ position:relative; flex:0 1 280px; min-width:200px; }
+  .search svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
+  .search input{ width:100%; height:40px; padding:0 12px 0 36px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; outline:none; }
+  .search input:focus, .input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  table{ width:100%; border-collapse:collapse; table-layout:fixed; }
+  thead th{ text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); background:var(--surface-canvas); padding:11px 16px; border-bottom:1px solid var(--border-default); white-space:nowrap; }
+  thead th:first-child{ border-top-left-radius:var(--radius-xl); padding-left:20px; }
+  thead th:last-child{ border-top-right-radius:var(--radius-xl); }
+  th.c-st{ width:180px; } th.c-pr{ width:170px; } th.c-own{ width:150px; } th.c-up{ width:130px; } th.c-act{ width:160px; }
+  tbody tr{ border-bottom:1px solid #f5f5f5; }
+  tbody tr:last-child{ border-bottom:0; }
+  tbody tr:hover{ background:var(--surface-canvas); }
+  td{ padding:12px 16px; font-size:14px; vertical-align:middle; min-width:0; }
+  td:first-child{ padding-left:20px; }
+  .t-title b{ display:block; font-size:14.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .t-title > span{ display:block; margin-top:2px; font-size:12.5px; color:var(--text-tertiary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .t-pr{ display:grid; gap:5px; font-size:12.5px; color:var(--text-secondary); }
+  .t-muted{ font-size:13.5px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .t-act{ text-align:right; }
+  .mc-foot{ display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 20px; border-top:1px solid var(--border-subtle); font-size:13px; color:var(--text-secondary); flex-wrap:wrap; }
+  .fold{ display:none; }
+
+  /* Charts (library Charts group: bar chart + progress circle). One data hue (indigo, validated
+     >=3:1 on white); tracks are a lighter step of the same ramp; values in text tokens. */
+  #s-ins{ container-type:inline-size; }
+  .ins{ display:grid; gap:12px; }
+  @container (min-width:620px){ .ins{ grid-template-columns:minmax(0,1.15fr) minmax(0,1fr); align-items:stretch; } }
+  .chart{ padding:16px 18px 14px; }
+  .chart h3{ margin:0 0 2px; font-size:14px; font-weight:700; }
+  .chart-sub{ margin:0 0 12px; font-size:13px; color:var(--text-secondary); line-height:1.45; }
+  .chart-sub b{ color:var(--text-primary); font-weight:600; }
+  .hb{ display:grid; gap:2px; }
+  .hb-row{ display:grid; grid-template-columns:minmax(0,140px) minmax(0,1fr) 30px; align-items:center; gap:12px; width:calc(100% + 16px); padding:5px 8px; margin:0 -8px; border:0; border-radius:var(--radius-md); background:none; text-align:left; font:inherit; color:inherit; }
+  .hb-row:hover, .hb-row:focus-visible{ background:var(--surface-canvas); }
+  .hb-row[aria-pressed="true"]{ background:var(--action-primary-subtle); }
+  .hb-l{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .hb-l i{ width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .hb-t{ height:24px; display:flex; align-items:center; border-left:1px solid var(--border-default); }
+  .hb-b{ height:14px; border-radius:0 4px 4px 0; background:var(--action-primary); transition:width .25s ease; }
+  .hb-row:hover .hb-b{ background:var(--action-primary-hover); }
+  .hb-v{ font-size:13px; font-weight:600; color:var(--text-primary); text-align:right; font-variant-numeric:tabular-nums; }
+  .cols{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); align-items:end; gap:8px; height:132px; padding-top:18px; border-bottom:1px solid var(--border-default); }
+  .col{ height:100%; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:4px; border:0; background:none; padding:0; border-radius:var(--radius-md) var(--radius-md) 0 0; }
+  .col:hover, .col:focus-visible{ background:var(--surface-canvas); }
+  .col span{ font-size:12px; font-weight:600; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  .col i{ display:block; width:min(24px, 70%); border-radius:4px 4px 0 0; background:var(--action-primary); }
+  .col:hover i{ background:var(--action-primary-hover); }
+  .cols-x{ display:grid; grid-template-columns:repeat(6, minmax(0,1fr)); gap:8px; margin-top:6px; }
+  .cols-x span{ text-align:center; font-size:12px; color:var(--text-tertiary); }
+  .tip{ position:fixed; z-index:70; max-width:260px; padding:8px 10px; border-radius:var(--radius-lg); background:#171717; color:#fff; font-size:12.5px; line-height:1.45; pointer-events:none; box-shadow:0 8px 24px rgba(23,23,23,.2); }
+  .tip b{ display:block; font-size:13.5px; }
+  .tip span{ color:#d4d4d4; }
+  .ring{ flex-shrink:0; position:relative; width:64px; height:64px; }
+  .ring svg{ width:64px; height:64px; transform:rotate(-90deg); }
+  .ring b{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:14px; font-weight:700; }
+  .cw-top{ display:flex; gap:16px; align-items:flex-start; }
+  .cw-top > div{ flex:1; min-width:0; }
+
+
+  /* First-time empty state (approved Empty state, page-level) */
+  .first{ max-width:640px; margin:clamp(24px, 8vh, 80px) auto 0; text-align:center; padding:0 8px; }
+  .first h2{ margin:0 0 8px; font-size:22px; font-weight:700; letter-spacing:-.3px; }
+  .first p{ margin:0 auto; max-width:480px; font-size:15px; color:var(--text-secondary); line-height:1.55; }
+  .first .acts{ display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:22px; }
+  .first ol{ list-style:none; counter-reset:s; margin:32px 0 0; padding:0; display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:10px; text-align:left; }
+  .first li{ counter-increment:s; padding:12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:13px; color:var(--text-secondary); line-height:1.4; }
+  .first li::before{ content:counter(s); display:flex; align-items:center; justify-content:center; width:20px; height:20px; margin-bottom:8px; border-radius:50%; background:var(--surface-raised); color:var(--text-secondary); font-size:11.5px; font-weight:700; }
+  .first li b{ display:block; color:var(--text-primary); font-size:13.5px; margin-bottom:2px; }
+
+  /* Error */
+  .err{ padding:18px 20px; display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+  .err > svg{ width:20px; height:20px; color:var(--error); flex-shrink:0; }
+  .err div{ flex:1; min-width:200px; font-size:14px; color:var(--text-secondary); }
+  .err b{ display:block; color:var(--text-primary); font-size:15px; }
+
+  /* Skeleton (approved) */
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f3f3f3 25%, #e9e9e9 50%, #f3f3f3 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:10px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* Modal + Radio group icon card (library) — same create flow as My Courses */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:560px; max-width:100%; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal-h p{ margin:4px 0 0; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+  .choices{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .choice{ display:flex; flex-direction:column; align-items:flex-start; gap:10px; padding:18px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; }
+  .choice .ico{ width:40px; height:40px; border-radius:var(--radius-lg); background:var(--action-primary-subtle); color:var(--action-primary); display:flex; align-items:center; justify-content:center; }
+  .choice .ico svg{ width:20px; height:20px; }
+  .choice b{ font-size:15px; }
+  .choice p{ margin:0; font-size:13.5px; line-height:1.5; color:var(--text-secondary); flex:1; }
+  .field label{ display:block; font-size:13px; font-weight:600; color:var(--text-strong); margin-bottom:6px; }
+  .input{ width:100%; height:42px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; outline:none; }
+  .input.invalid{ border-color:var(--error); }
+  .hint{ font-size:12.5px; color:var(--text-tertiary); margin-top:6px; }
+  .hint:empty{ display:none; }
+  .hint.error{ color:var(--error); font-weight:600; }
+  .hint.warn{ color:var(--warning-text); }
+  .back-link{ display:inline-flex; align-items:center; gap:6px; border:0; background:none; padding:0; margin-bottom:12px; font-size:13.5px; font-weight:600; color:var(--text-secondary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  /* Responsive — 1440/1366/1280/MacBook Air keep two columns; creator column folds first */
+  @media (max-width:1399px){ th.c-own, td.c-own{ display:none; } .fold.f-own{ display:inline; } }
+  @media (max-width:1180px){ th.c-pr, td.c-pr{ display:none; } }
+  @media (max-width:1099px){ .top, .bottom{ grid-template-columns:1fr; } }
+  @media (max-width:760px){
+    thead{ display:none; }
+    table, tbody{ display:block; }
+    tbody tr{ display:grid; grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; padding:14px 16px; }
+    td{ padding:0 !important; }
+    td.c-title{ grid-column:1; } td.c-act{ grid-column:2; grid-row:1 / span 2; align-self:center; }
+    td.c-st{ grid-column:1; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+    td.c-up{ display:none; } .fold.f-up{ display:inline; font-size:12.5px; color:var(--text-tertiary); }
+    .search{ flex:1 1 100%; }
+    .choices{ grid-template-columns:1fr; }
+    .first ol{ grid-template-columns:1fr 1fr; }
+    .cw{ padding:18px; }
+    .head-acts{ width:100%; }
+    .head-acts .btn{ flex:1; }
+    .btn, .tab{ min-height:40px; }
+  }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 48px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=dashboard" title="Course Designer navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Dashboard" title="Top bar"></iframe>
+  <main class="main"><div class="main-inner">
+    <header class="page-h">
+      <div>
+        <h1 id="greet">Welcome back</h1>
+        <p id="context">Continue building your courses.</p>
+      </div>
+      <div class="head-acts">
+        <a class="btn btn-secondary" href="ai-course-generate.html" id="aiBtn"></a>
+        <button class="btn btn-primary" type="button" id="createBtn"></button>
+      </div>
+    </header>
+    <div id="app" aria-live="polite"></div>
+  </div></main>
+</div>
+
+<!-- Create Course — same flow as my-courses.html (CRS-001) -->
+<div class="overlay" id="createModal" role="dialog" aria-modal="true" aria-labelledby="createTitle">
+  <div class="modal">
+    <div id="stepChoice">
+      <div class="modal-h">
+        <div><h3 id="createTitle">Create a course</h3><p>Choose how you'd like to start. Either way, you'll edit everything in the Course Builder.</p></div>
+        <button class="ib" type="button" data-close aria-label="Close" id="closeIc"></button>
+      </div>
+      <div class="choices">
+        <div class="choice">
+          <span class="ico" id="icoManual"></span>
+          <b>Start from scratch</b>
+          <p>Build the course yourself and add modules, lessons, content, and assessments.</p>
+          <button class="btn btn-secondary" type="button" id="goManual">Start Manually</button>
+        </div>
+        <div class="choice">
+          <span class="ico" id="icoAi"></span>
+          <b>Create with AI</b>
+          <p>Upload documents or describe the course. AI drafts it; you review and edit before anything is submitted.</p>
+          <a class="btn btn-secondary" href="ai-course-generate.html">Generate with AI</a>
+        </div>
+      </div>
+    </div>
+    <form id="stepManual" hidden novalidate>
+      <button class="back-link" type="button" id="backToChoice"></button>
+      <div class="modal-h"><div><h3>Start from scratch</h3><p>Give your course a title. You can change it later.</p></div></div>
+      <div class="field"><label for="newTitle">Course title</label><input class="input" id="newTitle" maxlength="120" autocomplete="off" placeholder="e.g. Advanced Product Design"><p class="hint" id="titleHint"></p></div>
+      <div class="modal-foot"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="submit" id="createSubmit">Create course</button></div>
+    </form>
+  </div>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+<label class="preview">Preview
+  <select id="ps" aria-label="Preview state">
+    <option value="normal">Normal</option>
+    <option value="loading">Slow load</option>
+    <option value="error">Load fails</option>
+    <option value="empty">First-time creator</option>
+    <option value="caught-up">All caught up</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){ if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed'); });
+
+  /* ---------------- Store (shared with My Courses / Course Builder / AI page) ---------------- */
+  var KEY = 'upspace.cd.courses.v1', ME = 'Maya Reed';
+  var H = 3600e3, D = 24 * H;
+  function ago(ms){ return new Date(Date.now() - ms).toISOString(); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function L(title, html, ai){ return { id:uid('l'), title:title, content:html || '', ai:!!ai, edited:false }; }
+  function M(title, lessons){ return { id:uid('m'), title:title, lessons:lessons }; }
+  function P(t){ return '<p>' + t + '</p>'; }
+  function SEED(){ // copy of my-courses.html SEED — first run only
+    return [
+      { id:'c-sales', title:'Sales Fundamentals', category:'Sales', description:'Core selling skills for new account executives.', status:'draft', rel:'assigned', owner:'Daniel Kim', updated:ago(2 * H), created:ago(3 * D), modules:[] },
+      { id:'c-onboard', title:'Customer Onboarding Playbook', category:'Customer Success', description:'Run a smooth first 90 days for new customers.', status:'draft', rel:'owned', owner:ME, updated:ago(26 * H), created:ago(9 * D), modules:[
+        M('Kickoff', [ L('Why onboarding matters', P('Customers decide in their first weeks whether a product is worth the effort. A structured onboarding reduces early churn.'), true), L('Running the kickoff call', P('Set goals, confirm stakeholders and agree on a success plan before the call ends.'), true) ]),
+        M('First 30 days', [ L('Building the success plan', P('Translate the customer’s goals into three measurable milestones.')), L('Weekly check-ins', '') ]),
+        M('Handover', [ L('Handing over to account management', '') ]) ] },
+      { id:'c-privacy', title:'Data Privacy Essentials', category:'Compliance', description:'GDPR basics every employee needs to know.', status:'review', rel:'owned', owner:ME, approval:{ step:2, of:3, approver:'Priya Shah' }, updated:ago(3 * D), created:ago(20 * D), modules:[ M('Foundations', [ L('What counts as personal data', P('Any information that identifies a person directly or indirectly.')) ]) ] },
+      { id:'c-lead', title:'Leadership Communication', category:'Leadership', description:'Give feedback and run 1:1s that build trust.', status:'changes', rel:'owned', owner:ME, feedback:'Module 2 needs a practical example.', updated:ago(5 * D), created:ago(30 * D), modules:[ M('Feedback', [ L('The SBI model', P('Situation, Behavior, Impact: a simple structure for specific feedback.')) ]) ] },
+      { id:'c-atlas', title:'Product Knowledge: Atlas Platform', category:'Product', description:'Everything customer-facing teams need to know about Atlas.', status:'published', rel:'owned', owner:ME, updated:ago(14 * D), created:ago(60 * D), modules:[ M('Overview', [ L('What Atlas does', P('Atlas centralises reporting for operations teams.')) ]) ] },
+      { id:'c-safety', title:'Workplace Safety Refresher', category:'Safety', description:'Annual refresher on hazards, reporting and first aid.', status:'published', rel:'assigned', owner:'Daniel Kim', updated:ago(32 * D), created:ago(90 * D), modules:[ M('Hazards', [ L('Spotting hazards', P('Walk the space with fresh eyes once a month.')) ]) ] },
+      { id:'c-negotiate', title:'Negotiation Skills', category:'Sales', description:'Prepare, anchor and close with confidence.', status:'approved', rel:'delegated-to', owner:'Aisha Rahman', permission:'Edit + Submit', updated:ago(6 * D), created:ago(40 * D), modules:[ M('Preparation', [ L('Know your BATNA', P('Your best alternative sets your walk-away point.')) ]) ] },
+      { id:'c-finance', title:'Intro to Financial Planning', category:'Finance', description:'Budgets, forecasts and reading a P&L.', status:'draft', rel:'delegated-by', owner:ME, delegate:'Tom Becker', permission:'Edit', delegateActive:ago(20 * H), updated:ago(4 * D), created:ago(15 * D), modules:[ M('Budgets', [ L('Building a simple budget', '') ]) ] },
+      { id:'c-managers', title:'Onboarding for New Managers', category:'Management', description:'The first 100 days as a people manager.', status:'review', rel:'assigned', owner:'Daniel Kim', approval:{ step:1, of:2, approver:'Maria Lopez' }, updated:ago(2 * D), created:ago(25 * D), modules:[ M('Getting started', [ L('Your first week', P('Meet every direct report one-on-one.')) ]) ] },
+      { id:'c-excel', title:'Legacy Excel Training', category:'Productivity', description:'Replaced by the Sheets course in 2026.', status:'archived', rel:'owned', owner:ME, updated:ago(240 * D), created:ago(400 * D), modules:[] }
+    ];
+  }
+  var MEM = null;
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(s)) return s; } catch (e) {}
+    if (MEM) return MEM;
+    var seed = SEED(); save(seed); return seed;
+  }
+  function save(list){ MEM = list; try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+
+  /* ---------------- Helpers ---------------- */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function rel(iso){
+    var s = (Date.now() - new Date(iso).getTime()) / 1000;
+    if (s < 60) return 'just now';
+    if (s < 3600) return Math.floor(s / 60) + ' min ago';
+    if (s < 86400){ var h = Math.floor(s / 3600); return h + (h === 1 ? ' hour ago' : ' hours ago'); }
+    var d = Math.floor(s / 86400);
+    if (d === 1) return 'yesterday';
+    if (d < 30) return d + ' days ago';
+    return 'on ' + new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:d > 330 ? 'numeric' : undefined });
+  }
+  function cap(s){ return s.charAt(0).toUpperCase() + s.slice(1); }
+  function contentLine(p){ return !p.filled ? 'No lesson content yet' : p.filled === p.total ? 'All ' + plural(p.total, 'lesson') + ' have content' : p.filled + ' of ' + p.total + ' lessons have content'; }
+  function plural(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  var STATUS = { // same labels/colors as my-courses.html
+    draft:{ label:'Draft', cls:'gray' }, changes:{ label:'Changes requested', cls:'warning' }, review:{ label:'In review', cls:'brand' },
+    approved:{ label:'Approved', cls:'blue' }, published:{ label:'Published', cls:'success' }, archived:{ label:'Archived', cls:'gray' }
+  };
+  function badge(c, sm){ var s = STATUS[c.status]; return '<span class="badge ' + s.cls + (sm ? ' sm' : '') + '"><i></i>' + s.label + '</span>'; }
+  // A lesson has content if any block does (builder v2); legacy lessons fall back to lesson.content — same rule as my-courses.html
+  function blockFilled(b){ if (b.type === 'divider') return false; var d = b.data || {}; return b.type === 'text' || b.type === 'callout' || b.type === 'quote' ? !!String(d.html || '').replace(/<[^>]+>/g, '').trim() : b.type === 'heading' ? !!String(d.text || '').trim() : b.type === 'code' ? !!String(d.code || '').trim() : b.type === 'embed' ? !!d.src : b.type === 'assessment' ? !!d.assessmentId : !!(d.assetId || d.url); }
+  function lessonFilled(l){ return l.blocks ? l.blocks.some(blockFilled) : !!String(l.content || '').replace(/<[^>]+>/g, '').trim(); }
+  function progress(c){
+    var total = 0, filled = 0, next = null;
+    (c.modules || []).forEach(function(m, mi){ m.lessons.forEach(function(l){ total++; if (lessonFilled(l)) filled++; else if (!next) next = { moduleNo:mi + 1, lesson:l.title || 'Untitled lesson', id:l.id }; }); });
+    return { total:total, filled:filled, modules:(c.modules || []).length, next:next };
+  }
+  // Editable only in Draft / Changes requested with edit rights — In Review is read-only (CRS-012-FR-05)
+  function canEdit(c){ return (c.status === 'draft' || c.status === 'changes') && c.permission !== 'View Only'; }
+  function builderURL(c, lessonId){ return 'course-builder.html?id=' + encodeURIComponent(c.id) + (lessonId ? '&lesson=' + encodeURIComponent(lessonId) : ''); }
+  function changesURL(c){ return builderURL(c) + '&changes=1'; }
+  function previewURL(c){ return 'course-preview.html?id=' + encodeURIComponent(c.id); }
+  function whose(c){ return c.rel === 'assigned' ? 'Assigned to you by ' + c.owner : c.rel === 'delegated-to' ? 'Delegated to you by ' + c.owner : c.rel === 'delegated-by' ? 'Delegated to ' + c.delegate : 'Owned by you'; }
+
+  var sv = function(p){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  var I = {
+    plus:sv('<path d="M12 5v14M5 12h14"/>'), spark:sv('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>'),
+    pen:sv('<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>'),
+    x:sv('<path d="M18 6 6 18M6 6l12 12"/>'), search:sv('<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>'), right:sv('<path d="M5 12h14M13 6l6 6-6 6"/>'), left:sv('<path d="m15 18-6-6 6-6"/>'),
+    alert:sv('<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'), check:sv('<circle cx="12" cy="12" r="10"/><path d="m9 12 2 2 4-4"/>'),
+    lock:sv('<rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>'), next:sv('<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>'), eye:sv('<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>'),
+    clock:sv('<circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/>')
+  };
+  $('aiBtn').innerHTML = I.spark + 'Create with AI';
+  $('createBtn').innerHTML = I.plus + 'Create Course';
+  $('closeIc').innerHTML = I.x; $('icoManual').innerHTML = I.pen; $('icoAi').innerHTML = I.spark; $('backToChoice').innerHTML = I.left + 'Back';
+  (function(){ var h = new Date().getHours(); $('greet').textContent = 'Good ' + (h < 12 ? 'morning' : h < 18 ? 'afternoon' : 'evening') + ', ' + ME.split(' ')[0]; })();
+
+  /* ---------------- Data (fetch stand-in) ---------------- */
+  var params = new URLSearchParams(location.search), ps = $('ps');
+  if (params.get('state') && ps.querySelector('option[value="' + params.get('state') + '"]')) ps.value = params.get('state');
+  function fetchCourses(){
+    // ponytail: localStorage stands in for the courses API (CRS-002, relationship-scoped server-side)
+    return new Promise(function(res, rej){ setTimeout(function(){
+      if (ps.value === 'error') return rej();
+      var list = load().filter(function(c){ return c.status !== 'archived'; }); // archived hidden, as in My Courses
+      if (ps.value === 'empty') list = [];
+      if (ps.value === 'caught-up') list = list.filter(function(c){ return !canEdit(c); });
+      res(list);
+    }, ps.value === 'loading' ? 2200 : 450); });
+  }
+
+  /* ---------------- Render ---------------- */
+  var courses = [], ui = { tab:'all', q:'' };
+  function line(w, h){ return '<span class="sk" style="width:' + w + '%' + (h ? ';height:' + h + 'px' : '') + '"></span>'; }
+  function skRows(n){ var s = ''; for (var i = 0; i < n; i++) s += '<li class="row"><div class="txt">' + line(64 - i * 8) + line(40, 9) + '</div></li>'; return '<ul class="rows panel" aria-hidden="true">' + s + '</ul>'; }
+  function skeleton(){
+    $('app').innerHTML = '<div aria-busy="true"><div class="top"><div class="side"><section><div class="sec-h"><h2>Continue working</h2></div><div class="panel cw">' + line(22, 20) + line(55, 22) + line(80) + '<div style="margin-top:22px">' + line(100, 6) + '</div><div style="margin-top:22px">' + line(30, 34) + '</div></div></section>' +
+      '<section><div class="sec-h"><h2>Awaiting approval</h2></div>' + skRows(2) + '</section></div><div class="side"><section><div class="sec-h"><h2>Needs your attention</h2></div>' + skRows(3) + '</section><section><div class="sec-h"><h2>Recently published</h2></div>' + skRows(2) + '</section></div></div>' +
+      '<section><div class="sec-h"><h2>My courses</h2></div><div class="panel" style="padding:18px 20px">' + line(100) + line(100) + line(100) + line(100) + '</div></section></div>';
+  }
+  function refresh(){
+    skeleton(); $('context').textContent = 'Continue building your courses.';
+    fetchCourses().then(function(list){ courses = list; render(); }).catch(function(){
+      $('app').innerHTML = '<div class="panel err" role="alert">' + I.alert + '<div><b>Couldn\'t load your courses.</b>Check your connection and try again.</div><button class="btn btn-secondary btn-sm" type="button" id="retry">Try Again</button></div>';
+      $('retry').onclick = function(){ if (ps.value === 'error') ps.value = 'normal'; refresh(); };
+    });
+  }
+  function byUpdated(a, b){ return b.updated.localeCompare(a.updated); }
+
+  function render(){
+    if (!courses.length) return renderFirstTime();
+    var editable = courses.filter(canEdit).sort(byUpdated);
+    var changes = editable.filter(function(c){ return c.status === 'changes'; });
+    var featured = editable[0] || null; // the course I touched most recently and can still edit
+    var attention = editable.filter(function(c){ return c !== featured; }).sort(function(a, b){ return (b.status === 'changes') - (a.status === 'changes') || byUpdated(a, b); });
+    var awaiting = courses.filter(function(c){ return c.status === 'review' || c.status === 'approved'; }).sort(function(a, b){ return (a.status === 'review' ? 0 : 1) - (b.status === 'review' ? 0 : 1) || byUpdated(a, b); });
+    var published = courses.filter(function(c){ return c.status === 'published'; }).sort(byUpdated);
+
+    $('context').innerHTML = changes.length ? '<b>' + plural(changes.length, 'course') + '</b> ' + (changes.length === 1 ? 'has' : 'have') + ' changes requested by a reviewer.' : editable.length ? 'Continue building your courses.' : 'You\'re all caught up. Start something new when you\'re ready.';
+
+    var sec = function(id, title, n, link, body){ return '<section id="s' + id.slice(1) + '" aria-labelledby="' + id + '"><div class="sec-h"><h2 id="' + id + '">' + title + (n ? '<span class="n">' + n + '</span>' : '') + '</h2>' + (link || '') + '</div>' + body + '</section>'; };
+    $('app').innerHTML =
+      '<div class="top"><div class="side">' +
+        sec('h-cw', 'Continue working', 0, '', continueHTML(featured)) +
+        sec('h-apr', 'Awaiting approval', awaiting.length, awaiting.length ? '<a class="link" href="my-courses.html?tab=review">View in My Courses' + I.right + '</a>' : '', approvalHTML(awaiting)) +
+      '</div><div class="side">' +
+        sec('h-att', 'Needs your attention', attention.length, '', attentionHTML(attention)) +
+        sec('h-ins', 'Course insights', 0, '', '<div class="ins">' + pipelineHTML() + trendHTML() + '</div>') +
+        sec('h-pub', 'Recently published', 0, '', publishedHTML(published)) +
+      '</div></div>' +
+      sec('h-mc', 'My courses', 0, '<a class="link" href="my-courses.html">View all' + I.right + '</a>', '<div id="mc"></div>');
+    drawCourses(); layout();
+  }
+
+  /* Adaptive columns: Continue working (left) and Needs your attention (right) are anchored;
+     the secondary sections go, in priority order, to whichever column is shorter so neither
+     side leaves a large empty area. One column (<1100px): everything stacks in priority order. */
+  var FLOW = ['s-cw', 's-att', 's-apr', 's-ins', 's-pub'];
+  function layout(){
+    var top = document.querySelector('#app .top'); if (!top || !$('s-cw')) return;
+    var cols = top.children, a = cols[0], b = cols[1], nodes = FLOW.map($);
+    var two = getComputedStyle(top).gridTemplateColumns.trim().split(/\s+/).length > 1;
+    var tmp = document.createDocumentFragment(); nodes.forEach(function(n){ tmp.appendChild(n); });
+    if (!two){ nodes.forEach(function(n){ a.appendChild(n); }); return; }
+    // movable sections → try every left/right split (2^3 = 8) (priority order kept inside each column), keep the most even
+    var flex = nodes.slice(2), best = null;
+    for (var m = 0; m < 1 << flex.length; m++){
+      a.appendChild(nodes[0]); b.appendChild(nodes[1]);
+      flex.forEach(function(n, i){ (m >> i & 1 ? b : a).appendChild(n); });
+      var d = Math.abs(a.offsetHeight - b.offsetHeight);
+      if (!best || d < best.d) best = { d:d, m:m };
+    }
+    a.appendChild(nodes[0]); b.appendChild(nodes[1]);
+    flex.forEach(function(n, i){ (best.m >> i & 1 ? b : a).appendChild(n); });
+  }
+  var layoutRaf; window.addEventListener('resize', function(){ cancelAnimationFrame(layoutRaf); layoutRaf = requestAnimationFrame(layout); });
+
+  function continueHTML(c){
+    if (!c) return '<div class="panel cw"><div class="mini-empty" style="padding:0">' + I.check + '<span>You\'re all caught up — no drafts to continue.</span></div><div class="cw-acts"><button class="btn btn-primary" type="button" data-create>' + I.plus + 'Create Course</button><a class="btn btn-secondary" href="ai-course-generate.html">' + I.spark + 'Create with AI</a></div></div>';
+    var p = progress(c), pct = p.total ? Math.round(p.filled / p.total * 100) : 0;
+    var h = '<div class="panel cw"><div class="cw-meta">' + badge(c) + '<span>' + esc(c.category || 'Uncategorized') + '</span><span aria-hidden="true">·</span><span>' + esc(whose(c)) + '</span></div>' +
+      '<div class="cw-top"><div><h3>' + esc(c.title || 'Untitled course') + '</h3>' + (c.description ? '<p class="cw-desc">' + esc(c.description) + '</p>' : '') + '</div>' + (p.total ? ringHTML(pct) : '') + '</div>';
+    if (c.status === 'changes') h += '<div class="alert warning" role="note">' + I.alert + '<div><b>Changes requested</b><span class="fb">' + (c.feedback ? '“' + esc(c.feedback) + '”' : 'A reviewer returned this course for changes.') + '</span><small>' + (c.feedbackBy ? 'From ' + esc(c.feedbackBy) + ' · ' : '') + 'Address the feedback, then submit again.</small></div></div>';
+    if (p.total) h += '<div class="cw-prog"><div class="cw-prog-top"><span><b>' + contentLine(p) + '</b></span><span>' + plural(p.modules, 'module') + '</span></div><div class="bar' + (pct === 100 ? ' done' : '') + '" role="progressbar" aria-valuenow="' + pct + '" aria-valuemin="0" aria-valuemax="100" aria-label="Lessons with content"><i style="width:' + pct + '%"></i></div></div>' +
+      (p.next ? '<div class="cw-next">' + I.next + '<div>Next up: Module ' + p.next.moduleNo + ' · ' + esc(p.next.lesson) + ' <span>— no content yet</span></div></div>' : '<div class="cw-next">' + I.check + '<div>Every lesson has content. Review it, then submit for approval from the Course Builder.</div></div>');
+    else h += '<div class="cw-next">' + I.next + '<div>No lessons yet. Add the first module and lesson in the Course Builder.</div></div>';
+    h += '<div class="cw-next" style="margin-top:8px">' + I.clock + '<div style="color:var(--text-secondary)">Last edited ' + rel(c.updated) + '</div></div>';
+    h += '<div class="cw-acts">' + (c.status === 'changes' ? '<a class="btn btn-primary" href="' + changesURL(c) + '">Review Changes</a><a class="btn btn-secondary" href="' + builderURL(c, p.next && p.next.id) + '">' + I.pen + 'Continue Editing</a>' : '<a class="btn btn-primary" href="' + builderURL(c, p.next && p.next.id) + '">' + I.pen + 'Continue Editing</a>') +
+      (p.filled ? '<a class="btn btn-ghost" href="' + previewURL(c) + '" target="_blank" rel="noopener">' + I.eye + 'Preview</a>' : '') + '</div></div>';
+    return h;
+  }
+  function attentionHTML(list){
+    if (!list.length) return '<div class="panel mini-empty">' + I.check + '<span>No courses need your attention.</span></div>';
+    return '<div class="panel"><ul class="rows">' + list.slice(0, 4).map(function(c){
+      var p = progress(c), why, act, dot = 'gray';
+      if (c.status === 'changes'){ dot = 'warning'; why = c.feedback ? 'Reviewer: ' + c.feedback : 'Returned by a reviewer'; act = '<a class="btn btn-secondary btn-sm" href="' + changesURL(c) + '">Review</a>'; }
+      else if (p.total && p.filled === p.total){ why = 'All lessons have content — ready to submit'; act = '<a class="btn btn-secondary btn-sm" href="' + builderURL(c) + '">Open</a>'; }
+      else { why = p.total ? contentLine(p) : 'No lessons yet'; act = '<a class="btn btn-secondary btn-sm" href="' + builderURL(c, p.next && p.next.id) + '">Continue</a>'; }
+      return '<li class="row"><span class="dot ' + dot + '" aria-hidden="true"></span><div class="txt"><b title="' + esc(c.title) + '">' + esc(c.title) + '</b><span title="' + esc(why) + '">' + esc(why) + '</span><small>' + (c.status === 'changes' ? 'Changes requested · ' : 'Draft · ') + 'updated ' + rel(c.updated) + '</small></div>' + act + '</li>';
+    }).join('') + '</ul>' + (list.length > 4 ? '<div class="more-row" style="border-top:1px solid var(--border-subtle)"><a class="link" href="my-courses.html?tab=drafts">' + (list.length - 4) + ' more in My Courses' + I.right + '</a></div>' : '') + '</div>';
+  }
+  function approvalHTML(list){
+    if (!list.length) return '<div class="panel mini-empty">' + I.check + '<span>No courses are currently waiting for approval.</span></div>';
+    return '<ul class="rows panel">' + list.slice(0, 3).map(function(c){
+      var line = c.status === 'review' ? (c.approval ? 'Step ' + c.approval.step + ' of ' + c.approval.of + ' · with ' + c.approval.approver : 'Awaiting approval') : 'Approved · awaiting publishing';
+      return '<li class="row"><span class="dot ' + STATUS[c.status].cls + '" aria-hidden="true"></span><div class="txt"><b title="' + esc(c.title) + '">' + esc(c.title) + '</b><span>' + esc(line) + '</span><small>' + (c.status === 'review' ? I.lock + 'Read-only while in review · ' : '') + 'updated ' + rel(c.updated) + '</small></div><a class="btn btn-ghost btn-sm" href="' + previewURL(c) + '" target="_blank" rel="noopener" aria-label="Preview ' + esc(c.title) + '">' + I.eye + 'Preview</a></li>';
+    }).join('') + '</ul>';
+  }
+  function publishedHTML(list){
+    if (!list.length) return '<div class="panel mini-empty">Nothing published yet. Published courses will show here.</div>';
+    return '<ul class="rows panel">' + list.slice(0, 3).map(function(c){
+      return '<li class="row"><span class="dot success" aria-hidden="true"></span><div class="txt"><b title="' + esc(c.title) + '">' + esc(c.title) + '</b><span>' + esc(c.category || 'Uncategorized') + ' · ' + esc(whose(c)) + '</span><small>Last updated ' + rel(c.updated) + '</small></div><a class="btn btn-ghost btn-sm" href="' + previewURL(c) + '" target="_blank" rel="noopener" aria-label="Preview ' + esc(c.title) + '">' + I.eye + 'Preview</a></li>';
+    }).join('') + '</ul>';
+  }
+
+  /* Progress circle (library) — share of lessons with content */
+  function ringHTML(pct){
+    var r = 27, C = 2 * Math.PI * r;
+    return '<div class="ring" role="img" aria-label="' + pct + '% of lessons have content"><svg viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="var(--action-primary-soft)" stroke-width="6"/><circle cx="32" cy="32" r="' + r + '" fill="none" stroke="' + (pct === 100 ? 'var(--success)' : 'var(--action-primary)') + '" stroke-width="6" stroke-linecap="round" stroke-dasharray="' + (C * pct / 100) + ' ' + C + '"/></svg><b>' + pct + '%</b></div>';
+  }
+  /* Course pipeline — courses per lifecycle stage (magnitude → one hue). Click filters My courses. */
+  var STAGES = ['draft', 'changes', 'review', 'approved', 'published'];
+  function inStage(k){ return courses.filter(function(c){ return c.status === k; }); }
+  function pipelineHTML(){
+    var max = Math.max.apply(null, STAGES.map(function(k){ return inStage(k).length; }).concat(1));
+    return '<div class="panel chart"><h3>Pipeline by stage</h3><p class="chart-sub"><b>' + plural(courses.length, 'course') + '</b> in progress or live. Select a stage to filter My courses.</p><div class="hb">' + STAGES.map(function(k){
+      var n = inStage(k).length, st = STATUS[k];
+      return '<button class="hb-row" type="button" data-stage="' + k + '" aria-pressed="' + (ui.tab === k) + '" aria-label="' + st.label + ': ' + plural(n, 'course') + '"><span class="hb-l"><i class="dot ' + st.cls + '"></i><span style="overflow:hidden;text-overflow:ellipsis">' + st.label + '</span></span><span class="hb-t"><span class="hb-b" style="width:' + (n / max * 100) + '%"></span></span><span class="hb-v">' + n + '</span></button>';
+    }).join('') + '</div></div>';
+  }
+  /* Courses started — per month, last 6 months, from each course's created date */
+  function months(){
+    var out = [], d = new Date();
+    for (var i = 5; i >= 0; i--){ var m = new Date(d.getFullYear(), d.getMonth() - i, 1); out.push({ start:m, end:new Date(m.getFullYear(), m.getMonth() + 1, 1), items:[] }); }
+    courses.forEach(function(c){ var t = new Date(c.created); out.forEach(function(m){ if (t >= m.start && t < m.end) m.items.push(c); }); });
+    return out;
+  }
+  function monthName(m, long){ return m.start.toLocaleDateString('en-US', long ? { month:'long', year:'numeric' } : { month:'short' }); }
+  function trendHTML(){
+    var ms = months(), max = Math.max.apply(null, ms.map(function(m){ return m.items.length; }).concat(1)), total = ms.reduce(function(a, m){ return a + m.items.length; }, 0);
+    return '<div class="panel chart"><h3>Courses started</h3><p class="chart-sub"><b>' + plural(total, 'course') + '</b> in the last 6 months, by created date.</p>' +
+      '<div class="cols">' + ms.map(function(m, i){ var n = m.items.length; return '<button class="col" type="button" data-month="' + i + '" aria-label="' + monthName(m, true) + ': ' + plural(n, 'course') + ' started">' + (n ? '<span>' + n + '</span>' : '') + '<i style="height:' + (n ? Math.max(4, n / max * 96) : 0) + 'px"></i></button>'; }).join('') + '</div>' +
+      '<div class="cols-x" aria-hidden="true">' + ms.map(function(m){ return '<span>' + monthName(m) + '</span>'; }).join('') + '</div></div>';
+  }
+  // Hover / focus tooltip for chart marks — values are labeled on the marks; the tooltip adds which courses
+  function showTip(el){
+    var tip = $('tip'), head, list;
+    if (el.dataset.stage){ list = inStage(el.dataset.stage); head = STATUS[el.dataset.stage].label; }
+    else { var m = months()[+el.dataset.month]; list = m.items; head = monthName(m, true); }
+    tip.textContent = '';
+    var b = document.createElement('b'); b.textContent = plural(list.length, 'course'); tip.appendChild(b);
+    var sp = document.createElement('span'); sp.textContent = head + (list.length ? ' · ' + list.slice(0, 4).map(function(c){ return c.title; }).join(', ') + (list.length > 4 ? ' +' + (list.length - 4) + ' more' : '') : ''); tip.appendChild(sp);
+    tip.hidden = false;
+    var r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    tip.style.left = Math.max(8, Math.min(innerWidth - tw - 8, r.left + r.width / 2 - tw / 2)) + 'px';
+    tip.style.top = (r.top - th - 8 < 8 ? r.bottom + 8 : r.top - th - 8) + 'px';
+  }
+  function hideTip(){ $('tip').hidden = true; }
+  document.addEventListener('pointerover', function(e){ var t = e.target.closest('[data-stage],[data-month]'); if (t) showTip(t); });
+  document.addEventListener('pointerout', function(e){ var t = e.target.closest('[data-stage],[data-month]'); if (t && !t.contains(e.relatedTarget)) hideTip(); });
+  document.addEventListener('focusin', function(e){ var t = e.target.closest('[data-stage],[data-month]'); if (t) showTip(t); else hideTip(); });
+  document.querySelector('.main').addEventListener('scroll', hideTip);
+
+  /* My courses summary (full library lives in my-courses.html) */
+  var TABS = [['all', 'All', function(){ return true; }], ['draft', 'Draft', function(c){ return c.status === 'draft'; }], ['review', 'In Review', function(c){ return c.status === 'review'; }], ['approved', 'Approved', function(c){ return c.status === 'approved'; }], ['changes', 'Changes Requested', function(c){ return c.status === 'changes'; }], ['published', 'Published', function(c){ return c.status === 'published'; }]];
+  function rowAction(c){
+    if (c.status === 'changes' && canEdit(c)) return '<a class="btn btn-secondary btn-sm" href="' + changesURL(c) + '">Review Changes</a>';
+    if (canEdit(c)) return '<a class="btn btn-secondary btn-sm" href="' + builderURL(c, (progress(c).next || {}).id) + '">Continue</a>';
+    return '<a class="btn btn-ghost btn-sm" href="' + previewURL(c) + '" target="_blank" rel="noopener" aria-label="Preview ' + esc(c.title) + '">' + I.eye + 'Preview</a>'; // In Review / Approved / Published / view-only: never offered as editable
+  }
+  function syncStages(){ document.querySelectorAll('[data-stage]').forEach(function(b){ b.setAttribute('aria-pressed', String(ui.tab === b.dataset.stage)); }); }
+  function drawCourses(){
+    var el = $('mc'); if (!el) return;
+    var q = ui.q.trim().toLowerCase(), tab = TABS.find(function(t){ return t[0] === ui.tab; });
+    var rows = courses.filter(tab[2]).filter(function(c){ return !q || c.title.toLowerCase().indexOf(q) > -1; }).sort(byUpdated);
+    var tabs = '<div class="tabs" role="tablist" aria-label="Filter courses by status">' + TABS.map(function(t){ return '<button class="tab" role="tab" type="button" data-tab="' + t[0] + '" aria-selected="' + (ui.tab === t[0]) + '">' + t[1] + '<span class="n">' + courses.filter(t[2]).length + '</span></button>'; }).join('') + '</div>';
+    var none = q ? 'No courses match “' + esc(ui.q) + '”.' : { approved:'No approved courses waiting to publish.', draft:'You\'re all caught up — no drafts.', review:'No courses are currently waiting for approval.', changes:'No courses need your attention.', published:'No published courses yet.' }[ui.tab] || 'No courses yet.';
+    var body = rows.length ? '<table><thead><tr><th>Course</th><th class="c-st">Status</th><th class="c-pr">Content</th><th class="c-own">Creator</th><th class="c-up">Last updated</th><th class="c-act"><span style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Action</span></th></tr></thead><tbody>' +
+      rows.slice(0, 6).map(function(c){
+        var p = progress(c), pct = p.total ? Math.round(p.filled / p.total * 100) : 0;
+        return '<tr><td class="c-title t-title"><b title="' + esc(c.title) + '">' + esc(c.title) + '</b><span>' + esc(c.category || 'Uncategorized') + '<span class="fold f-own"> · ' + esc(c.owner === ME ? 'You' : c.owner) + '</span></span></td>' +
+          '<td class="c-st">' + badge(c) + '<span class="fold f-up">' + cap(rel(c.updated)) + '</span></td>' +
+          '<td class="c-pr">' + (p.total ? '<div class="t-pr"><span>' + p.filled + ' / ' + plural(p.total, 'lesson') + '</span><div class="bar' + (pct === 100 ? ' done' : '') + '"><i style="width:' + pct + '%"></i></div></div>' : '<span class="t-muted">No lessons yet</span>') + '</td>' +
+          '<td class="c-own t-muted" title="' + esc(c.owner) + '">' + esc(c.owner === ME ? 'You' : c.owner) + '</td>' +
+          '<td class="c-up t-muted">' + cap(rel(c.updated)) + '</td>' +
+          '<td class="c-act t-act">' + rowAction(c) + '</td></tr>';
+      }).join('') + '</tbody></table><div class="mc-foot"><span>Showing ' + Math.min(6, rows.length) + ' of ' + plural(rows.length, 'course') + '</span><a class="link" href="my-courses.html">Open My Courses' + I.right + '</a></div>'
+      : '<div class="mini-empty">' + I.check + '<span>' + none + '</span></div>';
+    var keep = document.activeElement && document.activeElement.id === 'mcq', pos = keep ? document.activeElement.selectionStart : 0;
+    el.innerHTML = '<div class="mc-tools">' + tabs + '<label class="search">' + I.search + '<input type="search" id="mcq" placeholder="Search courses" aria-label="Search your courses" value="' + esc(ui.q) + '"></label></div><div class="panel">' + body + '</div>';
+    if (keep){ var i = $('mcq'); i.focus(); i.setSelectionRange(pos, pos); }
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target.closest('[data-tab]'); if (t){ ui.tab = t.dataset.tab; drawCourses(); syncStages(); document.querySelector('[data-tab="' + ui.tab + '"]').focus(); return; }
+    var sg = e.target.closest('[data-stage]'); if (sg){ ui.tab = ui.tab === sg.dataset.stage ? 'all' : sg.dataset.stage; drawCourses(); syncStages(); hideTip(); $('s-mc').scrollIntoView({ behavior:'smooth', block:'start' }); return; }
+    if (e.target.closest('[data-create]')) openCreate();
+  });
+  document.addEventListener('input', function(e){ if (e.target.id === 'mcq'){ ui.q = e.target.value; drawCourses(); } });
+
+  function renderFirstTime(){
+    $('context').textContent = 'Let\'s set up your first course.';
+    $('app').innerHTML = '<section class="first" aria-labelledby="h-first"><h2 id="h-first">Create your first course</h2><p>Build a course from scratch or use AI to generate a starting draft from your source material. You\'ll shape everything in the Course Builder.</p>' +
+      '<div class="acts"><button class="btn btn-primary" type="button" data-create>' + I.plus + 'Create Course</button><a class="btn btn-secondary" href="ai-course-generate.html">' + I.spark + 'Create with AI</a></div>' +
+      '<ol aria-label="How a course gets published"><li><b>Create</b>Start blank or from an AI draft.</li><li><b>Build</b>Add modules, lessons and assessments.</li><li><b>Submit</b>Send it for approval when it\'s ready.</li><li><b>Publish</b>Approved courses go live to learners.</li></ol></section>';
+  }
+
+  /* ---------------- Create Course (mirrors my-courses.html, CRS-001) ---------------- */
+  function openCreate(){
+    $('stepChoice').hidden = false; $('stepManual').hidden = true; $('newTitle').value = ''; $('newTitle').classList.remove('invalid'); $('titleHint').textContent = ''; $('titleHint').className = 'hint';
+    $('createModal').classList.add('open'); setTimeout(function(){ $('goManual').focus(); }, 30);
+  }
+  function closeModal(){ $('createModal').classList.remove('open'); }
+  $('createBtn').onclick = openCreate;
+  $('createModal').addEventListener('click', function(e){ if (e.target === $('createModal') || e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') closeModal(); });
+  $('goManual').onclick = function(){ $('stepChoice').hidden = true; $('stepManual').hidden = false; $('newTitle').focus(); };
+  $('backToChoice').onclick = function(){ $('stepManual').hidden = true; $('stepChoice').hidden = false; };
+  $('newTitle').addEventListener('input', function(e){
+    var v = e.target.value.trim().toLowerCase(), hint = $('titleHint'); e.target.classList.remove('invalid');
+    var dup = v && load().some(function(c){ return c.title.trim().toLowerCase() === v; });
+    hint.className = 'hint' + (dup ? ' warn' : ''); hint.textContent = dup ? 'A course with this title already exists. You can still create it.' : ''; // CRS-001-FR-07: warn, don't block
+  });
+  $('stepManual').addEventListener('submit', function(e){
+    e.preventDefault();
+    var title = $('newTitle').value.trim(), btn = $('createSubmit');
+    if (!title){ $('newTitle').classList.add('invalid'); $('titleHint').className = 'hint error'; $('titleHint').textContent = 'Enter a course title.'; $('newTitle').focus(); return; }
+    btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Creating…';
+    setTimeout(function(){ // ponytail: stands in for the create-course API call, as in my-courses.html
+      var list = load(), now = new Date().toISOString(), id = 'c-' + Date.now().toString(36);
+      list.unshift({ id:id, title:title, category:'Uncategorized', description:'', status:'draft', rel:'owned', owner:ME, updated:now, created:now, modules:[] });
+      save(list);
+      location.href = 'course-builder.html?id=' + id + '&new=1'; // CRS-001-FR-06: straight to the builder
+    }, 600);
+  });
+
+  ps.addEventListener('change', refresh);
+  refresh();
+</script>
+</body>
+</html>

@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Admin — Billing &amp; Subscription (BIL-001–004)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+
+<style>
+  :root {
+    --text-primary: #171717;
+    --text-secondary: #525252;
+    --text-tertiary: #a3a3a3;
+    --text-disabled: #d4d4d4;
+    --surface-canvas: #fafafa;
+    --surface-raised: #f5f5f5;
+    --surface-overlay: #e5e5e5;
+    --border-default: #e5e5e5;
+    --border-subtle: #f0f0f0;
+    --border-strong: #a3a3a3;
+    --icon-muted: #a3a3a3;
+    --icon-primary: #404040;
+    --action-primary: #4f46e5;
+    --action-primary-hover: #4338ca;
+    --link: #4f46e5;
+    --focus-ring: #6366f1;
+    --error: #dc2626;
+    --error-subtle: #fef2f2;
+    --error-border: #fecaca;
+    --warning: #ca8a04;
+    --warning-subtle: #fefce8;
+    --warning-border: #fef08a;
+    --success: #15803d;
+    --success-subtle: #f0fdf4;
+    --success-border: #bbf7d0;
+    --info: #2563eb;
+    --info-subtle: #eff6ff;
+    --info-border: #bfdbfe;
+    --brand-subtle: #eef2ff;
+    --brand-border: #c7d2fe;
+
+    --radius-sm: 4px;
+    --radius-md: 6px;
+    --radius-lg: 8px;
+    --radius-xl: 12px;
+    --radius-2xl: 16px;
+    --font: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+
+    /* legacy aliases kept so the rest of this file's rules don't need touching */
+    --bg-app: var(--surface-canvas);
+    --surface-card: #ffffff;
+    --text-strong:#404040;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: var(--font);
+    background-color: var(--bg-app);
+    color: var(--text-primary);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  a { color: inherit; text-decoration: none; }
+  button, input, select, textarea { font-family: var(--font); }
+
+  /* Shell Layout — matches api-webhooks.html / integrations-catalog.html 1:1 */
+  .shell { display: grid; grid-template-columns: 232px minmax(0, 1fr); grid-template-rows: 80px 1fr; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    grid-column: 1; grid-row: 1 / -1;
+    background: #ffffff; border-right: 1px solid var(--border-default);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  .sidebar-backdrop {
+    display: none; position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); z-index: 15;
+  }
+  .sidebar-logo {
+    height: 80px;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid var(--border-default);
+  }
+  .nav-scroll { padding: 14px 12px 6px; display: flex; flex-direction: column; flex: 1; gap: 2px; }
+  .nav-item {
+    position: relative; display: flex; align-items: center; gap: 12px; padding: 10px 12px;
+    border-radius: var(--radius-lg); color: var(--text-secondary);
+    transition: background-color .15s ease, color .15s ease;
+  }
+  .nav-item span { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .nav-item svg { width: 19px; height: 19px; flex-shrink: 0; }
+  .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
+  .nav-item.active { background: var(--info-subtle); color: var(--info); font-weight: 700; }
+  .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
+  .nav-item.danger:hover { background: var(--error-subtle); color: var(--error); }
+
+  /* Topbar */
+  .topbar {
+    grid-column: 2; grid-row: 1;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 0 32px 0 20px; background: #ffffff; border-bottom: 1px solid var(--border-default); z-index: 10;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; overflow: hidden; }
+  .breadcrumb a { color: var(--text-tertiary); font-weight: 600; }
+  .breadcrumb a:hover { color: var(--text-primary); }
+  .breadcrumb .breadcrumb-sep { color: var(--text-disabled); }
+  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .brand-link { display: flex; align-items: center; }
+  .brand-logo { height: 20px; width: auto; color: var(--text-primary); transition: opacity .15s ease; flex-shrink: 0; }
+  .brand-link:hover .brand-logo { opacity: .8; }
+  .topbar-actions { display: flex; align-items: center; gap: 6px; }
+  .icon-btn {
+    width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent;
+    color: var(--text-secondary); display: flex; align-items: center; justify-content: center;
+    cursor: pointer; flex-shrink: 0;
+  }
+  .icon-btn:hover { background: var(--surface-raised); }
+  .icon-btn svg { width: 18px; height: 18px; }
+  .search-input-wrap { position: relative; width: 240px; }
+  .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--icon-muted); pointer-events: none; }
+  .search-input-wrap input {
+    width: 100%; height: 36px; padding: 0 12px 0 34px; border-radius: var(--radius-lg);
+    border: 1px solid var(--border-default); background: var(--surface-raised); font-size: 13px; color: var(--text-primary); outline: none;
+  }
+  .search-input-wrap input::placeholder { color: var(--text-tertiary); }
+  .search-input-wrap input:focus { border-color: var(--focus-ring); }
+  .profile-menu { position: relative; flex-shrink: 0; margin-left: 6px; }
+  .avatar-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    overflow: hidden;
+    background: linear-gradient(135deg, #4f46e5, #0ea5e9);
+    color: #fff;
+    font-size: 13px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .profile-dropdown {
+    position: absolute; top: 44px; right: 0; width: 200px; background: #ffffff;
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+  }
+  .profile-dropdown.show { display: block; }
+  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .profile-dropdown a:hover { background: var(--surface-raised); }
+  .profile-dropdown hr { border: none; border-top: 1px solid var(--border-subtle); margin: 6px 2px; }
+  .profile-dropdown a.danger { color: var(--error); }
+
+  /* Main Content Area */
+  .main {
+    grid-column: 2;
+    grid-row: 2;
+    overflow-y: auto;
+    padding: 32px clamp(20px, 2.6vw, 48px) 64px;
+    background: var(--surface-canvas);
+  }
+
+  /* Page Header */
+  .page-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 24px;
+  }
+  .page-head h1 { margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; color:var(--text-primary); line-height:1.2; }
+  .page-head .sub { margin:0; font-size:14.5px; color:var(--text-secondary); }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px var(--font); white-space: nowrap; flex-shrink: 0; }
+  .pill.up { background: var(--success-subtle); color: var(--success); }
+  .pill.warn { background: var(--warning-subtle); color: var(--warning); }
+  .pill.danger { background: var(--error-subtle); color: var(--error); }
+  .pill.neutral { background: var(--surface-raised); color: var(--text-secondary); }
+  .pill.purple { background: var(--brand-subtle); color: var(--action-primary); }
+
+  /* Change Plan Drawer */
+  .drawer-backdrop {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45);
+    opacity: 0; pointer-events: none; transition: opacity 0.2s ease; z-index: 100;
+  }
+  .drawer-backdrop.show { opacity: 1; pointer-events: auto; }
+  .drawer-panel {
+    position: fixed; top: 0; right: 0; height: 100vh; width: min(760px, 92vw);
+    background: #ffffff; box-shadow: -24px 0 48px rgba(0,0,0,0.18);
+    transform: translateX(100%); transition: transform 0.25s ease;
+    display: flex; flex-direction: column;
+  }
+  .drawer-backdrop.show .drawer-panel { transform: translateX(0); }
+  .drawer-head { padding: 20px 28px; border-bottom: 1px solid var(--border-default); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .drawer-head h3 { margin: 0; font-size:  16px; font-weight: 700; color: var(--text-primary); }
+  .drawer-body { padding: 24px 28px; overflow-y: auto; flex: 1; }
+  .drawer-foot { padding: 16px 28px; border-top: 1px solid var(--border-default); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; }
+
+  .suggestion-banner {
+    display: flex; align-items: center; gap: 10px; padding: 12px 16px;
+    background: var(--brand-subtle); border: 1px solid var(--brand-border);
+    border-radius: var(--radius-lg); font-size: 13px; color: var(--text-primary); margin-bottom: 20px;
+  }
+  .suggestion-banner svg { width: 18px; height: 18px; color: var(--action-primary); flex-shrink: 0; }
+
+  /* Cards & Sections Layout */
+  .card-box {
+    background: #ffffff; border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 24px; margin-bottom: 24px;
+  }
+  .card-box-title { font-size: 17px; letter-spacing: -.2px; font-weight: 700; color: var(--text-primary); margin: 0; }
+
+  /* Billing hero — "what am I subscribed to" + "how much am I using", the page's focal point */
+  .billing-hero { background: #ffffff; border: 1px solid var(--border-default); border-radius: var(--radius-2xl); padding: 32px; margin-bottom: 20px; }
+  .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+  .hero-plan-name { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
+  .hero-plan-price { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
+  .hero-plan-renew { font-size: 13px; color: var(--text-tertiary); margin-top: 3px; }
+  .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .hero-divider { border-top: 1px solid var(--border-subtle); margin: 28px 0 22px; }
+  .usage-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
+  .usage-row span:first-child { font-size: 13px; font-weight: 700; color: var(--text-primary); }
+  .usage-count { font-size: 13px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .usage-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
+  .usage-foot > span:first-child { font-size: 13px; color: var(--text-tertiary); }
+
+  /* Contextual inline alerts — live inside the section they affect, not a generic top banner */
+  .inline-alert { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; padding: 9px 12px; border-radius: var(--radius-lg); margin-top: 12px; }
+  .inline-alert svg { width: 15px; height: 15px; flex-shrink: 0; }
+  .inline-alert.warn { background: var(--warning-subtle); color: #92400e; }
+  .inline-alert.danger { background: var(--error-subtle); color: #991b1b; }
+  .inline-alert.info { background: #f0f9ff; color: #075985; }
+  .inline-alert.neutral { background: var(--surface-raised); color: var(--text-primary); }
+  .link-btn { background: none; border: none; padding: 0; margin: 0; color: inherit; font: inherit; font-weight: 700; text-decoration: underline; cursor: pointer; }
+
+  /* Next invoice / Payment method — answers "what am I paying next" + "how will I pay" */
+  .billing-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+  .card { background: #ffffff; border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 22px 24px; margin-bottom: 20px; }
+  .panel-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); }
+  .panel-amount { font-size: 28px; font-weight: 700; letter-spacing: -.4px; color: var(--text-primary); margin-top: 10px; font-variant-numeric: tabular-nums; }
+  .panel-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .panel-foot { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
+
+  /* Billing details — quiet, de-emphasized; read-only reference info, not a control surface */
+  .billing-details { padding: 20px 4px; margin-bottom: 20px; }
+  .billing-details-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
+  .billing-details-title { font-size: 12px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .06em; }
+  .billing-details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+  .billing-details-label { display: block; font-size: 11.5px; color: var(--text-tertiary); margin-bottom: 3px; }
+  .billing-details-grid > div > div { font-size: 13px; color: var(--text-secondary); word-break: break-word; overflow-wrap: anywhere; }
+  .btn-link { background: none; border: none; padding: 0; color: var(--action-primary); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .btn-link:hover { text-decoration: underline; }
+
+  /* Subscription options ("···") menu — keeps Pause/Cancel out of the primary action row */
+  .options-menu { position: relative; flex-shrink: 0; }
+  .options-dropdown {
+    position: absolute; top: 44px; right: 0; min-width: 190px; background: #ffffff;
+    border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+  }
+  .options-dropdown.show { display: block; }
+  .options-dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 600; color: var(--text-primary); cursor: pointer; }
+  .options-dropdown button:hover { background: var(--surface-raised); }
+  .options-dropdown button.danger { color: var(--error); }
+
+  /* Progress Bar */
+  .progress-bg { height: 8px; border-radius: 999px; background: #e5e5e5; overflow: hidden; margin: 10px 0; }
+  .progress-fill { height: 100%; border-radius: 999px; background: var(--action-primary); transition: width 0.3s ease; }
+  .progress-fill.warn { background: var(--warning); }
+  .progress-fill.purple { background: var(--action-primary); }
+
+  /* Feature Checklist Grid */
+  .feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
+  .feature-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .feature-item svg { width: 16px; height: 16px; color: var(--success); flex-shrink: 0; }
+
+  /* Plan Comparison Matrix */
+  .plan-matrix { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 20px; }
+  .plan-card {
+    background: #ffffff; border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 22px;
+    display: flex; flex-direction: column; justify-content: space-between;
+    position: relative; transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+  .plan-card.current { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); background: var(--brand-subtle); }
+  .plan-card.enterprise { border-color: var(--brand-border); background: var(--surface-canvas); }
+  .plan-card.suggested { border-color: var(--action-primary); box-shadow: 0 0 0 1px var(--action-primary); }
+  .plan-matrix.drawer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-name { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px 0; }
+  .plan-price { font-size: 28px; font-weight: 700; letter-spacing: -.4px; color: var(--text-primary); margin: 12px 0 4px 0; font-variant-numeric: tabular-nums; }
+  .plan-price span { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
+  .plan-desc { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; }
+  
+  .plan-features { list-style: none; padding: 0; margin: 0 0 20px 0; display: flex; flex-direction: column; gap: 8px; }
+  .plan-features li { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .plan-features li svg { width: 14px; height: 14px; color: var(--success); flex-shrink: 0; }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    height: 40px;
+    padding: 0 16px;
+    border-radius: var(--radius-lg);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .btn-primary { background: var(--action-primary); color: #ffffff; }
+  .btn-primary:hover { background: var(--action-primary-hover); }
+  .btn-secondary { background:#ffffff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover { background: var(--surface-raised); }
+  .btn-danger { background:var(--error); color:#fff; border:1px solid transparent; }
+  .btn-danger:hover { background:#b91c1c; }
+  .btn-ghost { background: transparent; color: var(--text-secondary); border: none; }
+  .btn-ghost:hover { background:var(--surface-raised); color:var(--text-primary); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+
+  /* Toggle Switch */
+  .billing-toggle-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
+  .toggle-label { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); }
+  .toggle-label.active { color: var(--text-primary); }
+  .badge-discount { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--success-subtle); color: var(--success); font: 600 12px var(--font); white-space: nowrap; }
+
+  /* Interactive Seat Slider Box */
+  .seat-slider-box {
+    background: var(--surface-raised); border: 1px solid var(--border-default);
+    border-radius: var(--radius-xl); padding: 20px; margin-top: 24px;
+  }
+  .slider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .slider-val { font-size: 18px; font-weight: 700; color: var(--focus-ring); }
+  .range-input { width: 100%; height: 6px; border-radius: 3px; background: var(--border-default); outline: none; appearance: none; cursor: pointer; }
+  .range-input::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--focus-ring); cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
+
+  /* Invoice Table */
+  .card-box-header {
+    padding: 18px 20px; border-bottom: 1px solid var(--border-default);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+  }
+  .table-wrap { width: 100%; border-collapse: collapse; text-align: left; min-width: 640px; }
+  .table-wrap th { padding: 11px 20px; font: 600 12.5px var(--font); color: #525252; text-transform: none; letter-spacing: 0; border-bottom: 1px solid #e5e5e5; background: #f5f5f5; white-space: nowrap; }
+  .table-wrap td { padding: 16px 20px; font-size: 14px; color: var(--text-secondary); border-bottom: 1px solid #e5e5e5; white-space: nowrap; vertical-align: middle; font-variant-numeric: tabular-nums; }
+  .table-wrap th:nth-child(3), .table-wrap td:nth-child(3) { white-space: normal; min-width: 150px; }
+  .table-wrap tr:last-child td { border-bottom: none; }
+  .table-wrap tbody tr:hover td { background: #fafafa; }
+  /* C48 status dot label for invoice status column (keeps .pill.up/.danger classes) */
+  .table-wrap td .pill { height: auto; padding: 0; background: none; border: 0; gap: 7px; font: 500 13.5px var(--font); color: #404040; }
+  .table-wrap td .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #a3a3a3; flex-shrink: 0; }
+  .table-wrap td .pill.up::before { background: #15803d; }
+  .table-wrap td .pill.danger { color: #dc2626; }
+  .table-wrap td .pill.danger::before { background: #dc2626; }
+  /* C103 empty state */
+  .table-empty-row td { text-align: center; white-space: normal; padding: 56px 20px !important; }
+  .table-empty-row:hover td { background: none; }
+  .table-empty-row svg { display: block; box-sizing: content-box; width: 24px; height: 24px; padding: 12px; margin: 0 auto 12px; border-radius: 50%; background: #f5f5f5; color: #a3a3a3; }
+  .table-empty-title { font-size: 15px; font-weight: 600; color: #171717; }
+  .table-empty-row p { margin: 6px auto 0; max-width: 420px; font-size: 13.5px; color: #a3a3a3; }
+
+  /* Payment Card Summary */
+  .card-info { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .card-brand-icon {
+    width: 44px; height: 30px; border-radius: 4px; background: #0f172a; color: #fff;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;
+  }
+
+  /* Modals */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(15, 23, 42, 0.45); backdrop-filter: blur(2px);
+    display: none; align-items: center; justify-content: center; z-index: 100; padding: 16px;
+  }
+  .modal-card {
+    background: #ffffff; border-radius: var(--radius-2xl); width: 100%; max-width: 520px;
+    border: 1px solid var(--border-default); box-shadow: 0 20px 40px rgba(0,0,0,0.15); overflow: hidden;
+    max-height: calc(100vh - 32px); display: flex; flex-direction: column;
+  }
+  .modal-head { padding: 20px 24px 16px; border-bottom: 1px solid var(--border-default); display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
+  .modal-head h3 { margin: 0; font-size:  16px; font-weight:700; color: var(--text-primary); }
+  .modal-close { background: none; border: none; color: var(--icon-muted); cursor: pointer; padding: 4px; border-radius: var(--radius-sm); }
+  .modal-close:hover { color: var(--text-primary); }
+  .modal-body { padding: 20px 24px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; overflow-y: auto; flex: 1; }
+  .modal-foot { padding: 16px 24px; background: var(--bg-app); border-top: 1px solid var(--border-default); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
+
+  .radio-option {
+    display: flex; align-items: flex-start; gap: 10px;
+    padding: 10px 12px; border: 1px solid var(--border-default); border-radius: var(--radius-lg);
+    margin-bottom: 8px; cursor: pointer; transition: border-color 0.15s ease;
+  }
+  .radio-option:hover { border-color: var(--border-strong); background: var(--surface-raised); }
+  .radio-option input { margin-top: 3px; }
+  .radio-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .radio-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
+
+  .form-group { margin-bottom: 14px; }
+  .form-label { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: block; }
+  .form-control { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius-lg); border: 1px solid var(--border-default); font-size: 13px; outline: none; }
+  .form-control:focus { border-color: var(--focus-ring); }
+
+  /* Toasts */
+  .toast-stack { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 200; max-width: 340px; }
+  .toast {
+    background: var(--text-primary); color: #fff; padding: 12px 16px; border-radius: var(--radius-lg);
+    font-size: 13px; font-weight: 500; line-height: 1.4; box-shadow: 0 8px 24px rgba(23,23,23,.22);
+    opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease;
+  }
+  .toast.show { opacity: 1; transform: translateY(0); }
+  .toast.success { background: var(--success); }
+  .toast.error { background: var(--error); }
+
+  /* Responsive Breakpoints */
+  @media (max-width: 1100px) {
+    .plan-matrix { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  }
+
+  @media (max-width: 900px) {
+    .shell { grid-template-columns: minmax(0, 1fr); }
+    .topbar { grid-column: 1; padding: 0 20px; }
+    .main { grid-column:1; padding:20px 16px 36px; }
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      width: 260px;
+      z-index: 30;
+      transform: translateX(-100%);
+      transition: transform 0.25s ease;
+      box-shadow: 4px 0 24px rgba(0,0,0,0.12);
+    }
+    .sidebar.open { transform: translateX(0); }
+    .sidebar-backdrop.show { display: block; }
+    .billing-details-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+  }
+
+  @media (max-width: 768px) {
+    .main { padding: 16px 16px 36px; }
+    .topbar { padding: 0 16px; }
+    .search-input-wrap { width: 160px; }
+    .billing-grid-2 { grid-template-columns: 1fr; gap: 16px; }
+    .billing-hero { padding: 20px; }
+    .hero-top { gap: 16px; }
+    .card { padding: 20px; }
+    .feature-grid { grid-template-columns: 1fr; }
+    .plan-matrix.drawer-grid { grid-template-columns: 1fr; }
+    .drawer-panel { width: 100vw; max-width: 100%; }
+    .drawer-head, .drawer-body, .drawer-foot { padding: 18px 20px; }
+  }
+
+  @media (max-width: 600px) {
+    .hero-actions { width: 100%; margin-top: 4px; }
+    .hero-actions .btn { flex: 1 1 calc(50% - 4px); justify-content: center; }
+    .hero-actions .options-menu { margin-left: 0; }
+    .billing-details-grid { grid-template-columns: 1fr; }
+    .card-box-header { padding: 14px 16px; }
+    .card { padding: 18px 16px; }
+    .card-box-header .btn { width: 100%; justify-content: center; }
+    .drawer-head, .drawer-body, .drawer-foot { padding: 16px; }
+    .drawer-foot { flex-direction: column-reverse; gap: 8px; }
+    .drawer-foot .btn { width: 100%; justify-content: center; }
+    .modal-card { width: 100%; max-height: calc(100vh - 24px); }
+    .modal-head, .modal-body, .modal-foot { padding: 16px; }
+    .modal-foot { flex-direction: column-reverse; gap: 8px; }
+    .modal-foot .btn { width: 100%; justify-content: center; }
+  }
+
+  @media (max-width: 480px) {
+    .main { padding: 12px 12px 28px; }
+    .search-input-wrap { display: none; }
+    .breadcrumb a { display: none; }
+    .breadcrumb .breadcrumb-sep { display: none; }
+    .hero-plan-name { font-size: 20px; }
+    .billing-hero { padding: 16px; border-radius: var(--radius-xl); }
+    .hero-actions .btn { flex: 1 1 100%; }
+    .card { padding: 16px; }
+    .panel-amount { font-size: 22px; word-break: break-all; }
+    .panel-foot .btn { flex: 1 1 100%; justify-content: center; }
+    .toast-stack { left: 12px; right: 12px; bottom: 12px; max-width: none; }
+    .radio-option { padding: 8px 10px; }
+  }
+
+  /* Learner benchmark (LEARNER-UI-COMPONENT-REFERENCE.md C14 states, §28.1 focus) */
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  .btn:active:not(:disabled){ transform:scale(.98); }
+  .topbar .search-input-wrap input{ background:var(--surface-canvas); }
+  @media (max-width: 700px){ .topbar .search-input-wrap{ display:none; } }
+  .topbar, .topbar-left, .topbar .breadcrumb, .main{ min-width:0; }
+  @media (max-width: 640px){ .page-head-actions, .profile-actions, .header-actions, .panel-head-actions{ flex-wrap:wrap; max-width:100%; } .page-head-actions > .btn, .profile-actions > .btn, .header-actions > .btn{ flex:1 1 auto; } }
+  .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- Header: logo moved to sidebar for this test — other admin pages still show it here -->
+  <header class="topbar">
+    <div class="topbar-left">
+      <button class="icon-btn" type="button" aria-label="Toggle panel" title="Toggle panel" onclick="toggleSidebar()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg>
+      </button>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <a href="dashboard.html">Admin</a>
+        <span class="breadcrumb-sep">/</span>
+        <span class="breadcrumb-current">Billing &amp; Subscription</span>
+      </nav>
+    </div>
+
+    <div class="topbar-actions">
+      <div class="search-input-wrap">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+        <input type="text" placeholder="Search" aria-label="Search">
+      </div>
+      <button class="icon-btn" type="button" aria-label="Notifications" title="Notifications">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+      </button>
+      <div class="profile-menu">
+        <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleProfileDropdown()">AR</button>
+        <div class="profile-dropdown" id="profile-dropdown" role="menu">
+          <a href="#" role="menuitem">My Profile</a>
+          <a href="#" role="menuitem">Account Security</a>
+          <a href="#" role="menuitem">Preferences</a>
+          <hr>
+          <a href="../../Authentication/code/sign-in.html" role="menuitem" class="danger">Log Out</a>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Mobile-only backdrop behind the off-canvas sidebar -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop" onclick="toggleSidebar()"></div>
+
+  <!-- Sidebar: logo moved here for this test (see header comment above) -->
+  <nav class="sidebar">
+    <div class="sidebar-logo">
+      <a href="dashboard.html" class="brand-link" aria-label="UpSpace">
+        <svg class="brand-logo" width="140" height="20" viewBox="0 0 148 21" fill="none">
+          <g clip-path="url(#brandClip)">
+          <path d="M4.29108 16.0632C4.29108 16.5008 4.64765 16.8556 5.0875 16.8556H16.3679C16.8076 16.8556 17.1643 16.5008 17.1643 16.0632V0.792452C17.1643 0.354794 17.5208 0 17.9607 0H20.6588C21.0986 0 21.4552 0.354794 21.4552 0.792452V17.6449C21.4552 18.0826 21.0986 18.4374 20.6588 18.4374H18.0199C17.58 18.4374 17.2235 18.7923 17.2235 19.2298V20.1999C17.2235 20.6376 16.867 20.9924 16.4271 20.9924H5.02774C4.58789 20.9924 4.23133 20.6376 4.23133 20.1999V19.2298C4.23133 18.7923 3.87476 18.4374 3.43491 18.4374H0.796413C0.356566 18.4374 0 18.0826 0 17.6449V0.792452C0 0.354794 0.356566 0 0.796413 0H3.49467C3.93452 0 4.29108 0.354794 4.29108 0.792452V16.0632Z" fill="currentColor"/>
+          <path d="M26.6126 20.1964C26.6126 20.6341 26.2561 20.9889 25.8162 20.9889H23.2515C22.8116 20.9889 22.4551 20.6341 22.4551 20.1964V17.2752C22.4551 16.8375 22.8116 16.4827 23.2515 16.4827H25.8162C26.2561 16.4827 26.6126 16.8375 26.6126 17.2752V20.1964ZM38.9092 2.83681C38.9092 3.27447 39.2658 3.62926 39.7056 3.62926H42.2106C42.6505 3.62926 43.007 3.98404 43.007 4.42169L43.0072 7.34296C43.0072 7.78062 42.6505 8.13542 42.2108 8.13542H39.646C39.2062 8.13542 38.8496 7.78063 38.8496 7.34297V5.07899C38.8496 4.64133 38.493 4.28653 38.0532 4.28653H27.409C26.9691 4.28653 26.6126 4.64133 26.6126 5.07899V9.99622C26.6126 10.4339 26.9691 10.7887 27.409 10.7887H38.1128C38.5527 10.7887 38.9092 11.1435 38.9092 11.5811V13.622C38.9092 14.0597 39.2658 14.4144 39.7056 14.4144H42.2106C42.6505 14.4144 43.007 14.7692 43.007 15.2069L43.0072 20.1227C43.0072 20.5603 42.6505 20.9152 42.2108 20.9152H39.646C39.2062 20.9152 38.8496 20.5603 38.8496 20.1227V15.8655C38.8496 15.428 38.493 15.0731 38.0532 15.0731H27.3816C26.9417 15.0731 26.5851 14.7183 26.5851 14.2806V12.4735C26.5851 12.0359 26.2286 11.6811 25.7887 11.6811H23.2515C22.8116 11.6811 22.4551 11.3263 22.4551 10.8886V4.42145C22.4551 3.98379 22.8116 3.629 23.2515 3.629H25.7887C26.2286 3.629 26.5851 3.2742 26.5851 2.83654V0.794406C26.5851 0.356746 26.9417 0.00195312 27.3816 0.00195312H38.1128C38.5527 0.00195312 38.9092 0.356746 38.9092 0.794406V2.83681Z" fill="currentColor"/>
+          <path d="M51.0852 15.8278V14.4582H49.6602V5.37032H51.7168V13.6364H55.3765V5.37032H57.4493V14.4582H56.0081V15.8278H51.0852ZM59.0695 15.6506V5.48074H63.2746C63.917 5.48074 64.4815 5.61149 64.9683 5.873C65.4647 6.12483 65.8491 6.48319 66.1217 6.9481C66.4039 7.413 66.5452 7.96508 66.5452 8.60433V8.80772C66.5452 9.43729 66.3992 9.98936 66.1071 10.4639C65.8248 10.9289 65.4355 11.2921 64.9391 11.5536C64.4523 11.8054 63.8975 11.9313 63.2746 11.9313H60.9968V15.6506H59.0695ZM60.9968 10.1879H63.0848C63.5422 10.1879 63.9121 10.062 64.1944 9.81017C64.4766 9.55836 64.6178 9.21451 64.6178 8.77866V8.63338C64.6178 8.19753 64.4766 7.8537 64.1944 7.60187C63.9121 7.35006 63.5422 7.22414 63.0848 7.22414H60.9968V10.1879ZM71.1373 15.8539C70.3488 15.8539 69.6529 15.7136 69.0493 15.4326C68.4459 15.1517 67.9738 14.7498 67.6331 14.2268C67.2925 13.7038 67.122 13.0742 67.122 12.3381V11.9313H69.0201V11.9313C69.0201 12.9483 69.21 13.4083 69.5896 13.7183C69.9692 14.0185 70.4851 14.1687 71.1373 14.1687C71.7992 14.1687 72.2907 14.0379 72.612 13.7764C72.943 13.5149 73.1084 13.1807 73.1084 12.7739C73.1084 12.4931 73.0257 12.2655 72.8602 12.0911C72.7045 11.9168 72.4709 11.7763 72.1593 11.6698C71.8576 11.5536 71.4877 11.447 71.0497 11.3502L70.7139 11.2775C70.013 11.1226 69.4096 10.9289 68.9033 10.6964C68.4069 10.4543 68.0225 10.1395 67.7499 9.75206C67.4871 9.36464 67.3556 8.861 67.3556 8.24112C67.3556 7.62125 67.5017 7.09338 67.7937 6.65753C68.0955 6.212 68.514 5.873 69.0493 5.64055C69.5945 5.39842 70.232 5.27734 70.9621 5.27734C71.6921 5.27734 72.3395 5.40326 72.904 5.65508C73.4783 5.89723 73.926 6.26527 74.2473 6.75923C74.5783 7.24351 74.7437 7.8537 74.7437 8.5898V9.02565H72.8456V8.5898C72.8456 8.20238 72.7678 7.89244 72.612 7.65999C72.466 7.41785 72.2519 7.24351 71.9695 7.13697C71.6873 7.02074 71.3515 6.96263 70.9621 6.96263C70.378 6.96263 69.9449 7.07402 69.6626 7.29678C69.3901 7.50987 69.2538 7.80527 69.2538 8.183C69.2538 8.43483 69.3171 8.64791 69.4436 8.82225C69.5799 8.99659 69.7794 9.14187 70.0422 9.2581C70.305 9.37432 70.6408 9.47602 71.0497 9.56319L71.3855 9.63583C72.1155 9.79081 72.7483 9.98936 73.2836 10.2315C73.8288 10.4736 74.2522 10.7933 74.5539 11.1904C74.8557 11.5875 75.0065 12.096 75.0065 12.7158C75.0065 13.3357 74.8459 13.883 74.5247 14.3575C74.2133 14.8224 73.7654 15.1905 73.1814 15.4617C72.6072 15.7232 71.9257 15.8539 71.1373 15.8539ZM76.1519 15.6506V5.48074H80.3569C80.9994 5.48074 81.564 5.61149 82.0507 5.873C82.5471 6.12483 82.9316 6.48319 83.2041 6.9481C83.4865 7.413 83.6275 7.96508 83.6275 8.60433V8.80772C83.6275 9.43729 83.4815 9.98936 83.1895 10.4639C82.9073 10.9289 82.5179 11.2921 82.0214 11.5536C81.5348 11.8054 80.98 11.9313 80.3569 11.9313H78.0792V15.6506H76.1519ZM78.0792 10.1879H80.1671C80.6247 10.1879 80.9946 10.062 81.2768 9.81017C81.5591 9.55836 81.7002 9.21451 81.7002 8.77866V8.63338C81.7002 8.19753 81.5591 7.8537 81.2768 7.60187C80.9946 7.35006 80.6247 7.22414 80.1671 7.22414H78.0792V10.1879ZM83.1867 15.6506L85.8733 5.48074H89.2315L91.9181 15.6506H89.9323L89.3775 13.4132H85.7273L85.1725 15.6506H83.1867ZM86.1799 11.6407H88.9249L87.6838 6.68659H87.421L86.1799 11.6407ZM96.6477 15.8539C95.3823 15.8539 94.3796 15.5053 93.6399 14.8079C92.9002 14.1009 92.5302 13.0936 92.5302 11.786V9.34527C92.5302 8.03772 92.9002 7.03527 93.6399 6.33791C94.3796 5.63087 95.3823 5.27734 96.6477 5.27734C97.9034 5.27734 98.8719 5.62119 99.5533 6.30885C100.244 6.98685 100.59 7.92149 100.59 9.11282V9.19998H98.6918V9.0547C98.6918 8.45421 98.5215 7.96025 98.1808 7.57282C97.8499 7.1854 97.3389 6.99168 96.6477 6.99168C95.9664 6.99168 95.4309 7.19993 95.0416 7.6164C94.6523 8.03289 94.4576 8.59949 94.4576 9.31621V11.8151C94.4576 12.5221 94.6523 13.0887 95.0416 13.5149C95.4309 13.9313 95.9664 14.1396 96.6477 14.1396C97.3389 14.1396 97.8499 13.9459 98.1808 13.5585C98.5215 13.1614 98.6918 12.6674 98.6918 12.0766V11.8151H100.59V12.0185C100.59 13.2098 100.244 14.1492 99.5533 14.837C98.8719 15.5149 97.9034 15.8539 96.6477 15.8539ZM101.868 15.6506V5.48074H108.439V7.22414H103.796V9.65036H108.03V11.3938H103.796V13.9072H108.526V15.6506H101.868ZM113.076 15.6506V5.48074H115.004V13.9072H119.676V15.6506H113.076ZM119.997 15.6506L122.683 5.48074H126.042L128.728 15.6506H126.743L126.188 13.4132H122.537L121.983 15.6506H119.997ZM122.99 11.6407H125.735L124.494 6.68659H124.231L122.99 11.6407ZM129.368 15.6506V13.9653H130.711V7.16602H129.368V5.48074H134.623C135.247 5.48074 135.788 5.58729 136.244 5.80036C136.711 6.00376 137.072 6.29917 137.325 6.68659C137.587 7.06433 137.719 7.51955 137.719 8.05225V8.19753C137.719 8.66244 137.631 9.04502 137.456 9.34527C137.281 9.63583 137.072 9.86345 136.828 10.0281C136.595 10.1831 136.372 10.2945 136.157 10.3622V10.6238C136.372 10.6819 136.605 10.7933 136.857 10.9579C137.111 11.1129 137.325 11.3405 137.5 11.6407C137.686 11.941 137.777 12.3333 137.777 12.8175V12.9628C137.777 13.5245 137.646 14.0089 137.383 14.4156C137.12 14.8128 136.755 15.1179 136.288 15.3309C135.831 15.544 135.295 15.6506 134.682 15.6506H129.368ZM132.638 13.9072H134.448C134.868 13.9072 135.203 13.8055 135.456 13.6021C135.718 13.3987 135.85 13.1081 135.85 12.7304V12.5851C135.85 12.2073 135.724 11.9168 135.47 11.7134C135.218 11.51 134.877 11.4083 134.448 11.4083H132.638V13.9072ZM132.638 9.66489H134.419C134.819 9.66489 135.145 9.56319 135.397 9.3598C135.66 9.1564 135.792 8.87553 135.792 8.51715V8.37187C135.792 8.00383 135.665 7.72295 135.412 7.52923C135.16 7.32583 134.828 7.22414 134.419 7.22414H132.638V9.66489ZM140.513 15.8278V14.4582H139.087V12.2507H141.145V13.6364H144.804V11.6867H140.513V10.3171H139.087V6.75606H140.513V5.37032H145.436V6.75606H146.876V8.94746H144.804V7.57783H141.145V9.51142H145.436V10.8649H146.876V14.4582H145.436V15.8278H140.513Z" fill="currentColor"/>
+          </g>
+          <defs><clipPath id="brandClip"><rect width="148" height="21" fill="white"/></clipPath></defs>
+        </svg>
+      </a>
+    </div>
+    <div class="nav-scroll">
+      <a href="dashboard.html" class="nav-item" title="Admin Dashboard">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>
+        <span>Dashboard</span>
+      </a>
+      <a href="user-management.html" class="nav-item" title="User Management">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><path d="M16 3.128a4 4 0 0 1 0 7.744"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><circle cx="9" cy="7" r="4"/></svg>
+        <span>User Management</span>
+      </a>
+      <a href="roles.html" class="nav-item" title="Roles &amp; Permissions">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>
+        <span>Roles &amp; Permissions</span>
+      </a>
+      <a href="organization-overview.html" class="nav-item" title="Organization">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 12h4"/><path d="M10 8h4"/><path d="M14 21v-3a2 2 0 0 0-4 0v3"/><path d="M6 10H4a2 2 0 0 0-2 2v7a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-2"/><path d="M6 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/></svg>
+        <span>Organization</span>
+      </a>
+      <a href="workflow-list.html" class="nav-item" title="Workflows">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="8" x="3" y="3" rx="2"/><path d="M7 11v4a2 2 0 0 0 2 2h4"/><rect width="8" height="8" x="13" y="13" rx="2"/></svg>
+        <span>Workflows</span>
+      </a>
+      <a href="certificate-templates.html" class="nav-item" title="Certificates">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15.477 12.89 1.515 8.526a.5.5 0 0 1-.81.47l-3.58-2.687a1 1 0 0 0-1.197 0l-3.586 2.686a.5.5 0 0 1-.81-.469l1.514-8.526"/><circle cx="12" cy="8" r="6"/></svg>
+        <span>Certificates</span>
+      </a>
+      <a href="community-moderation.html" class="nav-item" title="Community">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z"/></svg>
+        <span>Community</span>
+      </a>
+      <a href="integrations-catalog.html" class="nav-item" title="Integrations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.39 4.39a1 1 0 0 0 1.68-.474 2.5 2.5 0 1 1 3.014 3.015 1 1 0 0 0-.474 1.68l1.683 1.682a2.414 2.414 0 0 1 0 3.414L19.61 15.39a1 1 0 0 1-1.68-.474 2.5 2.5 0 1 0-3.014 3.015 1 1 0 0 1 .474 1.68l-1.683 1.682a2.414 2.414 0 0 1-3.414 0L8.61 19.61a1 1 0 0 0-1.68.474 2.5 2.5 0 1 1-3.014-3.015 1 1 0 0 0 .474-1.68l-1.683-1.682a2.414 2.414 0 0 1 0-3.414L4.39 8.61a1 1 0 0 1 1.68.474 2.5 2.5 0 1 0 3.014-3.015 1 1 0 0 1-.474-1.68l1.683-1.682a2.414 2.414 0 0 1 3.414 0z"/></svg>
+        <span>Integrations</span>
+      </a>
+      <a href="billing-overview.html" class="nav-item active" title="Billing">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+        <span>Billing</span>
+      </a>
+      <a href="learner-reports.html" class="nav-item" title="Reports">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v16a2 2 0 0 0 2 2h16"/><path d="M18 17V9"/><path d="M13 17V5"/><path d="M8 17v-3"/></svg>
+        <span>Reports</span>
+      </a>
+    </div>
+
+    <div class="nav-bottom">
+      <a href="#" class="nav-item" title="Settings">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
+        <span>Settings</span>
+      </a>
+      <a href="../../Authentication/code/sign-in.html" class="nav-item danger" title="Logout">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
+        <span>Logout</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- Main View -->
+  <main class="main">
+
+    <!-- Page Header -->
+    <div class="page-head">
+      <div>
+        <h1>Billing</h1>
+        <p class="sub">Manage your subscription, seats and payments.</p>
+      </div>
+    </div>
+
+    <!-- Current Plan (BIL-001) — "What am I subscribed to?" / "How much am I using?" -->
+    <div class="billing-hero">
+      <div class="hero-top">
+        <div>
+          <div class="hero-plan-name">
+            <span id="kpiPlanVal">Pro Plan</span>
+            <span class="pill up" id="kpiStatusBadge">Active</span>
+          </div>
+          <div class="hero-plan-price" id="kpiPlanSub">$99 / month · Billed annually</div>
+          <div class="hero-plan-renew" id="heroRenewLine">Renews <strong id="heroRenewDate">Oct 15, 2026</strong></div>
+        </div>
+        <div class="hero-actions" id="overviewActions">
+          <button class="btn btn-primary" onclick="openChangePlanModal()">Change Plan</button>
+          <button class="btn btn-secondary" onclick="openChangePlanModal()">Manage Seats</button>
+          <div class="options-menu">
+            <button class="icon-btn" type="button" aria-label="Subscription options" title="Subscription options" onclick="toggleSubscriptionOptions()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+            </button>
+            <div class="options-dropdown" id="subscriptionOptionsMenu">
+              <button type="button" onclick="subscriptionOption('features')">View plan features</button>
+              <button type="button" onclick="subscriptionOption('pause')">Pause subscription</button>
+              <button type="button" class="danger" onclick="subscriptionOption('cancel')">Cancel subscription</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Trial Alert (BIL-001-FR-03) -->
+      <div id="trialAlert" class="inline-alert info" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        <span><strong>4 days left</strong> on your Pro trial. <button class="link-btn" onclick="openChangePlanModal()">Select a plan</button> to keep access after it ends.</span>
+      </div>
+
+      <!-- Paused Alert (BIL-004-FR-03/04) -->
+      <div id="pausedAlert" class="inline-alert neutral" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect width="4" height="16" x="6" y="4"/><rect width="4" height="16" x="14" y="4"/></svg>
+        <span><strong>Subscription paused.</strong> Billing suspended, all data retained. <button class="link-btn" onclick="resumeSubscription()">Resume subscription</button></span>
+      </div>
+
+      <!-- Cancelled Alert (BIL-004-FR-07/10) -->
+      <div id="cancelledAlert" class="inline-alert danger" style="display:none;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="m4.9 4.9 14.2 14.2"/></svg>
+        <span><strong>Cancelled.</strong> Access continues until <span id="cancelledAccessUntil">Oct 15, 2026</span>. <button class="link-btn" onclick="reactivateSubscription()">Reactivate</button></span>
+      </div>
+
+      <div class="hero-divider"></div>
+
+      <!-- Seat Consumption Meter (BIL-001-FR-01/05) -->
+      <div class="usage-row">
+        <span>Seats</span>
+        <span class="usage-count">85 / 100</span>
+      </div>
+      <div class="progress-bg">
+        <div class="progress-fill warn" style="width:85%;"></div>
+      </div>
+      <div class="usage-foot">
+        <span>15 seats remaining</span>
+        <span id="seatWarningAlert" class="inline-alert warn" style="display:none; margin-top:0;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3z"/><line x1="12" x2="12" y1="9" y2="13"/><line x1="12" x2="12.01" y1="17" y2="17"/></svg>
+          <span>You're approaching your seat limit. <button class="link-btn" onclick="openChangePlanModal()">Add seats</button></span>
+        </span>
+      </div>
+    </div>
+
+    <!-- Next Invoice + Payment Method (BIL-001-FR-04 / BIL-003) — "What am I paying next?" / "How will I pay?" -->
+    <div class="billing-grid-2">
+      <div class="card" style="margin-bottom:0;">
+        <div class="panel-label">Next invoice</div>
+        <div class="panel-amount" id="kpiNextBillingAmt">$1,188.00</div>
+        <div class="panel-sub">Due <span id="kpiNextBillingDate">Oct 15, 2026</span></div>
+        <div class="panel-sub" style="margin-top:2px;">Sep 15 – Oct 15 billing period</div>
+
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle); font-size:12.5px; color:var(--text-secondary);">
+          <div><strong style="color:var(--text-primary);">Billed to:</strong> <span id="billingLegalNameDisplay">Acme Global Corporation Inc.</span></div>
+          <div style="margin-top:2px; font-size:12px; color:var(--text-tertiary);">
+            Tax ID: <span id="billingTaxIdDisplay" style="color:var(--text-secondary);">US-984210491-EIN</span> · Email: <span id="billingEmailDisplay" style="color:var(--text-secondary);">finance-billing@acmeglobal.com</span>
+          </div>
+        </div>
+
+        <!-- Past Due Alert (BIL-001-FR-07) -->
+        <div id="pastDueAlert" class="inline-alert danger" style="display:none;">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" x2="12" y1="8" y2="12"/><line x1="12" x2="12.01" y1="16" y2="16"/></svg>
+          <span><strong>Last charge failed.</strong> <button class="link-btn" onclick="openUpdatePaymentModal()">Update payment method</button></span>
+        </div>
+
+        <div class="panel-foot">
+          <button class="btn btn-secondary" onclick="openBillingInfoModal()">Change billing address</button>
+          <button class="btn btn-ghost" onclick="document.getElementById('invoiceHistoryPanel').scrollIntoView({behavior:'smooth'})">View invoice history</button>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:0;">
+        <div class="panel-label">Payment method</div>
+        <div class="card-info" style="margin-top:10px;">
+          <div class="card-brand-icon">VISA</div>
+          <div style="flex:1;">
+            <div id="paymentCardLabel" style="font-size:14px; font-weight:700; color:var(--text-primary);">Visa ending in 4242</div>
+            <div id="paymentCardSub" style="font-size:12px; color:var(--text-tertiary);">Expires 12/2028 · Stripe</div>
+          </div>
+          <span class="pill up" id="kpiPaymentPill">Verified</span>
+        </div>
+        <div class="panel-foot">
+          <button class="btn btn-secondary" onclick="openUpdatePaymentModal()">Change payment method</button>
+          <button class="btn btn-ghost" id="removePaymentBtn" onclick="removePaymentMethod()" disabled title="Available once your subscription is on a free plan or cancelled" style="color:var(--error);">Remove</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- Invoice History (BIL-003-FR-04/05/06) — "What have I paid?", strong secondary hierarchy -->
+    <div class="card-box" id="invoiceHistoryPanel" style="padding:0; overflow:hidden;">
+      <div class="card-box-header">
+        <h3 class="card-box-title">Invoice &amp; Payment History</h3>
+        <button class="btn btn-ghost" onclick="showToast('Exporting billing history as CSV…', 'success')">Export All Invoices (CSV)</button>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="table-wrap">
+          <thead>
+            <tr>
+              <th>Date</th>
+              <th>Invoice #</th>
+              <th>Description</th>
+              <th>Seats</th>
+              <th>Amount</th>
+              <th>Status</th>
+              <th style="text-align:right;">Actions</th>
+            </tr>
+          </thead>
+          <tbody id="invoiceTableBody"><!-- Rendered dynamically --></tbody>
+        </table>
+      </div>
+    </div>
+
+
+  </main>
+</div>
+
+<!-- Change Plan Drawer (BIL-002) -->
+<div id="changePlanModal" class="drawer-backdrop" onclick="if(event.target===this) closeModal('changePlanModal')">
+  <div class="drawer-panel" onclick="event.stopPropagation()">
+    <div class="drawer-head">
+      <h3>Change Plan</h3>
+      <button class="modal-close" onclick="closeModal('changePlanModal')">&times;</button>
+    </div>
+    <div class="drawer-body">
+      <div class="suggestion-banner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+        <span>You're using 85 of 100 seats (85%). <strong>Enterprise</strong> removes the seat cap entirely — worth a look before you hit the limit.</span>
+      </div>
+
+      <!-- Billing Cycle Toggle Switch -->
+      <div class="billing-toggle-bar">
+        <span class="toggle-label" id="lblMonthly">Monthly Billing</span>
+        <input type="checkbox" id="billingCycleToggle" style="display:none;" onchange="toggleBillingCycle(this.checked)">
+        <label for="billingCycleToggle" style="width:48px; height:26px; background:var(--focus-ring); border-radius:13px; cursor:pointer; position:relative; display:inline-block;">
+          <span id="toggleKnob" style="position:absolute; top:3px; right:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:transform 0.2s ease;"></span>
+        </label>
+        <span class="toggle-label active" id="lblAnnual">Annual Billing <span class="badge-discount">Save 20%</span></span>
+      </div>
+
+      <!-- Plan Matrix Grid -->
+      <div class="plan-matrix drawer-grid">
+        <!-- Startup Free Plan -->
+        <div class="plan-card">
+          <div>
+            <h4 class="plan-name">Startup Free</h4>
+            <p class="plan-desc">For early-stage startups and small teams testing course delivery.</p>
+            <div class="plan-price">$0 <span>/ mo</span></div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Up to 15 User Seats</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>5 Published Courses</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Community Forum &amp; Certificates</li>
+            </ul>
+          </div>
+          <button class="btn btn-secondary" onclick="attemptDowngrade('Startup Free', 15)">Downgrade to Free</button>
+        </div>
+
+        <!-- Growth Plan -->
+        <div class="plan-card">
+          <div>
+            <h4 class="plan-name">Growth</h4>
+            <p class="plan-desc">For growing companies needing automated user sync &amp; video.</p>
+            <div class="plan-price" id="priceGrowth">$49 <span>/ mo</span></div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Up to 50 User Seats</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unlimited Courses</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Google Workspace SSO</li>
+            </ul>
+          </div>
+          <button class="btn btn-secondary" onclick="attemptDowngrade('Growth', 50)">Switch to Growth</button>
+        </div>
+
+        <!-- Pro Plan (Current) -->
+        <div class="plan-card current">
+          <span class="pill up" style="position:absolute; top:16px; right:16px;">Current Plan</span>
+          <div>
+            <h4 class="plan-name">Pro Tier</h4>
+            <p class="plan-desc">Self-serve scale for mid-sized orgs wanting AI &amp; custom workflows.</p>
+            <div class="plan-price" id="pricePro">$99 <span>/ mo</span></div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>100 Included User Seats</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>AI Assistant &amp; Workflow Builder</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>REST API Keys &amp; Webhook Triggers</li>
+            </ul>
+          </div>
+          <div style="font-size:12px; color:var(--text-tertiary); text-align:center; padding:8px 0;">Adjust seats below</div>
+        </div>
+
+        <!-- Enterprise Plan (Suggested) -->
+        <div class="plan-card enterprise suggested">
+          <span class="pill purple" style="position:absolute; top:16px; right:16px;">Suggested</span>
+          <div>
+            <h4 class="plan-name">Enterprise</h4>
+            <p class="plan-desc">For large orgs needing single sign-on and unlimited scale.</p>
+            <div class="plan-price" id="priceEnterprise">$299 <span>/ mo</span></div>
+            <ul class="plan-features">
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unlimited User Seats &amp; Storage</li>
+              <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Okta / Azure SAML 2.0 SSO</li>
+            </ul>
+          </div>
+          <button class="btn btn-primary" style="background:var(--action-primary);" onclick="attemptUpgrade('Enterprise')">Switch to Enterprise</button>
+        </div>
+      </div>
+
+      <!-- Interactive Seat Slider Block (BIL-002-FR-02) -->
+      <div class="seat-slider-box">
+        <div class="slider-header">
+          <div>
+            <h4 style="margin:0; font-size:14px; font-weight:700;">Adjust Seat Count (Pro Plan)</h4>
+            <span style="font-size:12.5px; color:var(--text-tertiary);">Minimum seat floor is locked to 85 active users.</span>
+          </div>
+          <div class="slider-val" id="sliderSeatVal">100 Seats</div>
+        </div>
+        <input type="range" id="seatRangeSlider" class="range-input" min="85" max="500" value="100" step="5" oninput="updateSeatCostMath(this.value)">
+        <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:13px; align-items:center; flex-wrap:wrap; gap:10px;">
+          <span>Est. Monthly Recurring: <strong id="mathMonthlyCost">$99.00 / mo</strong></span>
+          <span>Prorated Due Today: <strong id="mathProratedCost">$0.00</strong></span>
+        </div>
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <button class="btn btn-secondary" onclick="closeModal('changePlanModal')">Close</button>
+      <button class="btn btn-primary" onclick="confirmCheckoutRedirect()">Continue to Checkout</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-stack" id="toastStack"></div>
+
+<!-- MODAL: View Plan Features (BIL-001) -->
+<div id="planFeaturesModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Pro Plan Included Features</h3>
+      <button class="modal-close" onclick="closeModal('planFeaturesModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-top:0;">Features currently active for your organization under the <strong>Pro Plan</strong>:</p>
+      <div class="feature-grid" style="grid-template-columns:1fr; gap:12px; margin-top:14px;">
+        <div class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Unlimited courses and grading</div>
+        <div class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>AI-generated quizzes and assessments</div>
+        <div class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Google Workspace and Zoom integration</div>
+        <div class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>Multi-step approval workflows</div>
+        <div class="feature-item"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>REST API access and webhooks</div>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('planFeaturesModal')">Close</button>
+      <button class="btn btn-primary" onclick="closeModal('planFeaturesModal'); openChangePlanModal();">Compare All Plans</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: Update Payment Method (BIL-003) -->
+<div id="updatePaymentModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Update Stored Payment Instrument</h3>
+      <button class="modal-close" onclick="closeModal('updatePaymentModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>For your security, full card entry happens on Stripe's secure hosted portal. No credit card numbers touch platform servers.</p>
+      <div style="border:1px dashed var(--border-strong); border-radius:var(--radius-lg); padding:20px; text-align:center; background:#f8fafc; margin-top:12px;">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; color:var(--focus-ring); margin-bottom:8px;"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
+        <div style="font-size:13.5px; font-weight:600; color:var(--text-primary);">Stripe Customer Portal Launcher</div>
+        <span style="font-size:12px; color:var(--text-tertiary);">You will be securely redirected to update your payment card details.</span>
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('updatePaymentModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="confirmPaymentUpdate()">Redirect to Payment Portal</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit Tax ID & Invoicing Address (BIL-003) -->
+<div id="billingInfoModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Edit Tax ID &amp; Invoicing Address</h3>
+      <button class="modal-close" onclick="closeModal('billingInfoModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Used on every invoice PDF: legal entity name, Tax ID (EIN/VAT/GST), and billing email.</p>
+      <div class="form-group" style="margin-top:14px;">
+        <label class="form-label">Legal Company Name</label>
+        <input type="text" id="billingLegalNameInput" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">VAT / Tax Registration ID</label>
+        <input type="text" id="billingTaxIdInput" class="form-control">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Billing Contact Email</label>
+        <input type="email" id="billingEmailInput" class="form-control">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('billingInfoModal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveBillingDetails()">Save Billing Info</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: Pause Subscription (BIL-004-FR-02) -->
+<div id="pauseModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3>Pause Subscription (Up to 90 Days)</h3>
+      <button class="modal-close" onclick="closeModal('pauseModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>Pausing suspends recurring charges. All courses, student grades, and org data are <strong>100% retained</strong>. Non-admin user access will be restricted during the pause.</p>
+      
+      <label style="font-size:13px; font-weight:600; display:block; margin:14px 0 6px;">Select Pause Duration:</label>
+      <label class="radio-option">
+        <input type="radio" name="pauseDur" value="30" checked>
+        <div>
+          <div class="radio-label">30 Days Pause</div>
+          <div class="radio-desc">Billing resumes Oct 15, 2026. Resume anytime.</div>
+        </div>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="pauseDur" value="60">
+        <div>
+          <div class="radio-label">60 Days Pause</div>
+          <div class="radio-desc">Billing resumes Nov 15, 2026. Resume anytime.</div>
+        </div>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="pauseDur" value="90">
+        <div>
+          <div class="radio-label">90 Days Maximum Pause</div>
+          <div class="radio-desc">Auto-cancels if not resumed within 90 days.</div>
+        </div>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('pauseModal')">Keep Subscription Active</button>
+      <button class="btn btn-primary" onclick="confirmPauseSubscription()">Confirm Pause</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 4: Cancel Subscription (BIL-004-FR-06) -->
+<div id="cancelModal" class="modal-backdrop">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h3 style="color:var(--error);">Cancel Subscription</h3>
+      <button class="modal-close" onclick="closeModal('cancelModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p>We're sorry to see you go. Cancellation takes effect at the end of your billing cycle on <strong>Oct 15, 2026</strong>. Full platform access continues until then.</p>
+      
+      <div style="background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); padding:12px; margin-bottom:14px; font-size:12.5px; color:#92400e;">
+        <strong>30-Day Grace Period:</strong> Following cycle end, you have 30 days to sign in and export your data before the organization is archived.
+      </div>
+
+      <label style="font-size:13px; font-weight:600; display:block; margin-bottom:6px;">Please tell us why you're cancelling (required):</label>
+      <label class="radio-option">
+        <input type="radio" name="cancelReason" value="price" checked>
+        <div class="radio-label">Price / Subscription Cost</div>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="cancelReason" value="feature">
+        <div class="radio-label">Missing required LMS features</div>
+      </label>
+      <label class="radio-option">
+        <input type="radio" name="cancelReason" value="temporary">
+        <div class="radio-label">Temporary project completed</div>
+      </label>
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-secondary" onclick="closeModal('cancelModal')">Keep My Subscription</button>
+      <button class="btn btn-danger" onclick="confirmCancelSubscription()">Confirm Cancellation</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let subscriptionStatus = 'active';
+
+  let nextBilling = { date: 'Oct 15, 2026', amountUsd: 1188 };
+
+  let invoices = [
+    { date: 'Sep 15, 2025', id: 'INV-2025-009', desc: 'Pro Plan Annual Renewal', seats: '100 Seats', amountUsd: 1188, status: 'paid' },
+    { date: 'Aug 15, 2025', id: 'INV-2025-008', desc: 'Seat Expansion (+15 Seats)', seats: '15 Seats', amountUsd: 180, status: 'paid' },
+    { date: 'Jul 15, 2025', id: 'INV-2025-007', desc: 'Pro Plan Monthly Renewal', seats: '85 Seats', amountUsd: 99, status: 'failed' },
+    { date: 'Jun 15, 2025', id: 'INV-2025-006', desc: 'Growth Plan Monthly', seats: '50 Seats', amountUsd: 49, status: 'paid' }
+  ];
+
+  function showToast(msg, type = 'default', duration = 3800) {
+    const stack = document.getElementById('toastStack');
+    const el = document.createElement('div');
+    el.className = `toast${type !== 'default' ? ' ' + type : ''}`;
+    el.innerHTML = msg.replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+    stack.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('show'));
+    setTimeout(() => {
+      el.classList.remove('show');
+      setTimeout(() => el.remove(), 200);
+    }, duration);
+  }
+
+  function formatMoney(amountUsd) {
+    return `$${amountUsd.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
+  }
+
+  function renderInvoices() {
+    const body = document.getElementById('invoiceTableBody');
+    body.innerHTML = invoices.length ? invoices.map(inv => `
+      <tr>
+        <td>${inv.date}</td>
+        <td>${inv.id}</td>
+        <td>${inv.desc}</td>
+        <td>${inv.seats}</td>
+        <td>${formatMoney(inv.amountUsd)}</td>
+        <td>${inv.status === 'paid' ? '<span class="pill up">Paid</span>' : '<span class="pill danger">Failed</span>'}</td>
+        <td style="text-align:right;">${inv.status === 'paid'
+          ? `<button class="btn btn-ghost" onclick="downloadInvoicePDF('${inv.id}')">Download PDF</button>`
+          : `<button class="btn btn-secondary" onclick="retryPayment('${inv.id}')" style="height:28px; font-size:12px; color:var(--error);">Retry Payment</button>`
+        }</td>
+      </tr>
+    `).join('') : `
+      <tr class="table-empty-row">
+        <td colspan="7">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>
+          <div class="table-empty-title">No invoices yet.</div><p>Your first invoice will appear here after your next billing cycle.</p>
+        </td>
+      </tr>
+    `;
+  }
+
+  function renderNextBilling() {
+    const dateEl = document.getElementById('kpiNextBillingDate');
+    const amtEl = document.getElementById('kpiNextBillingAmt');
+    const heroDateEl = document.getElementById('heroRenewDate');
+    if (subscriptionStatus === 'paused' || subscriptionStatus === 'cancelled') {
+      dateEl.textContent = '—';
+      amtEl.textContent = 'No upcoming charge';
+    } else {
+      dateEl.textContent = nextBilling.date;
+      amtEl.textContent = formatMoney(nextBilling.amountUsd);
+      heroDateEl.textContent = nextBilling.date;
+    }
+  }
+
+  function toggleProfileDropdown() {
+    document.getElementById('profile-dropdown').classList.toggle('show');
+  }
+
+  function toggleSidebar() {
+    document.querySelector('.sidebar').classList.toggle('open');
+    document.getElementById('sidebarBackdrop').classList.toggle('show');
+  }
+
+  function toggleSubscriptionOptions() {
+    document.getElementById('subscriptionOptionsMenu').classList.toggle('show');
+  }
+
+  function subscriptionOption(action) {
+    document.getElementById('subscriptionOptionsMenu').classList.remove('show');
+    if (action === 'features') openPlanFeaturesModal();
+    else if (action === 'pause') openPauseModal();
+    else if (action === 'cancel') openCancelModal();
+  }
+
+  function toggleBillingCycle(isAnnual) {
+    document.getElementById('lblMonthly').classList.toggle('active', !isAnnual);
+    document.getElementById('lblAnnual').classList.toggle('active', isAnnual);
+    document.getElementById('toggleKnob').style.transform = isAnnual ? 'translateX(0)' : 'translateX(-22px)';
+
+    document.getElementById('priceGrowth').innerHTML = isAnnual ? `$49 <span>/ mo</span>` : `$59 <span>/ mo</span>`;
+    document.getElementById('pricePro').innerHTML = isAnnual ? `$99 <span>/ mo</span>` : `$119 <span>/ mo</span>`;
+    document.getElementById('priceEnterprise').innerHTML = isAnnual ? `$299 <span>/ mo</span>` : `$349 <span>/ mo</span>`;
+  }
+
+  function updateSeatCostMath(seats) {
+    document.getElementById('sliderSeatVal').innerText = `${seats} Seats`;
+    const monthlyRate = 99 + (seats - 100) * 1.5;
+    document.getElementById('mathMonthlyCost').innerText = `$${monthlyRate.toFixed(2)} / mo`;
+    const proratedToday = Math.max(0, (seats - 100) * 1.2);
+    document.getElementById('mathProratedCost').innerText = `$${proratedToday.toFixed(2)}`;
+  }
+
+  function applySubscriptionStatus(state) {
+    subscriptionStatus = state;
+
+    document.getElementById('seatWarningAlert').style.display = 'none';
+    document.getElementById('pastDueAlert').style.display = 'none';
+    document.getElementById('trialAlert').style.display = 'none';
+    document.getElementById('pausedAlert').style.display = 'none';
+    document.getElementById('cancelledAlert').style.display = 'none';
+
+    if (state === 'active') {
+      document.getElementById('kpiPlanVal').innerText = 'Pro Plan';
+      document.getElementById('kpiStatusBadge').innerText = 'Active';
+      document.getElementById('kpiStatusBadge').className = 'pill up';
+    } else if (state === 'warning') {
+      document.getElementById('seatWarningAlert').style.display = 'flex';
+      document.getElementById('kpiPlanVal').innerText = 'Pro Plan';
+      document.getElementById('kpiStatusBadge').innerText = 'Active';
+      document.getElementById('kpiStatusBadge').className = 'pill up';
+    } else if (state === 'past_due') {
+      document.getElementById('pastDueAlert').style.display = 'flex';
+      document.getElementById('kpiStatusBadge').innerText = 'Past-Due';
+      document.getElementById('kpiStatusBadge').className = 'pill danger';
+    } else if (state === 'trial') {
+      document.getElementById('trialAlert').style.display = 'flex';
+      document.getElementById('kpiPlanVal').innerText = 'Pro Trial';
+      document.getElementById('kpiStatusBadge').innerText = 'Trial';
+      document.getElementById('kpiStatusBadge').className = 'pill neutral';
+    } else if (state === 'paused') {
+      document.getElementById('pausedAlert').style.display = 'flex';
+      document.getElementById('kpiStatusBadge').innerText = 'Paused';
+      document.getElementById('kpiStatusBadge').className = 'pill neutral';
+    } else if (state === 'cancelled') {
+      document.getElementById('cancelledAlert').style.display = 'flex';
+      document.getElementById('kpiStatusBadge').innerText = 'Cancelled';
+      document.getElementById('kpiStatusBadge').className = 'pill danger';
+    }
+
+    // BIL-004: nothing left to pause/cancel once already paused or cancelled
+    document.getElementById('overviewActions').style.display = (state === 'paused' || state === 'cancelled') ? 'none' : 'flex';
+
+    // Paused/cancelled alerts already state what's happening — the "Renews X" line would contradict them
+    document.getElementById('heroRenewLine').style.display = (state === 'paused' || state === 'cancelled') ? 'none' : 'block';
+
+    // BIL-003-FR-03: payment method can only be removed on a free or cancelled subscription
+    document.getElementById('removePaymentBtn').disabled = (state !== 'cancelled');
+
+    renderNextBilling();
+  }
+
+  function attemptDowngrade(targetPlan, maxSeats) {
+    const activeUsers = 85;
+    if (activeUsers > maxSeats) {
+      showToast(`Can't downgrade to ${targetPlan}: you have ${activeUsers} active users, but this plan caps at ${maxSeats} seats. Remove ${activeUsers - maxSeats} users in User Management first.`, 'error', 5500);
+    } else {
+      showToast(`Downgrade to ${targetPlan} started. Prorated credits will be applied to your next invoice.`, 'success');
+    }
+  }
+
+  function attemptUpgrade(targetPlan) {
+    showToast(`Upgrade to ${targetPlan} started. Our team will follow up to finalize SSO and billing details.`, 'success', 4500);
+    closeModal('changePlanModal');
+  }
+
+  function openBillingInfoModal() {
+    document.getElementById('billingLegalNameInput').value = document.getElementById('billingLegalNameDisplay').textContent;
+    document.getElementById('billingTaxIdInput').value = document.getElementById('billingTaxIdDisplay').textContent;
+    document.getElementById('billingEmailInput').value = document.getElementById('billingEmailDisplay').textContent;
+    document.getElementById('billingInfoModal').style.display = 'flex';
+  }
+
+  function saveBillingDetails() {
+    document.getElementById('billingLegalNameDisplay').textContent = document.getElementById('billingLegalNameInput').value;
+    document.getElementById('billingTaxIdDisplay').textContent = document.getElementById('billingTaxIdInput').value;
+    document.getElementById('billingEmailDisplay').textContent = document.getElementById('billingEmailInput').value;
+    closeModal('billingInfoModal');
+    showToast('Billing details saved.', 'success');
+  }
+
+  function openPlanFeaturesModal() { document.getElementById('planFeaturesModal').style.display = 'flex'; }
+  function openChangePlanModal() { document.getElementById('changePlanModal').classList.add('show'); }
+  function openUpdatePaymentModal() { document.getElementById('updatePaymentModal').style.display = 'flex'; }
+  function openPauseModal() { document.getElementById('pauseModal').style.display = 'flex'; }
+  function openCancelModal() { document.getElementById('cancelModal').style.display = 'flex'; }
+
+  function closeModal(id) {
+    const el = document.getElementById(id);
+    if (el.classList.contains('drawer-backdrop')) el.classList.remove('show');
+    else el.style.display = 'none';
+  }
+
+  function confirmCheckoutRedirect() {
+    showToast("Redirecting to Stripe checkout — we never store your card details.", 'success');
+    closeModal('changePlanModal');
+  }
+
+  function confirmPaymentUpdate() {
+    showToast("Redirecting to the Stripe customer portal…", 'success');
+    closeModal('updatePaymentModal');
+  }
+
+  function confirmPauseSubscription() {
+    showToast("Subscription paused. Charges are suspended and non-admin access is restricted; all org data stays intact.", 'success', 5000);
+    closeModal('pauseModal');
+    applySubscriptionStatus('paused');
+  }
+
+  function confirmCancelSubscription() {
+    showToast("Cancellation confirmed. Access continues until Oct 15, 2026, plus a 30-day grace period to export your data.", 'success', 5000);
+    closeModal('cancelModal');
+    applySubscriptionStatus('cancelled');
+  }
+
+  function resumeSubscription() {
+    showToast("Subscription resumed — your Pro Plan is active again and all user accounts are unblocked.", 'success', 4500);
+    applySubscriptionStatus('active');
+  }
+
+  function reactivateSubscription() {
+    if (!confirm('Reactivate your subscription? Your Pro Plan and all settings will be restored exactly as they were before cancellation.')) return;
+    showToast('Subscription reactivated. Everything is restored as it was before cancellation.', 'success', 4500);
+    applySubscriptionStatus('active');
+  }
+
+  function removePaymentMethod() {
+    if (subscriptionStatus !== 'cancelled') return;
+    if (!confirm('Remove the stored payment method? You can add a new one anytime before reactivating.')) return;
+    document.getElementById('kpiPaymentPill').innerText = 'None';
+    document.getElementById('kpiPaymentPill').className = 'pill neutral';
+    document.getElementById('paymentCardLabel').innerText = 'No card on file';
+    document.getElementById('paymentCardSub').innerText = 'Add a payment method before reactivating.';
+  }
+
+  function downloadInvoicePDF(invId) {
+    showToast(`Downloading PDF for ${invId}…`, 'success');
+  }
+
+  function retryPayment(invId) {
+    showToast(`Retrying ${invId} on VISA •••• 4242 — payment succeeded, subscription restored to active.`, 'success', 5000);
+    const inv = invoices.find(i => i.id === invId);
+    if (inv) inv.status = 'paid';
+    renderInvoices();
+    applySubscriptionStatus('active');
+  }
+
+  document.addEventListener('DOMContentLoaded', () => {
+    renderInvoices();
+    applySubscriptionStatus('active');
+  });
+</script>
+</body>
+</html>

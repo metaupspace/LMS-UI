@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Certificates</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Certificates (CERT-002 learner view: "My Certificates").
+     Certificates are issued automatically on completion of a course with
+     a template (CERT-002-FR-01) — this page only lists and opens them.
+     Status: Valid / Expired (FR-04) / Revoked (user decision: learner is
+     notified on revocation per FR-07, so it's shown here too; no reason).
+     Card preview = the issued certificate rendered with the course's
+     template, same visual as the admin template preview
+     (designs/admin/code/certificate-templates.html .certificate-preview).
+     Status pill colours match the admin "Issued certificates" table.
+     Download = the stored, already-issued PDF (FR-03) — never regenerated.
+     Hand-built (approved, MISSING_COMPONENTS.md): Certificate document,
+     document-shaped skeleton, Empty state. Bottom-left "Preview" is design-only.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7;
+    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --serif:Georgia, "Times New Roman", serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:32px clamp(20px, 2.6vw, 48px) 72px; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:36px; padding:0 14px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn.busy{ opacity:.7; cursor:progress; }
+  .spin{ width:14px; height:14px; border-radius:50%; border:2px solid var(--surface-overlay); border-top-color:var(--text-secondary); animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  .page-head{ margin-bottom:24px; }
+  .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; }
+  .page-head .sub{ font-size:15px; color:var(--text-secondary); }
+
+  /* Status pill — same variants as the admin Issued certificates table */
+  .pill{ display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:var(--radius-full); white-space:nowrap; }
+  .pill i{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .pill.valid{ background:var(--success-subtle); color:var(--success); }
+  .pill.expired{ background:var(--warning-subtle); color:#a16207; }
+  .pill.revoked{ background:var(--error-subtle); color:var(--error); }
+
+  /* ---- Certificate document (hand-built, approved) — sized in container units so card and detail render identically ---- */
+  .doc{ container-type:inline-size; position:relative; aspect-ratio:1.414 / 1; background:#fffdf8; border:1px solid var(--border-default); border-radius:4px; overflow:hidden; color:var(--text-primary); font-family:var(--font); }
+  .doc-in{ position:absolute; inset:0; box-shadow:inset 0 0 0 2.2cqw #f8f1dd; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:6cqw 9cqw 12cqw; }
+  .doc-in::before{ content:""; position:absolute; inset:3.6cqw; border:max(1px, .16cqw) solid #d9c58e; pointer-events:none; }
+  .doc-org{ position:absolute; top:6.2cqw; left:6.6cqw; display:flex; align-items:center; gap:1cqw; font-size:1.45cqw; font-weight:700; color:var(--text-strong); letter-spacing:.01em; }
+  .doc-org b{ width:3.2cqw; height:3.2cqw; border-radius:.8cqw; background:var(--action-primary); color:#fff; display:flex; align-items:center; justify-content:center; font-size:1.5cqw; }
+  .doc-eyebrow{ font-size:1.3cqw; letter-spacing:.22em; text-transform:uppercase; color:#947b34; font-weight:700; }
+  .doc-title{ font:400 4.4cqw/1.1 var(--serif); margin:1.3cqw 0 2.6cqw; letter-spacing:-.01em; }
+  .doc-lead{ font-size:1.5cqw; color:var(--text-secondary); }
+  .doc-name{ font:italic 400 4.8cqw/1.15 var(--serif); color:var(--action-primary); margin:.8cqw 0 1.4cqw; padding:0 4cqw .7cqw; border-bottom:.14cqw solid #e8dcb8; }
+  .doc-course{ font-size:2.5cqw; font-weight:700; letter-spacing:-.01em; margin-top:.6cqw; max-width:70cqw; }
+  .doc-foot{ position:absolute; left:11cqw; right:11cqw; bottom:9.4cqw; display:flex; align-items:flex-end; justify-content:space-between; }
+  .doc-sig{ width:21cqw; text-align:center; }
+  .doc-sig span{ display:block; font-size:1.55cqw; font-weight:600; padding-bottom:.6cqw; border-bottom:.12cqw solid #bfae7a; white-space:nowrap; }
+  .doc-sig small{ display:block; margin-top:.6cqw; font-size:1.05cqw; color:var(--text-tertiary); letter-spacing:.08em; text-transform:uppercase; }
+  .doc-seal{ width:9cqw; height:9cqw; border-radius:50%; border:.3cqw solid #d9c58e; box-shadow:inset 0 0 0 .7cqw #fffdf8, inset 0 0 0 .95cqw #e8dcb8; display:flex; align-items:center; justify-content:center; font:700 2cqw var(--serif); color:#947b34; }
+  .doc-code{ position:absolute; bottom:5.4cqw; left:0; right:0; font-size:1.05cqw; color:var(--text-tertiary); letter-spacing:.03em; }
+
+  /* ---- Grid of certificate cards ---- */
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(290px, 1fr)); gap:20px; }
+  .card{ display:flex; flex-direction:column; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; transition:border-color .2s ease; }
+  .card:hover{ border-color:#a3a3a3; }
+  .card .stage{ display:block; padding:18px 20px; background:var(--surface-raised); border-bottom:1px solid var(--border-default); }
+  .card .stage .doc{ box-shadow:0 1px 2px rgba(23,23,17,.06); }
+  .card.is-muted .stage .doc{ opacity:.72; }
+  .card .body{ padding:16px 18px 18px; display:flex; flex-direction:column; flex:1; }
+  .card .top{ display:flex; align-items:flex-start; justify-content:space-between; gap:10px; }
+  .card h2{ margin:0; font-size:15.5px; font-weight:600; line-height:1.35; letter-spacing:-.1px; }
+  .card h2 a:hover{ color:var(--action-primary); }
+  .card .tpl{ margin-top:3px; font-size:13px; color:var(--text-tertiary); }
+  .dates{ margin:12px 0 0; padding:0; list-style:none; display:grid; gap:4px; font-size:13.5px; color:var(--text-secondary); }
+  .dates b{ font-weight:600; color:var(--text-strong); }
+  .dates .warn{ color:#a16207; } .dates .bad{ color:var(--error); }
+  .card .acts{ display:flex; gap:8px; margin-top:auto; padding-top:16px; }
+  .card .acts .btn-primary{ flex:1; }
+  .dl-err{ display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; margin-top:12px; padding:10px 12px; border-radius:var(--radius-lg); background:var(--error-subtle); border:1px solid var(--error-border); font-size:13px; color:#991b1b; }
+  .dl-err button{ background:#fff; border:1px solid var(--error-border); border-radius:var(--radius-md); padding:4px 10px; font-size:12.5px; font-weight:600; color:var(--error); }
+
+  /* Empty / error / skeleton (hand-built, approved) */
+  .empty{ padding:64px 20px; text-align:center; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .empty .ic{ width:48px; height:48px; margin:0 auto 14px; border-radius:50%; background:var(--surface-raised); color:var(--text-tertiary); display:flex; align-items:center; justify-content:center; }
+  .empty .ic svg{ width:22px; height:22px; }
+  .empty b{ display:block; font-size:15px; margin-bottom:4px; }
+  .empty span{ font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:16px; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:9px; }
+  .sk-doc{ aspect-ratio:1.414 / 1; border-radius:4px; background:#fff; border:1px solid var(--border-default); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:12%; }
+  .sk-doc .sk{ margin:0; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* Toast — library */
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:90; display:flex; align-items:center; gap:12px; padding:10px 14px; max-width:calc(100vw - 32px); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; font-weight:500; box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .toast .ic{ width:30px; height:30px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; }
+  .toast .ic svg{ width:15px; height:15px; }
+
+  /* Design-only state switch */
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:50; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:640px){
+    .grid{ grid-template-columns:1fr; gap:14px; }
+    .page-head h1{ font-size:24px; }
+    .toast{ left:16px; right:16px; bottom:56px; }
+  }
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 56px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=certificates" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Certificates" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <div class="page-head">
+      <h1>Certificates</h1>
+      <div class="sub">View and download the certificates you’ve earned.</div>
+    </div>
+    <div id="content" aria-live="polite"></div>
+  </div></main>
+</div>
+
+<div class="toast" id="toast" role="status" hidden></div>
+<label class="preview" title="Design-only: preview UI states">Preview
+  <select id="previewState"><option value="normal">Normal</option><option value="empty">Empty</option><option value="loading">Loading</option><option value="error">Error</option><option value="expired">Expired certificate</option></select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data — this learner's issued certificates (mirrors certificate-detail.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same as the other learner pages
+  var LEARNER = 'Samira Collins', ORG = { name:'Northwind Learning', mark:'N', seal:'NL' };
+  // Template text comes from the template assigned to the course (CERT-001) — names match the admin template list
+  var TEMPLATES = {
+    honour:{ name:'Certificate of Honour', eyebrow:'Certificate of completion', lead:'has successfully completed' },
+    completion:{ name:'Course Completion', eyebrow:'Certificate of completion', lead:'has successfully completed' },
+    compliance:{ name:'Compliance Attestation', eyebrow:'Certificate of compliance', lead:'has completed the required training' },
+    excellence:{ name:'Excellence Award', eyebrow:'Awarded with distinction', lead:'has completed with distinction' }
+  };
+  var CERTS = [
+    { id:'c1', code:'CERT-A7X9K2', course:'Modern Frontend Frameworks', tpl:'honour', instructor:'Dr. Aris', issued:'2026-09-10' },
+    { id:'c2', code:'CERT-Q4M8TZ', course:'Cloud Fundamentals', tpl:'completion', instructor:'Prof. Vance', issued:'2026-08-20' },
+    { id:'c3', code:'CERT-H2R6WB', course:'Algorithms & Complexity', tpl:'excellence', instructor:'Prof. Vance', issued:'2026-08-15' },
+    { id:'c4', code:'CERT-N9D3PL', course:'Networking Essentials', tpl:'completion', instructor:'Dr. Aris', issued:'2026-08-02' },
+    { id:'c5', code:'CERT-K5V1XE', course:'Design Fundamentals', tpl:'honour', instructor:'Prof. Vance', issued:'2026-07-28' },
+    { id:'c6', code:'CERT-B8T4JS', course:'Intro to Data Science', tpl:'completion', instructor:'Dr. Aris', issued:'2026-07-20' },
+    { id:'c7', code:'CERT-W3F7QA', course:'Cybersecurity Basics', tpl:'compliance', instructor:'Prof. Vance', issued:'2026-07-12', expires:'2027-07-12' },
+    { id:'c8', code:'CERT-Z6L2MC', course:'Agile & Scrum Practices', tpl:'completion', instructor:'Dr. Aris', issued:'2026-06-30' },
+    { id:'c9', code:'CERT-R1P9GU', course:'HTML & CSS Foundations', tpl:'completion', instructor:'Prof. Vance', issued:'2026-06-18' },
+    { id:'c10', code:'CERT-E4Y8HN', course:'Neural Networks Basics', tpl:'honour', instructor:'Dr. Aris', issued:'2026-06-05' },
+    { id:'c11', code:'CERT-D7K3VR', course:'Data Privacy Basics', tpl:'compliance', instructor:'Dr. Aris', issued:'2026-04-02', expires:'2027-04-02', revoked:'2026-06-01' },
+    { id:'c12', code:'CERT-S2J6FW', course:'Workplace Safety Induction', tpl:'compliance', instructor:'Prof. Vance', issued:'2025-03-10', expires:'2026-03-10' }
+  ];
+
+  /* ---------------- Helpers ---------------- */
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function d(s){ return new Date(s + 'T00:00:00'); }
+  function fmt(s){ var x = d(s); return MONTHS[x.getMonth()] + ' ' + x.getDate() + ', ' + x.getFullYear(); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  // Same derivation as certificate-detail.html and verify-certificate.html
+  function statusOf(c){ if (c.revoked) return 'revoked'; if (c.expires && d(c.expires) < NOW) return 'expired'; return 'valid'; }
+  var LABEL = { valid:'Valid', expired:'Expired', revoked:'Revoked' };
+  var I = {
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    award:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="6"/><path d="M15.5 12.9 17 22l-5-3-5 3 1.5-9.1"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>'
+  };
+
+  // Issued certificate document — same markup as certificate-detail.html
+  function docHtml(c){
+    var t = TEMPLATES[c.tpl];
+    return '<div class="doc" aria-hidden="true"><div class="doc-in">' +
+      '<div class="doc-org"><b>' + ORG.mark + '</b>' + esc(ORG.name) + '</div>' +
+      '<div class="doc-eyebrow">' + esc(t.eyebrow) + '</div><div class="doc-title">' + esc(t.name) + '</div>' +
+      '<div class="doc-lead">This certifies that</div><div class="doc-name">' + esc(LEARNER) + '</div>' +
+      '<div class="doc-lead">' + esc(t.lead) + '</div><div class="doc-course">' + esc(c.course) + '</div>' +
+      '<div class="doc-foot"><div class="doc-sig"><span>' + esc(c.instructor) + '</span><small>Instructor</small></div><div class="doc-seal">' + ORG.seal + '</div><div class="doc-sig"><span>' + fmt(c.issued) + '</span><small>Date issued</small></div></div>' +
+      '<div class="doc-code">Verification code ' + c.code + (c.expires ? ' · Valid until ' + fmt(c.expires) : '') + ' · Verify at upspace.app/verify</div>' +
+    '</div></div>';
+  }
+
+  function card(c){
+    var s = statusOf(c), href = 'certificate-detail.html?id=' + c.id;
+    var dates = '<li>Issued <b>' + fmt(c.issued) + '</b></li>' +
+      (s === 'revoked' ? '<li class="bad">Revoked on ' + fmt(c.revoked) + '</li>'
+        : s === 'expired' ? '<li class="warn">Expired on ' + fmt(c.expires) + '</li>'
+        : c.expires ? '<li>Valid until <b>' + fmt(c.expires) + '</b></li>' : '');
+    return '<article class="card' + (s !== 'valid' ? ' is-muted' : '') + '" data-id="' + c.id + '">' +
+      '<a class="stage" href="' + href + '" tabindex="-1">' + docHtml(c) + '</a>' +
+      '<div class="body"><div class="top"><div><h2><a href="' + href + '">' + esc(c.course) + '</a></h2><div class="tpl">' + esc(TEMPLATES[c.tpl].name) + '</div></div>' +
+        '<span class="pill ' + s + '"><i></i>' + LABEL[s] + '</span></div>' +
+        '<ul class="dates">' + dates + '</ul>' +
+        '<div class="dl-slot"></div>' +
+        '<div class="acts"><a class="btn btn-primary" href="' + href + '">View certificate</a><button class="btn btn-secondary" type="button" data-dl="' + c.id + '" aria-label="Download ' + esc(c.course) + ' certificate as PDF">' + I.down + 'Download</button></div>' +
+      '</div></article>';
+  }
+
+  /* ---------------- Download — the stored, already-issued PDF (CERT-002-FR-03) ---------------- */
+  // ponytail: mock builds a one-page PDF from the issued record so a real file downloads; build streams the stored PDF instead
+  function pdfFor(c){
+    var t = TEMPLATES[c.tpl], lines = [[421, 470, 11, ORG.name.toUpperCase()], [421, 420, 12, t.eyebrow.toUpperCase()], [421, 380, 30, t.name], [421, 330, 13, 'This certifies that'], [421, 290, 28, LEARNER], [421, 250, 13, t.lead], [421, 215, 18, c.course], [421, 150, 11, 'Issued ' + fmt(c.issued) + (c.expires ? '  -  Valid until ' + fmt(c.expires) : '') + '  -  Instructor ' + c.instructor], [421, 70, 9, 'Verification code ' + c.code + '  -  Verify at upspace.app/verify']];
+    var stream = lines.map(function(l){ var txt = l[3].replace(/[\\()]/g, '\\$&').replace(/[^\x20-\x7e]/g, '-'); var w = txt.length * l[2] * 0.5; return 'BT /F1 ' + l[2] + ' Tf ' + (l[0] - w / 2).toFixed(1) + ' ' + l[1] + ' Td (' + txt + ') Tj ET'; }).join('\n');
+    var objs = ['<< /Type /Catalog /Pages 2 0 R >>', '<< /Type /Pages /Kids [3 0 R] /Count 1 >>', '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 5 0 R >> >> /Contents 4 0 R >>', '<< /Length ' + stream.length + ' >>\nstream\n' + stream + '\nendstream', '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>'];
+    var out = '%PDF-1.4\n', offs = [];
+    objs.forEach(function(o, i){ offs.push(out.length); out += (i + 1) + ' 0 obj\n' + o + '\nendobj\n'; });
+    var xref = out.length;
+    out += 'xref\n0 ' + (objs.length + 1) + '\n0000000000 65535 f \n' + offs.map(function(o){ return String(o).padStart(10, '0') + ' 00000 n \n'; }).join('') + 'trailer\n<< /Size ' + (objs.length + 1) + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+    return new Blob([out], { type:'application/pdf' });
+  }
+  function download(id, btn){
+    var c = data.find(function(x){ return x.id === id; }), slot = btn.closest('.card').querySelector('.dl-slot');
+    slot.innerHTML = '';
+    btn.classList.add('busy'); btn.disabled = true; btn.innerHTML = '<span class="spin"></span>Preparing…';
+    setTimeout(function(){
+      btn.classList.remove('busy'); btn.disabled = false; btn.innerHTML = I.down + 'Download';
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(pdfFor(c));
+      a.download = 'Certificate-' + c.course.replace(/[^a-z0-9]+/ig, '-') + '-' + c.code + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); }, 1000);
+      toast('Certificate downloaded');
+    }, 700);
+  }
+  document.getElementById('content').addEventListener('click', function(e){
+    var b = e.target.closest('[data-dl]'); if (!b) return;
+    download(b.dataset.dl, b.closest('.card').querySelector('.acts [data-dl]'));
+  });
+
+  var tt;
+  function toast(m){ var t = document.getElementById('toast'); t.innerHTML = '<span class="ic">' + I.check + '</span>' + esc(m); t.hidden = false; clearTimeout(tt); tt = setTimeout(function(){ t.hidden = true; }, 2600); }
+
+  /* ---------------- Load — skeleton cards, never a full-page spinner ---------------- */
+  var data = [];
+  function skeleton(){
+    var one = '<div class="card" aria-hidden="true"><div class="stage"><div class="sk-doc"><span class="sk" style="width:30%"></span><span class="sk" style="width:55%;height:16px"></span><span class="sk" style="width:40%"></span><span class="sk" style="width:48%;height:14px"></span></div></div><div class="body"><span class="sk" style="width:70%;height:14px"></span><span class="sk" style="width:40%"></span><span class="sk" style="width:55%;margin-top:14px"></span><span class="sk" style="width:100%;height:36px;margin-top:18px"></span></div></div>';
+    document.getElementById('content').innerHTML = '<div class="grid" aria-busy="true" aria-label="Loading certificates">' + one + one + one + one + '</div>';
+  }
+  function render(){
+    var c = document.getElementById('content');
+    if (!data.length){ c.innerHTML = '<div class="empty" role="status"><div class="ic">' + I.award + '</div><b>No certificates yet.</b><span>Complete an eligible course to earn your first certificate.</span><br><a class="btn btn-secondary" href="my-courses.html">Go to My Courses</a></div>'; return; }
+    // Valid first (newest issued first), then expired, then revoked
+    var order = { valid:0, expired:1, revoked:2 };
+    var list = data.slice().sort(function(a, b){ return order[statusOf(a)] - order[statusOf(b)] || d(b.issued) - d(a.issued); });
+    c.innerHTML = '<div class="grid">' + list.map(card).join('') + '</div>';
+  }
+  function load(mode){
+    skeleton();
+    setTimeout(function(){
+      if (mode === 'loading') return;
+      if (mode === 'error'){
+        document.getElementById('content').innerHTML = '<div class="empty" role="alert"><b>Couldn’t load your certificates.</b><span>Check your connection and try again.</span><br><button class="btn btn-secondary" type="button" id="retry">Retry</button></div>';
+        document.getElementById('retry').onclick = function(){ ps.value = 'normal'; load('normal'); };
+        return;
+      }
+      data = mode === 'empty' ? [] : CERTS.map(function(c){ return Object.assign({}, c); });
+      if (mode === 'expired') data[0].expires = '2026-09-20'; // newest certificate past its expiry, to check the Expired card
+      render();
+    }, 450);
+  }
+  var ps = document.getElementById('previewState');
+  ps.value = new URLSearchParams(location.search).get('state') || 'normal';
+  ps.addEventListener('change', function(){ load(this.value); });
+  load(ps.value);
+</script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Materials</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Session Materials. Reached from
+     live-sessions-overview.html's drawer (Completed session →
+     Materials). Standalone file (Rule 7) except sidebar/topbar
+     iframes (Rule 8 instructor exception).
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2;
+    --warning:#ca8a04; --warning-subtle:#fefce8;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:24px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:14px; }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:20px; flex-wrap:wrap; }
+  .page-head h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.3px; }
+  .page-head .sub{ font-size:13.5px; color:var(--text-tertiary); }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; line-height:1; padding:5px 10px; border-radius:999px; background:var(--surface-raised); color:var(--text-secondary); }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; background:var(--text-tertiary); }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .material-row{ display:flex; align-items:center; gap:14px; padding:16px 20px; border-bottom:1px solid var(--border-subtle); }
+  .material-row:last-child{ border-bottom:none; }
+  .material-icon{ width:40px; height:40px; border-radius:8px; background:var(--surface-canvas); border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; color:var(--text-tertiary); flex-shrink:0; }
+  .material-icon svg{ width:19px; height:19px; }
+  .material-icon.pdf{ color:var(--error); }
+  .material-icon.doc{ color:var(--info); }
+  .material-info{ flex:1; min-width:0; }
+  .material-info .name{ font-size:14px; font-weight:600; }
+  .material-info .meta{ font-size:12px; color:var(--text-tertiary); margin-top:2px; }
+  .material-actions{ display:flex; gap:6px; flex-shrink:0; }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:36px; padding:0 14px; border-radius:var(--radius-lg); font-size:13px; font-weight:600; cursor:pointer; border:none; white-space:nowrap; }
+  .btn svg{ width:14px; height:14px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .icon-btn{ width:36px; height:36px; padding:0; border-radius:var(--radius-lg); background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; cursor:pointer; }
+  .icon-btn:hover{ background:var(--surface-raised); }
+  .icon-btn svg{ width:15px; height:15px; }
+
+  .empty-state{ text-align:center; padding:72px 20px; }
+  .empty-state svg{ width:40px; height:40px; color:var(--text-disabled); margin-bottom:14px; }
+  .empty-state h3{ margin:0 0 8px; font-size:16px; font-weight:700; }
+  .empty-state p{ margin:0; font-size:13.5px; color:var(--text-tertiary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions&amp;pending=34" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Materials" title="Top bar"></iframe>
+
+  <main class="main">
+    <a class="back-link" href="live-sessions-overview.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Live Sessions
+    </a>
+
+    <div class="page-head">
+      <div>
+        <h1 id="mTitle">Session materials</h1>
+        <div class="sub" id="mGroup"></div>
+      </div>
+      <span class="status-pill"><i></i>Completed</span>
+    </div>
+
+    <div id="body"></div>
+  </main>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var SESSIONS = {
+    s6: { title:'Cloud Fundamentals Intro Lecture', group:'Cloud Fundamentals', date:'Sat, Sep 19, 2026', materials:[
+      { name:'intro-lecture-slides.pdf', size:'3.4 MB', kind:'pdf' },
+      { name:'syllabus.pdf', size:'820 KB', kind:'pdf' }
+    ] },
+    s4: { title:'UX Research Methods Workshop', group:'UX Research Methods', date:'Tue, Sep 22, 2026', materials:[
+      { name:'workshop-brief.docx', size:'214 KB', kind:'doc' }
+    ] },
+    s1: { title:'Live Q&A: Cloud Security Midterm Review', group:'Cloud Fundamentals', date:'Mon, Sep 21, 2026', materials:[
+      { name:'midterm-review-slides.pdf', size:'2.1 MB', kind:'pdf' }
+    ] },
+    s2: { title:'Data Structures Lab Session', group:'Data Structures & Algorithms', date:'Mon, Sep 21, 2026', materials:[
+      { name:'lab-4-worksheet.pdf', size:'640 KB', kind:'pdf' }
+    ] },
+    s3: { title:'Weekly Standup: Group Projects', group:'UX Research Methods', date:'Mon, Sep 21, 2026', materials:[] }
+  };
+
+  var sessionId = new URLSearchParams(location.search).get('session') || 's6';
+  var s = SESSIONS[sessionId] || SESSIONS.s6;
+
+  document.getElementById('mTitle').textContent = s.title;
+  document.getElementById('mGroup').textContent = s.group + ' · ' + s.date;
+
+  var ICONS = {
+    pdf: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>',
+    doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/><path d="M9 13h6"/><path d="M9 17h6"/></svg>'
+  };
+
+  var body = document.getElementById('body');
+  if (!s.materials.length) {
+    body.innerHTML = '<div class="card"><div class="empty-state">' +
+      '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5z"/><path d="M14 2v6h6"/></svg>' +
+      '<h3>No materials attached</h3><p>This session doesn\'t have any files attached to it.</p>' +
+    '</div></div>';
+  } else {
+    body.innerHTML = '<div class="card">' + s.materials.map(function(m){
+      return '<div class="material-row">' +
+        '<div class="material-icon ' + m.kind + '">' + ICONS[m.kind] + '</div>' +
+        '<div class="material-info"><div class="name">' + m.name + '</div><div class="meta">' + m.size + '</div></div>' +
+        '<div class="material-actions">' +
+          '<button class="icon-btn" title="Download" onclick="return false;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>' +
+          '<button class="btn btn-secondary" onclick="return false;">View</button>' +
+        '</div>' +
+      '</div>';
+    }).join('') + '</div>';
+  }
+</script>
+</body>
+</html>

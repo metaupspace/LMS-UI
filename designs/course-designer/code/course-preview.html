@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace — Course Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Preview Course (CRS-005). Opened in a new tab
+     from the builder / My Courses: course-preview.html?id=&lesson=
+     Renders the course as the learner sees it, using the Learner
+     course player layout (designs/Learner/code/course-player.html):
+     focused header, lesson column, right-rail outline (approved
+     Accordion + Lesson list item). No Course Designer shell.
+     FR-02 persistent, non-dismissable Preview banner. FR-03 free
+     navigation, no completion enforcement. FR-04 media renders for
+     real. FR-05 quizzes work but nothing is recorded. FR-06 no
+     progress / analytics. FR-08 reads the latest autosaved state.
+     Broken / missing media renders a visible broken state (CRS-005
+     edge case) so the creator catches it before submitting.
+     Data (read-only, never seeded here): localStorage
+     upspace.cd.courses.v1 / .library.v1 / .assessments.v1, uploaded
+     files from IndexedDB 'upspace-cd' → 'blobs' (written by the builder).
+     Library reused: Video player look, Slider, Buttons, Badge, Alerts,
+     Progress bar, Radio group, Input field, Textarea. Approved hand-
+     built: Accordion, Lesson list item, Skeleton, Empty state, block
+     renderers (audio player, document viewer, embed, code, file,
+     callout, quote, assessment — MISSING_COMPONENTS.md 2026-09-24).
+     Demo states: ?state=loading | error, or the Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --stage:#0b0b12;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --header-h:64px; --rail-w:360px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+    --mono:ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; display:flex; flex-direction:column; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,textarea,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease; }
+  .btn svg{ width:16px; height:16px; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn:disabled{ opacity:.45; pointer-events:none; }
+  .icon-btn{ width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; color:var(--text-secondary); }
+  .icon-btn:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .icon-btn svg{ width:18px; height:18px; }
+
+  /* Preview banner (FR-02, non-dismissable) */
+  .pv-banner{ flex-shrink:0; display:flex; align-items:center; justify-content:center; gap:10px; padding:8px 16px; background:var(--text-primary); color:#fff; font-size:13.5px; font-weight:500; text-align:center; flex-wrap:wrap; }
+  .pv-banner svg{ width:16px; height:16px; opacity:.8; }
+  .pv-banner a{ color:#c7d2fe; font-weight:600; text-decoration:underline; text-underline-offset:2px; }
+
+  /* Header (course player pattern) */
+  .header{ flex-shrink:0; height:var(--header-h); display:flex; align-items:center; gap:16px; padding:0 clamp(16px, 2vw, 28px); background:#fff; border-bottom:1px solid var(--border-default); }
+  .back{ display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 10px 0 6px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; }
+  .back:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .back svg{ width:18px; height:18px; }
+  .divider-v{ width:1px; height:24px; background:var(--border-default); }
+  .course-name{ font-size:15px; font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .header-spacer{ flex:1; }
+  .rail-toggle{ display:none; }
+
+  /* Layout */
+  .layout{ flex:1; min-height:0; display:grid; grid-template-columns:minmax(0,1fr) var(--rail-w); }
+  .main-col{ overflow-y:auto; min-width:0; }
+  .content-inner{ max-width:880px; margin:0 auto; padding:28px clamp(16px, 2.4vw, 40px) 64px; }
+  .lesson-head{ margin-bottom:24px; }
+  .lock-note{ display:flex; align-items:flex-start; gap:8px; margin:10px 0 0; padding:10px 12px; border-radius:var(--radius-lg); background:var(--surface-raised); font-size:13.5px; line-height:1.5; color:var(--text-secondary); }
+  .lock-note svg{ width:15px; height:15px; flex-shrink:0; margin-top:2px; }
+  .lesson-eyebrow{ font-size:13px; font-weight:600; color:var(--action-primary); }
+  .lesson-title{ margin:4px 0 0; font-size:clamp(22px, 1.7vw, 28px); font-weight:700; letter-spacing:-.4px; line-height:1.25; text-wrap:balance; }
+  .lesson-desc{ margin:8px 0 0; font-size:15px; line-height:1.6; color:var(--text-secondary); }
+  .lesson-foot{ display:flex; justify-content:space-between; gap:12px; margin-top:40px; padding-top:20px; border-top:1px solid var(--border-subtle); }
+  .lesson-foot .btn{ max-width:48%; }
+  .lesson-foot .btn span{ overflow:hidden; text-overflow:ellipsis; }
+  .empty-lesson{ padding:48px 20px; text-align:center; color:var(--text-tertiary); font-size:15px; border:1px dashed var(--border-default); border-radius:var(--radius-xl); }
+
+  /* Blocks (read-only renderers) */
+  .blocks > * + *{ margin-top:24px; }
+  .b-text{ font-size:16px; line-height:1.75; color:var(--text-strong); overflow-wrap:anywhere; }
+  .b-text p, .rich p{ margin:0 0 14px; }
+  .b-text > :last-child, .rich > :last-child{ margin-bottom:0; }
+  .b-text h2, .b-text h3, .rich h3{ color:var(--text-primary); margin:22px 0 8px; letter-spacing:-.2px; }
+  .b-text ul, .b-text ol, .rich ul, .rich ol{ margin:0 0 14px; padding-left:24px; }
+  .b-text li{ margin-bottom:6px; }
+  .b-text blockquote{ margin:0 0 14px; padding:10px 16px; border-left:3px solid var(--action-primary-soft); color:var(--text-secondary); }
+  .b-text a, .rich a{ color:var(--action-primary); text-decoration:underline; }
+  .b-text code, .rich code{ font-family:var(--mono); font-size:.88em; padding:2px 6px; border-radius:var(--radius-sm); background:var(--surface-raised); }
+  .b-text pre{ margin:0 0 14px; padding:14px 16px; border-radius:var(--radius-lg); background:#0f1117; color:#e5e7eb; overflow-x:auto; font-size:13.5px; }
+  .b-text pre code{ background:none; padding:0; color:inherit; }
+  h2.b-heading{ margin:32px 0 0; font-size:22px; font-weight:700; letter-spacing:-.3px; }
+  h3.b-heading{ margin:28px 0 0; font-size:18px; font-weight:700; letter-spacing:-.2px; }
+  .blocks > .b-heading:first-child{ margin-top:0; }
+  hr.b-divider{ border:0; border-top:1px solid var(--border-default); margin:32px 0; }
+
+  figure.b-image{ margin:0; }
+  figure.b-image img{ display:block; width:100%; height:auto; border-radius:var(--radius-xl); background:var(--surface-raised); }
+  figure.b-image.center{ max-width:640px; margin-left:auto; margin-right:auto; }
+  figure.b-image.left{ max-width:420px; }
+  figcaption{ margin-top:8px; font-size:13.5px; color:var(--text-tertiary); line-height:1.5; }
+  figure.b-image.center figcaption{ text-align:center; }
+
+  /* Video (library Video player look) */
+  .b-video .stage{ background:var(--stage); border-radius:var(--radius-2xl); overflow:hidden; aspect-ratio:16/9; }
+  .b-video video, .b-video iframe{ display:block; width:100%; height:100%; border:0; background:#000; }
+  .transcript{ margin-top:10px; }
+  .transcript summary{ font-size:13.5px; font-weight:600; color:var(--text-secondary); cursor:pointer; width:max-content; }
+  .transcript div{ margin-top:8px; padding:12px 14px; border-radius:var(--radius-lg); background:#fff; border:1px solid var(--border-subtle); font-size:14px; line-height:1.6; color:var(--text-secondary); white-space:pre-wrap; max-height:220px; overflow-y:auto; }
+
+  /* Audio player (hand-built, approved) */
+  .b-audio .player{ display:grid; grid-template-columns:44px minmax(0,1fr); gap:14px; align-items:center; padding:14px 16px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; }
+  .a-play{ width:44px; height:44px; border-radius:50%; border:0; background:var(--action-primary); color:#fff; display:flex; align-items:center; justify-content:center; }
+  .a-play:hover{ background:var(--action-primary-hover); }
+  .a-play svg{ width:18px; height:18px; }
+  .a-title{ font-size:14.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .a-row{ display:flex; align-items:center; gap:10px; margin-top:6px; }
+  .a-time{ font-size:12.5px; color:var(--text-tertiary); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .a-vol{ display:flex; align-items:center; gap:6px; color:var(--text-tertiary); }
+  .a-vol svg{ width:16px; height:16px; }
+  /* Slider (library) */
+  input[type=range]{ -webkit-appearance:none; appearance:none; height:6px; border-radius:var(--radius-full); background:linear-gradient(var(--action-primary), var(--action-primary)) 0/var(--p, 0%) 100% no-repeat, var(--surface-overlay); outline:none; cursor:pointer; }
+  input[type=range]::-webkit-slider-thumb{ -webkit-appearance:none; width:14px; height:14px; border-radius:50%; background:#fff; border:2px solid var(--action-primary); box-shadow:0 1px 3px rgba(0,0,0,.2); }
+  input[type=range]::-moz-range-thumb{ width:12px; height:12px; border-radius:50%; background:#fff; border:2px solid var(--action-primary); }
+  .a-seek{ flex:1; min-width:60px; }
+  .a-volume{ width:72px; }
+
+  /* Document viewer (hand-built, approved) */
+  .b-doc, .b-file, .b-embed{ border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; overflow:hidden; }
+  .doc-bar{ display:flex; align-items:center; gap:12px; padding:10px 12px 10px 14px; border-bottom:1px solid var(--border-subtle); }
+  .ftype{ width:36px; height:36px; border-radius:var(--radius-md); background:var(--action-primary-subtle); color:var(--action-primary); font-size:10.5px; font-weight:700; display:flex; align-items:center; justify-content:center; text-transform:uppercase; flex-shrink:0; }
+  .doc-meta{ flex:1; min-width:0; }
+  .doc-meta b{ display:block; font-size:14.5px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .doc-meta small{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:1px; }
+  .doc-acts{ display:flex; gap:6px; }
+  .b-doc iframe{ display:block; width:100%; border:0; background:var(--surface-raised); }
+  .doc-fallback{ padding:28px 20px; text-align:center; font-size:14px; color:var(--text-secondary); background:var(--surface-canvas); }
+  .b-file{ display:flex; align-items:center; gap:12px; padding:12px 12px 12px 14px; }
+  .b-file p{ margin:2px 0 0; font-size:13px; color:var(--text-secondary); }
+
+  /* Embed (hand-built, approved) */
+  .b-embed iframe{ display:block; width:100%; border:0; background:var(--surface-canvas); }
+  .embed-src{ padding:8px 14px; font-size:12.5px; color:var(--text-tertiary); border-top:1px solid var(--border-subtle); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Code (hand-built, approved) */
+  .b-code .code-box{ border-radius:var(--radius-xl); overflow:hidden; background:#0f1117; }
+  .code-bar{ display:flex; align-items:center; gap:10px; padding:8px 8px 8px 16px; background:#171a22; color:#9ca3af; font-size:12.5px; }
+  .code-bar b{ color:#e5e7eb; font-weight:600; flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .copy{ height:28px; padding:0 10px; border:0; border-radius:var(--radius-md); background:rgba(255,255,255,.08); color:#e5e7eb; font-size:12.5px; font-weight:600; display:inline-flex; align-items:center; gap:6px; }
+  .copy:hover{ background:rgba(255,255,255,.16); }
+  .copy svg{ width:13px; height:13px; }
+  .b-code pre{ margin:0; padding:16px; overflow-x:auto; font-family:var(--mono); font-size:13.5px; line-height:1.6; color:#e5e7eb; tab-size:2; }
+  .tk-c{ color:#6b7280; font-style:italic; } .tk-s{ color:#86efac; } .tk-n{ color:#fbbf24; } .tk-k{ color:#a5b4fc; font-weight:600; } .tk-t{ color:#f9a8d4; }
+  .code-exp{ margin-top:10px; font-size:14.5px; line-height:1.6; color:var(--text-secondary); }
+
+  /* Callout (hand-built, approved) */
+  .b-callout{ display:grid; grid-template-columns:20px minmax(0,1fr); gap:12px; padding:14px 16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:var(--surface-canvas); }
+  .b-callout > svg{ width:20px; height:20px; margin-top:1px; color:var(--text-secondary); }
+  .b-callout b{ display:block; font-size:14.5px; margin-bottom:3px; }
+  .b-callout .rich{ font-size:15px; line-height:1.65; color:var(--text-strong); }
+  .b-callout.tip{ background:var(--action-primary-subtle); border-color:var(--action-primary-soft); } .b-callout.tip > svg{ color:var(--action-primary); }
+  .b-callout.important{ background:var(--info-subtle); border-color:var(--info-border); } .b-callout.important > svg{ color:var(--info); }
+  .b-callout.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .b-callout.warning > svg{ color:var(--warning); }
+  .b-callout.example{ background:var(--success-subtle); border-color:var(--success-border); } .b-callout.example > svg{ color:var(--success); }
+
+  /* Quote / example (hand-built, approved) */
+  .b-quote{ margin:0; padding:4px 0 4px 20px; border-left:3px solid var(--action-primary-soft); }
+  .b-quote .eyebrow{ display:block; font-size:12px; font-weight:700; letter-spacing:.4px; text-transform:uppercase; color:var(--action-primary); margin-bottom:6px; }
+  .b-quote .rich{ font-size:16px; line-height:1.7; color:var(--text-strong); }
+  .b-quote.quote .rich{ font-size:18px; font-style:italic; color:var(--text-primary); }
+  .b-quote cite{ display:block; margin-top:8px; font-size:13.5px; font-style:normal; color:var(--text-tertiary); }
+  .b-quote.takeaway{ border-left:0; padding:16px 18px; border-radius:var(--radius-lg); background:#fff; border:1px solid var(--border-default); }
+
+  /* Assessment (hand-built, approved) */
+  .b-assess{ border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; }
+  .as-head{ display:flex; align-items:flex-start; gap:12px; padding:18px 20px; border-bottom:1px solid var(--border-subtle); flex-wrap:wrap; }
+  .as-head h3{ margin:0; font-size:17px; font-weight:700; }
+  .as-head p{ margin:4px 0 0; font-size:13.5px; color:var(--text-tertiary); }
+  .as-head > div{ flex:1; min-width:200px; }
+  .as-note{ font-size:12.5px; color:var(--text-tertiary); }
+  .as-body{ padding:6px 20px 20px; }
+  .as-instr{ margin:14px 0 0; font-size:15px; line-height:1.6; color:var(--text-secondary); white-space:pre-wrap; }
+  .q{ padding:18px 0; border-bottom:1px solid var(--border-subtle); }
+  .q:last-of-type{ border-bottom:0; }
+  .q-p{ display:flex; gap:10px; font-size:15px; font-weight:600; line-height:1.5; margin-bottom:12px; }
+  .q-p .n{ color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  .q-p .pts{ margin-left:auto; font-size:12.5px; font-weight:500; color:var(--text-tertiary); white-space:nowrap; }
+  .opt{ display:flex; align-items:center; gap:10px; padding:10px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; cursor:pointer; }
+  .opt + .opt{ margin-top:8px; }
+  .opt:hover{ background:var(--surface-canvas); }
+  .opt input{ width:17px; height:17px; accent-color:var(--action-primary); margin:0; }
+  .opt.right{ border-color:var(--success-border); background:var(--success-subtle); }
+  .opt.wrong{ border-color:var(--error-border); background:var(--error-subtle); }
+  .q .input{ width:100%; height:42px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14.5px; outline:none; background:#fff; }
+  .q textarea.input{ height:auto; min-height:96px; padding:10px 12px; resize:vertical; }
+  .q .input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .q .input.right{ border-color:var(--success); } .q .input.wrong{ border-color:var(--error); }
+  .q-fb{ margin-top:8px; font-size:13px; font-weight:600; }
+  .q-img{ margin:0 0 12px; }
+  .q-img img{ display:block; max-width:100%; max-height:340px; object-fit:contain; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .q-fb.right{ color:var(--success); } .q-fb.wrong{ color:var(--error); } .q-fb.info{ color:var(--text-tertiary); font-weight:500; }
+  .as-foot{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-top:16px; }
+  .result{ font-size:14.5px; font-weight:600; }
+  .result.pass{ color:var(--success); } .result.fail{ color:var(--error); }
+
+  /* Badge (library) */
+  .badge{ display:inline-flex; align-items:center; gap:6px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; background:var(--action-primary-subtle); color:var(--action-primary); }
+
+  /* Broken state (CRS-005 edge case) */
+  .broken{ display:flex; align-items:center; gap:14px; padding:18px 20px; border:1.5px dashed var(--error-border); border-radius:var(--radius-xl); background:var(--error-subtle); color:var(--text-strong); font-size:14px; line-height:1.5; }
+  .broken svg{ width:22px; height:22px; color:var(--error); }
+  .broken b{ display:block; color:var(--text-primary); }
+
+  /* Right rail (course player pattern) */
+  .rail{ overflow:hidden; background:#fff; border-left:1px solid var(--border-default); min-width:0; display:flex; flex-direction:column; }
+  .rail-head{ padding:18px 20px 14px; border-bottom:1px solid var(--border-subtle); display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .rail-head h2{ margin:0; font-size:16px; font-weight:700; letter-spacing:-.2px; }
+  .rail-head small{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:3px; font-weight:500; }
+  .rail-close{ display:none; }
+  .modules{ flex:1; overflow-y:auto; padding:4px 0 24px; }
+  /* Accordion (hand-built, approved) */
+  .acc{ border-bottom:1px solid var(--border-subtle); }
+  .acc-btn{ width:100%; display:flex; align-items:flex-start; gap:12px; padding:14px 20px; border:0; background:transparent; text-align:left; transition:background-color .15s ease; }
+  .acc-btn:hover{ background:var(--surface-canvas); }
+  .acc-btn .num{ flex-shrink:0; width:26px; height:26px; border-radius:var(--radius-md); background:var(--surface-raised); font-size:12.5px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .acc.current .num{ background:var(--action-primary-soft); color:var(--action-primary); }
+  .acc-btn .txt{ flex:1; min-width:0; }
+  .acc-btn .t{ display:block; font-size:14.5px; font-weight:600; color:var(--text-primary); line-height:1.35; }
+  .acc-btn .m{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:3px; }
+  .chev{ width:18px; height:18px; color:var(--text-tertiary); margin-top:4px; transition:transform .25s var(--ease); }
+  .acc-btn[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .acc-panel{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s var(--ease); }
+  .acc-btn[aria-expanded="true"] + .acc-panel{ grid-template-rows:1fr; }
+  .acc-panel > div{ overflow:hidden; }
+  .acc-panel ul{ list-style:none; margin:0; padding:0 12px 12px; }
+  /* Lesson list item (hand-built, approved) */
+  .lesson{ display:flex; align-items:flex-start; gap:12px; width:100%; padding:10px 10px 10px 12px; border:0; border-radius:var(--radius-lg); background:transparent; text-align:left; position:relative; transition:background-color .15s ease; }
+  .lesson:hover{ background:var(--surface-canvas); }
+  .lesson.active{ background:var(--action-primary-subtle); }
+  .lesson.active::before{ content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:3px; background:var(--action-primary); }
+  .lesson .st{ width:20px; height:20px; margin-top:1px; display:flex; align-items:center; justify-content:center; color:var(--text-disabled); }
+  .lesson.active .st{ color:var(--action-primary); }
+  .lesson .st svg{ width:18px; height:18px; }
+  .lesson .lt{ display:block; font-size:14px; font-weight:500; color:var(--text-strong); line-height:1.4; }
+  .lesson.active .lt{ color:var(--text-primary); font-weight:600; }
+  .lesson .lm{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:3px; }
+
+  /* Loading / error */
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f3f3f3 25%, #e9e9e9 50%, #f3f3f3 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk + .sk{ margin-top:12px; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  .fail{ margin:clamp(40px, 10vh, 120px) auto 0; max-width:440px; text-align:center; padding:0 20px; }
+  .fail svg{ width:28px; height:28px; color:var(--error); margin-bottom:10px; }
+  .fail b{ display:block; font-size:17px; margin-bottom:6px; }
+  .fail p{ margin:0 0 20px; font-size:14.5px; line-height:1.5; color:var(--text-secondary); }
+  .fail .acts{ display:flex; justify-content:center; gap:10px; }
+
+  .preview-ctl{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  .preview-ctl select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+
+  .rail-backdrop{ display:none; }
+  @media (max-width:1024px){
+    .layout{ grid-template-columns:minmax(0,1fr); }
+    .rail{ position:fixed; z-index:40; top:0; right:0; bottom:0; width:min(var(--rail-w), 92vw); transform:translateX(100%); transition:transform .3s var(--ease); box-shadow:-8px 0 32px rgba(0,0,0,.14); }
+    .layout.rail-open .rail{ transform:none; }
+    .layout.rail-open .rail-backdrop{ display:block; position:fixed; inset:0; z-index:35; background:rgba(15,23,42,.45); }
+    .rail-toggle, .rail-close{ display:inline-flex; }
+  }
+  @media (max-width:640px){
+    .back span, .divider-v{ display:none; }
+    .doc-acts .btn span{ display:none; }
+    .lesson-foot .btn span{ display:none; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+
+<div class="pv-banner" role="status"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/></svg><span>Preview Mode — this is how learners will see your course. Nothing you do here is recorded.</span><a id="bannerBack" href="my-courses.html">Back to builder</a></div>
+<header class="header">
+  <a class="back" id="headBack" href="my-courses.html"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Back to builder</span></a>
+  <span class="divider-v"></span>
+  <span class="course-name" id="courseName"></span>
+  <span class="header-spacer"></span>
+  <button class="icon-btn rail-toggle" type="button" id="railToggle" aria-label="Course content"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 12h18M3 6h18M3 18h18"/></svg></button>
+</header>
+<div class="layout" id="layout">
+  <main class="main-col" id="mainCol"><div class="content-inner" id="content"></div></main>
+  <aside class="rail" aria-label="Course content">
+    <div class="rail-head"><div><h2>Course content</h2><small id="railMeta"></small></div><button class="icon-btn rail-close" type="button" id="railClose" aria-label="Close course content"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M18 6 6 18M6 6l12 12"/></svg></button></div>
+    <div class="modules" id="modules"></div>
+  </aside>
+  <div class="rail-backdrop" id="railBackdrop"></div>
+</div>
+
+<label class="preview-ctl" title="Design-only: preview page states.">State
+  <select id="previewState">
+    <option value="normal">Normal</option>
+    <option value="loading">Loading</option>
+    <option value="error">Fails to load</option>
+  </select>
+</label>
+
+<script>
+  /* ---------------- Read-only data access (never seeds) ---------------- */
+  function read(key){ try { var v = JSON.parse(localStorage.getItem(key)); return v; } catch (e) { return null; } }
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  // Editor HTML is ours, but strip anything executable before rendering
+  function clean(html){
+    var doc = new DOMParser().parseFromString('<div>' + (html || '') + '</div>', 'text/html');
+    doc.querySelectorAll('script,style,iframe,object,embed,link,meta,form').forEach(function(n){ n.remove(); });
+    doc.querySelectorAll('*').forEach(function(n){
+      Array.prototype.slice.call(n.attributes).forEach(function(a){
+        if (/^on/i.test(a.name) || ((a.name === 'href' || a.name === 'src') && /^\s*(javascript|data):/i.test(a.value))) n.removeAttribute(a.name);
+      });
+      if (n.tagName === 'A'){ n.setAttribute('target', '_blank'); n.setAttribute('rel', 'noopener noreferrer'); }
+    });
+    return doc.body.firstChild.innerHTML;
+  }
+  function size(b){ if (!b && b !== 0) return ''; return b < 1024 ? b + ' B' : b < 1048576 ? Math.round(b / 1024) + ' KB' : (b / 1048576).toFixed(1) + ' MB'; }
+  function fmt(t){ if (!isFinite(t)) return '0:00'; t = Math.floor(t); return Math.floor(t / 60) + ':' + ('0' + t % 60).slice(-2); }
+
+  var I = {
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    broken:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    circle:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>',
+    dotc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4" fill="currentColor" stroke="none"/></svg>',
+    play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+    pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>',
+    vol:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4.702a.705.705 0 0 0-1.203-.498L6.413 7.587A1.4 1.4 0 0 1 5.416 8H3a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2.416a1.4 1.4 0 0 1 .997.413l3.383 3.384A.705.705 0 0 0 11 19.298z"/><path d="M16 9a5 5 0 0 1 0 6"/></svg>',
+    dl:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/></svg>',
+    ext:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6M10 14 21 3M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>',
+    copy:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    prev:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    next:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+    note:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg>',
+    tip:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-.9 1.5-2.2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6M10 22h4"/></svg>',
+    important:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>',
+    example:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>'
+  };
+  I.warning = I.broken;
+
+  /* ---------------- IndexedDB blobs (written by the builder) ---------------- */
+  var dbP = null, urlCache = {};
+  function db(){
+    if (!dbP) dbP = new Promise(function(res){
+      try {
+        var r = indexedDB.open('upspace-cd', 1);
+        r.onupgradeneeded = function(){ r.result.createObjectStore('blobs'); };
+        r.onsuccess = function(){ res(r.result); };
+        r.onerror = function(){ res(null); };
+      } catch (e) { res(null); }
+    });
+    return dbP;
+  }
+  function blobUrl(id){
+    if (urlCache[id] !== undefined) return Promise.resolve(urlCache[id]);
+    return db().then(function(d){
+      if (!d) return null;
+      return new Promise(function(res){
+        try {
+          var g = d.transaction('blobs', 'readonly').objectStore('blobs').get(id);
+          g.onsuccess = function(){ res(urlCache[id] = g.result ? URL.createObjectURL(g.result) : null); };
+          g.onerror = function(){ res(null); };
+        } catch (e) { res(null); }
+      });
+    });
+  }
+  // Resolve an asset → { asset, url } or { asset, broken:reason }
+  function resolve(id){
+    var a = id && LIB.find(function(x){ return x.id === id; });
+    if (!a) return Promise.resolve({ broken:'This file is no longer in the Content Library.' });
+    if (a.status === 'failed') return Promise.resolve({ asset:a, broken:'This file failed to upload or process.' });
+    if (a.url) return Promise.resolve({ asset:a, url:a.url });
+    return blobUrl(a.id).then(function(u){ return u ? { asset:a, url:u } : { asset:a, broken:'This file isn\'t available on this device.' }; });
+  }
+  function broken(title, msg){ return '<div class="broken" role="note">' + I.broken + '<div><b>' + esc(title) + '</b>' + esc(msg) + '</div></div>'; }
+
+  /* ---------------- Syntax highlighting (tiny tokenizer, display only) ---------------- */
+  var KW = {
+    javascript:'const let var function return if else for while do switch case break continue new class extends import export from default async await try catch finally throw typeof instanceof this null undefined true false of in',
+    python:'def return if elif else for while in not and or is class import from as try except finally raise with lambda pass break continue None True False yield global async await',
+    java:'public private protected static final class interface extends implements new return if else for while do switch case break continue try catch finally throw throws void int long double float boolean char String null true false this super import package',
+    c:'int long short char float double void return if else for while do switch case break continue struct typedef enum const static sizeof unsigned signed include define NULL',
+    cpp:'int long short char float double void bool return if else for while do switch case break continue struct class public private protected template typename namespace using new delete const static auto nullptr true false include std',
+    sql:'select from where and or not insert into values update set delete create table alter drop join left right inner outer on group by order having limit as distinct null is in like between count sum avg min max primary key',
+    bash:'if then else elif fi for do done while case esac function return echo exit export local in cd ls grep sudo',
+    css:'', html:'', json:'true false null'
+  };
+  function highlight(code, lang){
+    var kws = (KW[lang] || '').split(' ').filter(Boolean);
+    var comment = lang === 'python' || lang === 'bash' ? '#[^\\n]*' : lang === 'sql' ? '--[^\\n]*' : lang === 'html' ? '<!--[\\s\\S]*?-->' : lang === 'json' ? '(?!)' : '\\/\\/[^\\n]*|\\/\\*[\\s\\S]*?\\*\\/';
+    var parts = [['c', comment], ['s', '"(?:\\\\.|[^"\\\\])*"|\'(?:\\\\.|[^\'\\\\])*\'' + (lang === 'javascript' ? '|`(?:\\\\.|[^`\\\\])*`' : '')], ['n', '\\b\\d+(?:\\.\\d+)?\\b']];
+    if (lang === 'html') parts.push(['t', '<\\/?[a-zA-Z][\\w-]*|\\/?>']);
+    if (kws.length) parts.push(['k', '\\b(?:' + kws.join('|') + ')\\b']);
+    var re = new RegExp(parts.map(function(p){ return '(' + p[1] + ')'; }).join('|'), lang === 'sql' ? 'gi' : 'g');
+    var out = '', last = 0, m;
+    code = String(code);
+    while ((m = re.exec(code))){
+      if (!m[0]){ re.lastIndex++; continue; }
+      var g = 1; while (g < m.length && m[g] === undefined) g++;
+      out += esc(code.slice(last, m.index)) + '<span class="tk-' + parts[g - 1][0] + '">' + esc(m[0]) + '</span>';
+      last = m.index + m[0].length;
+    }
+    return out + esc(code.slice(last));
+  }
+  var LANG = { javascript:'JavaScript', python:'Python', java:'Java', c:'C', cpp:'C++', html:'HTML', css:'CSS', sql:'SQL', json:'JSON', bash:'Bash' };
+
+  /* ---------------- Block renderers ---------------- */
+  var ASSESS_T = { quiz:'Quiz', test:'Test', assignment:'Assignment', 'knowledge-check':'Knowledge check' };
+  function renderBlock(b){
+    var d = b.data || {};
+    // Empty text-type blocks are authoring leftovers — learners see nothing for them
+    var tx = function(h){ var x = document.createElement('div'); x.innerHTML = h || ''; return x.textContent.replace(/[\s\u200B]+/g, '').length; };
+    if ((b.type === 'text' || b.type === 'callout' || b.type === 'quote') && !tx(d.html)) return Promise.resolve('');
+    if (b.type === 'heading' && !(d.text || '').trim()) return Promise.resolve('');
+    switch (b.type){
+      case 'text': return Promise.resolve('<div class="b-text">' + clean(d.html) + '</div>');
+      case 'heading': return Promise.resolve(d.text ? '<h' + (d.level === 3 ? 3 : 2) + ' class="b-heading">' + esc(d.text) + '</h' + (d.level === 3 ? 3 : 2) + '>' : '');
+      case 'divider': return Promise.resolve('<hr class="b-divider">');
+      case 'callout': return Promise.resolve('<div class="b-callout ' + esc(d.variant || 'note') + '" role="note">' + (I[d.variant] || I.note) + '<div>' + (d.title ? '<b>' + esc(d.title) + '</b>' : '') + '<div class="rich">' + clean(d.html) + '</div></div></div>');
+      case 'quote':
+        var lab = { example:'Example', case:'Case study', takeaway:'Key takeaway' }[d.variant];
+        return Promise.resolve('<blockquote class="b-quote ' + esc(d.variant || 'quote') + '">' + (lab ? '<span class="eyebrow">' + lab + '</span>' : '') + '<div class="rich">' + clean(d.html) + '</div>' + (d.attribution ? '<cite>— ' + esc(d.attribution) + '</cite>' : '') + '</blockquote>');
+      case 'code':
+        if (!String(d.code || '').trim()) return Promise.resolve('');
+        return Promise.resolve('<div class="b-code"><div class="code-box"><div class="code-bar"><b>' + esc(d.title || LANG[d.lang] || 'Code') + '</b>' + (d.title ? '<span>' + esc(LANG[d.lang] || '') + '</span>' : '') + '<button class="copy" type="button" data-copy>' + I.copy + '<span>Copy</span></button></div><pre><code>' + highlight(d.code, d.lang) + '</code></pre></div>' + (d.explanation ? '<p class="code-exp">' + esc(d.explanation) + '</p>' : '') + '</div>');
+      case 'embed':
+        if (!d.src || !/^https:\/\//i.test(d.src)) return Promise.resolve(broken('This embedded content can\'t be shown', d.error || 'The link is missing or isn\'t a secure (https) address.'));
+        var host = ''; try { host = new URL(d.src).host; } catch (e) {}
+        return Promise.resolve('<div class="b-embed"><iframe src="' + esc(d.src) + '" title="' + esc(d.title || 'Embedded content') + '" style="height:' + (Math.min(Math.max(+d.height || 480, 200), 1200)) + 'px" sandbox="allow-scripts allow-same-origin allow-popups allow-forms allow-presentation" referrerpolicy="no-referrer" loading="lazy" allowfullscreen></iframe><div class="embed-src">' + esc(d.title ? d.title + ' · ' : '') + esc(host) + '</div></div>');
+      case 'assessment': return Promise.resolve(renderAssessment(d.assessmentId, b.id));
+      case 'video':
+        if ((d.provider === 'youtube' || d.provider === 'vimeo') && d.embedSrc){
+          if (!/^https:\/\//.test(d.embedSrc)) return Promise.resolve(broken('Video unavailable', 'The video link isn\'t valid.'));
+          return Promise.resolve('<figure class="b-video" style="margin:0"><div class="stage"><iframe src="' + esc(d.embedSrc) + '" title="' + esc(d.caption || 'Video') + '" allow="accelerometer; encrypted-media; picture-in-picture; fullscreen" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe></div>' + videoExtras(d) + '</figure>');
+        }
+        var srcP = d.assetId ? resolve(d.assetId) : d.url && /^https:\/\//.test(d.url) ? Promise.resolve({ url:d.url }) : Promise.resolve({ broken:'No video has been added.' });
+        return Promise.all([srcP, d.posterAssetId ? resolve(d.posterAssetId) : Promise.resolve({})]).then(function(r){
+          if (r[0].broken) return broken('Video unavailable', r[0].broken);
+          return '<figure class="b-video" style="margin:0"><div class="stage"><video controls playsinline preload="metadata" src="' + esc(r[0].url) + '"' + (r[1].url ? ' poster="' + esc(r[1].url) + '"' : '') + (d.loop ? ' loop' : '') + (d.muted ? ' muted' : '') + ' data-media-error="Video couldn\'t be played"></video></div>' + videoExtras(d) + '</figure>';
+        });
+      case 'image':
+        return resolve(d.assetId).then(function(r){
+          if (r.broken) return broken('Image unavailable', r.broken);
+          return '<figure class="b-image ' + esc(d.align || 'wide') + '"><img src="' + esc(r.url) + '" alt="' + esc(d.alt || '') + '" loading="lazy" data-media-error="Image couldn\'t be loaded">' + (d.caption ? '<figcaption>' + esc(d.caption) + '</figcaption>' : '') + '</figure>';
+        });
+      case 'audio':
+        return resolve(d.assetId).then(function(r){
+          if (r.broken) return broken('Audio unavailable', r.broken);
+          return '<div class="b-audio"><div class="player" data-audio><button class="a-play" type="button" aria-label="Play">' + I.play + '</button><div style="min-width:0"><div class="a-title">' + esc(d.title || r.asset.name) + '</div><div class="a-row"><input class="a-seek" type="range" min="0" max="100" step="0.1" value="0" aria-label="Seek"><span class="a-time">0:00 / 0:00</span><span class="a-vol">' + I.vol + '<input class="a-volume" type="range" min="0" max="1" step="0.05" value="1" aria-label="Volume" style="--p:100%"></span></div></div><audio preload="metadata" src="' + esc(r.url) + '"></audio></div>' + (d.transcript ? '<details class="transcript"><summary>Transcript</summary><div>' + esc(d.transcript) + '</div></details>' : '') + '</div>';
+        });
+      case 'document':
+        return resolve(d.assetId).then(function(r){
+          if (r.broken) return broken('Document unavailable', r.broken);
+          var a = r.asset, ext = (a.ext || '').toLowerCase(), h = { sm:420, md:600, lg:800 }[d.height] || 600;
+          var acts = '<a class="btn btn-secondary btn-sm" href="' + esc(r.url) + '" target="_blank" rel="noopener">' + I.ext + '<span>Open full screen</span></a>' + (d.download ? '<a class="btn btn-secondary btn-sm" href="' + esc(r.url) + '" download="' + esc(a.name) + '">' + I.dl + '<span>Download</span></a>' : '');
+          return '<div class="b-doc"><div class="doc-bar"><span class="ftype">' + esc(ext) + '</span><div class="doc-meta"><b>' + esc(d.title || a.name) + '</b><small>' + esc(ext.toUpperCase()) + (a.size ? ' · ' + size(a.size) : '') + '</small></div><div class="doc-acts">' + acts + '</div></div>' +
+            (ext === 'pdf' ? '<iframe src="' + esc(r.url) + '#view=FitH" title="' + esc(d.title || a.name) + '" style="height:' + h + 'px"></iframe>'
+              // ponytail: no server-side conversion yet, so PPTX/DOCX can't render inline; add when a converter/Office viewer exists
+              : '<div class="doc-fallback">Inline preview isn\'t available for ' + esc(ext.toUpperCase()) + ' files yet. ' + (d.download ? 'Download it to view.' : 'Open it to view.') + '</div>') + '</div>';
+        });
+      case 'file':
+        return resolve(d.assetId).then(function(r){
+          if (r.broken) return broken('File unavailable', r.broken);
+          var a = r.asset;
+          return '<div class="b-file"><span class="ftype">' + esc(a.ext || 'file') + '</span><div class="doc-meta"><b>' + esc(d.title || a.name) + '</b><small>' + esc((a.ext || '').toUpperCase()) + (a.size ? ' · ' + size(a.size) : '') + '</small>' + (d.description ? '<p>' + esc(d.description) + '</p>' : '') + '</div><a class="btn btn-secondary btn-sm" href="' + esc(r.url) + '" download="' + esc(a.name) + '">' + I.dl + '<span>Download</span></a></div>';
+        });
+    }
+    return Promise.resolve('');
+  }
+  function videoExtras(d){
+    return (d.caption ? '<figcaption>' + esc(d.caption) + '</figcaption>' : '') + (d.transcript ? '<details class="transcript"><summary>Transcript</summary><div>' + esc(d.transcript) + '</div></details>' : '');
+  }
+
+  /* ---------------- Assessments: functional, never recorded (FR-05/06) ---------------- */
+  function renderAssessment(id, bid){
+    var a = id && ASSESS.find(function(x){ return x.id === id; });
+    if (!a) return broken('Assessment unavailable', 'This assessment was removed or couldn\'t be loaded.');
+    var qs = a.questions || [], label = ASSESS_T[a.type] || 'Assessment';
+    var meta = [label, qs.length + (qs.length === 1 ? ' question' : ' questions')];
+    if (a.timeLimit) meta.push(a.timeLimit + ' min');
+    if (a.passMark != null && a.type !== 'assignment') meta.push('Pass: ' + a.passMark + '%');
+    var head = '<div class="as-head"><div><h3>' + esc(a.title) + '</h3><p>' + meta.map(esc).join(' · ') + '</p></div><span class="as-note">Responses aren\'t saved in preview</span></div>';
+    if (a.type === 'assignment'){
+      return '<div class="b-assess">' + head + '<div class="as-body">' + (a.instructions ? '<p class="as-instr">' + esc(a.instructions) + '</p>' : '') +
+        '<div class="as-foot"><button class="btn btn-primary" type="button" disabled>Submit ' + (a.submission === 'text' ? 'response' : 'file') + '</button><span class="as-note">Submissions are turned off in preview.</span></div></div></div>';
+    }
+    var body = qs.map(function(q, i){
+      var name = bid + '-' + q.id, opts = q.options || [], k = qKind(q);
+      if (k === 'tf' && !opts.length) opts = [{ id:'t', text:'True', correct:q.answer === true || q.answer === 'true' }, { id:'f', text:'False', correct:q.answer === false || q.answer === 'false' }];
+      var input;
+      if (k === 'mcq' || k === 'tf' || k === 'multi'){
+        var type = k === 'multi' ? 'checkbox' : 'radio';
+        input = opts.map(function(o){ return '<label class="opt" data-opt="' + esc(o.id) + '"><input type="' + type + '" name="' + esc(name) + '" value="' + esc(o.id) + '"><span>' + esc(o.text) + '</span></label>'; }).join('');
+      } else if (k === 'long') input = '<textarea class="input" aria-label="Your answer"></textarea>';
+      else input = '<input class="input" type="text" aria-label="Your answer" autocomplete="off">';
+      return '<div class="q" data-q="' + esc(q.id) + '"><div class="q-p"><span class="n">' + (i + 1) + '.</span><span>' + esc(q.prompt) + '</span><span class="pts">' + (q.points || 1) + ' pt' + ((q.points || 1) === 1 ? '' : 's') + '</span></div>' + (q.kind === 'image' && q.image ? '<figure class="q-img"><img data-qimg="' + esc(JSON.stringify(q.image)) + '" alt="' + esc(q.image.alt || '') + '"></figure>' : '') + input + '<div class="q-fb" hidden></div></div>';
+    }).join('');
+    return '<div class="b-assess" data-assess="' + esc(a.id) + '">' + head + '<div class="as-body">' + (a.instructions ? '<p class="as-instr">' + esc(a.instructions) + '</p>' : '') +
+      (qs.length ? body + '<div class="as-foot"><button class="btn btn-primary" type="button" data-check>Check answers</button><button class="btn btn-secondary" type="button" data-retry hidden>Try again</button><span class="result" aria-live="polite"></span></div>' : '<p class="as-instr">This assessment has no questions yet.</p>') + '</div></div>';
+  }
+  function qKind(q){ return q.kind === 'image' ? (q.format || 'mcq') : q.kind; } // image-based = image + answer format (ASM-002-FR-02)
+  function grade(box){
+    var a = ASSESS.find(function(x){ return x.id === box.dataset.assess; }); if (!a) return;
+    var got = 0, total = 0, ungraded = 0;
+    a.questions.forEach(function(q){
+      var el = box.querySelector('[data-q="' + CSS.escape(q.id) + '"]'), fb = el.querySelector('.q-fb'), pts = q.points || 1, ok = null;
+      el.querySelectorAll('input, textarea').forEach(function(x){ x.disabled = true; });
+      var k = qKind(q), accepted = [q.answer].concat(q.alts || []).filter(Boolean).map(function(x){ return String(x).trim().toLowerCase(); });
+      if (k === 'mcq' || k === 'tf' || k === 'multi'){
+        var opts = q.options && q.options.length ? q.options : [{ id:'t', correct:q.answer === true || q.answer === 'true' }, { id:'f', correct:q.answer === false || q.answer === 'false' }];
+        var picked = Array.prototype.map.call(el.querySelectorAll('input:checked'), function(x){ return x.value; });
+        var correct = opts.filter(function(o){ return o.correct; }).map(function(o){ return o.id; });
+        ok = picked.length === correct.length && correct.every(function(c){ return picked.indexOf(c) > -1; });
+        el.querySelectorAll('.opt').forEach(function(o){ var c = correct.indexOf(o.dataset.opt) > -1; if (c) o.classList.add('right'); else if (picked.indexOf(o.dataset.opt) > -1) o.classList.add('wrong'); });
+      } else if ((k === 'fill' || k === 'short') && q.answer){
+        var inp = el.querySelector('.input');
+        ok = accepted.indexOf(inp.value.trim().toLowerCase()) > -1; // fill: any accepted answer (Question Bank alts)
+        inp.classList.add(ok ? 'right' : 'wrong');
+      }
+      fb.hidden = false;
+      if (ok === null){ ungraded++; fb.className = 'q-fb info'; fb.textContent = 'Not auto-graded. An instructor would review this answer.'; return; }
+      total += pts; if (ok) got += pts;
+      fb.className = 'q-fb ' + (ok ? 'right' : 'wrong');
+      fb.textContent = (ok ? 'Correct' : 'Incorrect' + ((k === 'fill' || k === 'short') ? ' · Expected: ' + q.answer : '')) + (q.explanation ? ' — ' + q.explanation : '');
+    });
+    var pct = total ? Math.round(got / total * 100) : 0, res = box.querySelector('.result'), pass = a.passMark == null || pct >= a.passMark;
+    res.className = 'result ' + (total ? (pass ? 'pass' : 'fail') : '');
+    res.textContent = total ? pct + '% · ' + (pass ? 'Passed' : 'Below the ' + a.passMark + '% pass mark') + (ungraded ? ' · ' + ungraded + ' not auto-graded' : '') : 'No auto-graded questions.';
+    box.querySelector('[data-check]').hidden = true; box.querySelector('[data-retry]').hidden = false;
+  }
+  function resetAssess(box){
+    box.querySelectorAll('input, textarea').forEach(function(x){ x.disabled = false; if (x.type === 'radio' || x.type === 'checkbox') x.checked = false; else x.value = ''; x.classList.remove('right', 'wrong'); });
+    box.querySelectorAll('.opt').forEach(function(o){ o.classList.remove('right', 'wrong'); });
+    box.querySelectorAll('.q-fb').forEach(function(f){ f.hidden = true; });
+    box.querySelector('.result').textContent = ''; box.querySelector('[data-check]').hidden = false; box.querySelector('[data-retry]').hidden = true;
+  }
+
+  /* ---------------- Page ---------------- */
+  var params = new URLSearchParams(location.search), ps = $('previewState');
+  ps.value = params.get('state') || 'normal';
+  var COURSE, LIB, ASSESS, ALL = [], cur = null, open = {}, renderRun = 0;
+  // Lesson lock (CDL-003-FR-06). Preview never enforces it (CRS-005 edge case) — it only shows it.
+  function lockedBy(l){ var i = ALL.findIndex(function(x){ return x.l.id === l.id; }); return i > 0 && (COURSE.sequential || l.requirePrev) ? ALL[i - 1].l : null; }
+
+  function lessonBlocks(l){
+    if (Array.isArray(l.blocks)) return l.blocks;
+    return l.content && String(l.content).replace(/<[^>]+>/g, '').trim() ? [{ id:l.id + '-legacy', type:'text', data:{ html:l.content } }] : [];
+  }
+
+  function boot(){
+    $('content').innerHTML = '<span class="sk" style="width:22%"></span><span class="sk" style="width:60%;height:26px;margin-top:14px"></span><div style="margin-top:32px"><span class="sk"></span><span class="sk" style="width:92%"></span><span class="sk" style="width:80%"></span></div><span class="sk" style="height:260px;margin-top:28px;border-radius:16px"></span>';
+    $('modules').innerHTML = '<div style="padding:18px 20px"><span class="sk" style="width:70%"></span><span class="sk" style="width:55%"></span><span class="sk" style="width:65%"></span></div>';
+    if (ps.value === 'loading') return;
+    // ponytail: simulated load latency; real preview fetches the latest autosaved course (FR-08)
+    setTimeout(function(){
+      if (ps.value === 'error') return failView('We couldn\'t load this preview', 'Check your connection and try again.', true);
+      var courses = read('upspace.cd.courses.v1') || [];
+      COURSE = courses.find(function(c){ return c.id === params.get('id'); });
+      LIB = read('upspace.cd.library.v1') || [];
+      ASSESS = read('upspace.cd.assessments.v1') || [];
+      var back = 'course-builder.html?id=' + encodeURIComponent(params.get('id') || '');
+      $('bannerBack').href = $('headBack').href = COURSE ? back : 'my-courses.html';
+      if (!COURSE) return failView('We couldn\'t find this course', 'It may have been removed, or the link is wrong.', false);
+      document.title = COURSE.title + ' — Preview';
+      $('courseName').textContent = COURSE.title;
+      ALL = [];
+      (COURSE.modules || []).forEach(function(m, mi){ m.lessons.forEach(function(l, li){ ALL.push({ l:l, m:m, mi:mi, li:li }); }); });
+      var nm = (COURSE.modules || []).length; $('railMeta').textContent = nm + (nm === 1 ? ' module · ' : ' modules · ') + ALL.length + (ALL.length === 1 ? ' lesson' : ' lessons');
+      cur = ALL.find(function(x){ return x.l.id === params.get('lesson'); }) || ALL[0] || null;
+      if (cur) open[cur.mi] = true;
+      renderRail(); renderLesson();
+    }, 400);
+  }
+  function failView(title, msg, retry){
+    $('modules').innerHTML = '';
+    $('content').innerHTML = '<div class="fail" role="alert">' + I.alert + '<b>' + title + '</b><p>' + msg + '</p><div class="acts">' + (retry ? '<button class="btn btn-primary" type="button" id="retry">Try again</button>' : '') + '<a class="btn btn-secondary" href="my-courses.html">Back to My Courses</a></div></div>';
+    if (retry) $('retry').onclick = function(){ ps.value = 'normal'; boot(); };
+  }
+
+  function renderRail(){
+    $('modules').innerHTML = (COURSE.modules || []).length ? COURSE.modules.map(function(m, mi){
+      var isCur = cur && cur.mi === mi;
+      return '<div class="acc' + (isCur ? ' current' : '') + '"><button class="acc-btn" type="button" data-acc="' + mi + '" aria-expanded="' + !!open[mi] + '"><span class="num">' + (mi + 1) + '</span><span class="txt"><span class="t">' + esc(m.title) + '</span><span class="m">' + m.lessons.length + (m.lessons.length === 1 ? ' lesson' : ' lessons') + '</span></span>' + I.chev + '</button>' +
+        '<div class="acc-panel"><div><ul>' + m.lessons.map(function(l){
+          var active = cur && cur.l.id === l.id, n = lessonBlocks(l).length;
+          return '<li><button class="lesson' + (active ? ' active' : '') + '" type="button" data-lesson="' + esc(l.id) + '"' + (active ? ' aria-current="true"' : '') + '><span class="st"' + (lockedBy(l) && !active ? ' title="Locked for learners until the previous lesson is completed"' : '') + '>' + (active ? I.dotc : lockedBy(l) ? I.lock : I.circle) + '</span><span><span class="lt">' + esc(l.title || 'Untitled lesson') + '</span><span class="lm">' + (n ? n + (n === 1 ? ' item' : ' items') : 'No content yet') + '</span></span></button></li>';
+        }).join('') + '</ul></div></div></div>';
+    }).join('') : '<p style="padding:18px 20px;margin:0;font-size:14px;color:var(--text-tertiary)">This course has no modules yet.</p>';
+  }
+
+  function renderLesson(){
+    var el = $('content'), myRun = ++renderRun;
+    if (!cur){ el.innerHTML = '<div class="empty-lesson">This course has no lessons yet.</div>'; return; }
+    history.replaceState(null, '', '?id=' + encodeURIComponent(COURSE.id) + '&lesson=' + encodeURIComponent(cur.l.id));
+    var i = ALL.indexOf(cur), prev = ALL[i - 1], next = ALL[i + 1], blocks = lessonBlocks(cur.l);
+    var head = '<div class="lesson-head"><div class="lesson-eyebrow">Module ' + (cur.mi + 1) + ' · Lesson ' + (cur.li + 1) + '</div><h1 class="lesson-title">' + esc(cur.l.title || 'Untitled lesson') + '</h1>' + (lockedBy(cur.l) ? '<p class="lock-note">' + I.lock + '<span>Learners see this lesson locked until they complete “' + esc(lockedBy(cur.l).title || 'Untitled lesson') + '”. Preview lets you open it anyway.</span></p>' : '') + (cur.l.description ? '<p class="lesson-desc">' + esc(cur.l.description) + '</p>' : '') + '</div>';
+    var foot = '<div class="lesson-foot">' + (prev ? '<button class="btn btn-secondary" type="button" data-go="' + esc(prev.l.id) + '">' + I.prev + '<span>' + esc(prev.l.title || 'Previous') + '</span></button>' : '<span></span>') + (next ? '<button class="btn btn-primary" type="button" data-go="' + esc(next.l.id) + '"><span>' + esc(next.l.title || 'Next') + '</span>' + I.next + '</button>' : '') + '</div>';
+    el.innerHTML = head + '<div class="blocks"><span class="sk"></span><span class="sk" style="width:85%"></span></div>' + foot;
+    $('mainCol').scrollTop = 0;
+    Promise.all(blocks.map(function(b){ return renderBlock(b).catch(function(){ return broken('Content couldn\'t be shown', 'Something went wrong rendering this item.'); }); })).then(function(parts){
+      if (myRun !== renderRun) return;
+      var html = parts.filter(Boolean).join('');
+      el.querySelector('.blocks').innerHTML = html || '<div class="empty-lesson">This lesson has no content yet.</div>';
+      wireMedia(el);
+      el.querySelectorAll('img[data-qimg]').forEach(function(im){
+        var d = JSON.parse(im.dataset.qimg);
+        (d.url ? Promise.resolve({ url:d.url }) : resolve(d.assetId)).then(function(r){ if (r.url) im.src = r.url; else im.closest('figure').outerHTML = broken('Image unavailable', r.broken || 'This image couldn\'t be loaded.'); });
+      });
+    });
+  }
+
+  function wireMedia(root){
+    root.querySelectorAll('[data-media-error]').forEach(function(m){
+      m.addEventListener('error', function(){ var box = m.closest('figure') || m; box.outerHTML = broken(m.dataset.mediaError, 'The file is missing, unsupported or couldn\'t be reached.'); });
+    });
+    root.querySelectorAll('[data-audio]').forEach(function(p){
+      var au = p.querySelector('audio'), btn = p.querySelector('.a-play'), seek = p.querySelector('.a-seek'), time = p.querySelector('.a-time'), vol = p.querySelector('.a-volume');
+      function tick(){ var pct = au.duration ? au.currentTime / au.duration * 100 : 0; seek.value = pct; seek.style.setProperty('--p', pct + '%'); time.textContent = fmt(au.currentTime) + ' / ' + fmt(au.duration); }
+      btn.onclick = function(){ if (au.paused) au.play().catch(function(){}); else au.pause(); };
+      au.addEventListener('play', function(){ btn.innerHTML = I.pause; btn.setAttribute('aria-label', 'Pause'); });
+      au.addEventListener('pause', function(){ btn.innerHTML = I.play; btn.setAttribute('aria-label', 'Play'); });
+      au.addEventListener('timeupdate', tick); au.addEventListener('loadedmetadata', tick);
+      au.addEventListener('error', function(){ p.parentNode.outerHTML = broken('Audio couldn\'t be played', 'The file is missing, unsupported or couldn\'t be reached.'); });
+      seek.oninput = function(){ if (au.duration) au.currentTime = seek.value / 100 * au.duration; tick(); };
+      vol.oninput = function(){ au.volume = +vol.value; vol.style.setProperty('--p', vol.value * 100 + '%'); };
+    });
+  }
+
+  document.addEventListener('click', function(e){
+    var t;
+    if ((t = e.target.closest('[data-acc]'))){ var mi = +t.dataset.acc; open[mi] = !open[mi]; t.setAttribute('aria-expanded', open[mi]); return; }
+    if ((t = e.target.closest('[data-lesson], [data-go]'))){
+      var id = t.dataset.lesson || t.dataset.go; cur = ALL.find(function(x){ return x.l.id === id; });
+      open[cur.mi] = true; $('layout').classList.remove('rail-open'); renderRail(); renderLesson(); return;
+    }
+    if ((t = e.target.closest('[data-copy]'))){
+      var code = t.closest('.code-box').querySelector('code').textContent, label = t.querySelector('span');
+      (navigator.clipboard ? navigator.clipboard.writeText(code) : Promise.reject()).then(function(){ label.textContent = 'Copied'; }, function(){ label.textContent = 'Copy failed'; });
+      setTimeout(function(){ label.textContent = 'Copy'; }, 1600); return;
+    }
+    if ((t = e.target.closest('[data-check]'))){ grade(t.closest('[data-assess]')); return; }
+    if ((t = e.target.closest('[data-retry]'))){ resetAssess(t.closest('[data-assess]')); return; }
+  });
+  $('railToggle').onclick = function(){ $('layout').classList.add('rail-open'); };
+  $('railClose').onclick = $('railBackdrop').onclick = function(){ $('layout').classList.remove('rail-open'); };
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape') $('layout').classList.remove('rail-open'); });
+  // FR-08: re-render when the builder autosaves in another tab
+  window.addEventListener('storage', function(e){ if (e.key && e.key.indexOf('upspace.cd.') === 0 && COURSE && ps.value === 'normal'){ var keep = cur && cur.l.id; params.set('lesson', keep || ''); boot(); } });
+  ps.addEventListener('change', boot);
+  boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Learner Top Navbar (shared component)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — shared Top Navbar component. See sidebar.html for the
+     runtime-include rationale (CLAUDE.md Rule 8). Loaded via
+     <iframe src="../component/topnavbar.html?current=Page+Name">.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3;
+    --surface-raised:#f5f5f5; --border-default:#e5e5e5;
+    --focus-ring:#6366f1; --error:#dc2626;
+    --radius-lg:8px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; margin:0; }
+  body{ background:#ffffff; color:var(--text-primary); font-family:var(--font); overflow:hidden; }
+  a{ color:inherit; text-decoration:none; }
+  button{ font-family:var(--font); }
+
+  .topbar{
+    height:80px; display:flex; align-items:center; justify-content:space-between; gap:16px;
+    padding:0 32px 0 20px;
+  }
+  .topbar-left{ display:flex; align-items:center; gap:14px; min-width:0; }
+  .breadcrumb{ display:flex; align-items:center; gap:6px; font-size:13px; min-width:0; overflow:hidden; }
+  .breadcrumb a{ color:var(--text-tertiary); font-weight:600; }
+  .breadcrumb a:hover{ color:var(--text-primary); }
+  .breadcrumb .breadcrumb-sep{ color:var(--text-disabled); }
+  .breadcrumb .breadcrumb-current{ color:var(--text-primary); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .topbar-actions{ display:flex; align-items:center; gap:6px; }
+  .icon-btn{
+    width:36px; height:36px; border-radius:50%; border:none; background:transparent;
+    color:var(--text-secondary); display:flex; align-items:center; justify-content:center;
+    cursor:pointer; flex-shrink:0; position:relative;
+  }
+  .icon-btn:hover{ background:var(--surface-raised); }
+  .icon-btn:focus-visible{ outline:2px solid var(--focus-ring); outline-offset:1px; }
+  .icon-btn svg{ width:18px; height:18px; }
+  .icon-btn .dot{
+    position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%;
+    background:var(--error); border:2px solid #fff;
+  }
+  .search-input-wrap{ position:relative; width:240px; }
+  .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); }
+  .search-input-wrap input{
+    width:100%; height:36px; padding:0 12px 0 34px; border-radius:var(--radius-lg);
+    border:1px solid var(--border-default); background:#fafafa; font-size:13px; color:var(--text-primary); outline:none;
+  }
+  .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
+  .search-input-wrap input:focus{ border-color:var(--focus-ring); }
+  .profile-menu{ position:relative; flex-shrink:0; margin-left:6px; }
+  .avatar-btn{
+    width:36px; height:36px; border-radius:50%; border:none; cursor:pointer; padding:0; overflow:hidden;
+    background:linear-gradient(135deg, #4f46e5, #0ea5e9); color:#fff; font-size:13px; font-weight:700;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .avatar-btn:focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  .profile-dropdown{
+    position:absolute; top:44px; right:0; width:200px; background:#fff;
+    border:1px solid var(--border-default); border-radius:var(--radius-lg);
+    box-shadow:0 12px 32px -8px rgba(23,23,23,.18); padding:6px; display:none; z-index:20;
+  }
+  .profile-dropdown.show{ display:block; }
+  .profile-dropdown a{ display:block; padding:9px 10px; border-radius:6px; font-size:13.5px; color:var(--text-primary); }
+  .profile-dropdown a:hover{ background:var(--surface-raised); }
+  .profile-dropdown hr{ border:none; border-top:1px solid #f0f0f0; margin:6px 2px; }
+  .profile-dropdown a.danger{ color:var(--error); }
+
+  @media (max-width:700px){
+    .search-input-wrap{ display:none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-left">
+    <button class="icon-btn" type="button" aria-label="Toggle sidebar" title="Toggle sidebar" onclick="window.parent.postMessage('toggle-sidebar','*')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg>
+    </button>
+    <nav class="breadcrumb" aria-label="Breadcrumb">
+      <a href="#" target="_parent">Learner</a>
+      <span class="breadcrumb-sep">/</span>
+      <span class="breadcrumb-current" id="crumbCurrent">Dashboard</span>
+    </nav>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="search-input-wrap">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21 21-4.34-4.34"/><circle cx="11" cy="11" r="8"/></svg>
+      <input type="text" name="search" placeholder="Search courses" aria-label="Search courses">
+    </div>
+    <button class="icon-btn" type="button" aria-label="Notifications" title="Notifications">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.268 21a2 2 0 0 0 3.464 0"/><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"/></svg>
+      <span class="dot"></span>
+    </button>
+    <div class="profile-menu">
+      <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleProfileDropdown()">SC</button>
+      <div class="profile-dropdown" id="profile-dropdown" role="menu">
+        <a href="#" target="_parent" role="menuitem">My Profile</a>
+        <a href="#" target="_parent" role="menuitem">Account Security</a>
+        <a href="#" target="_parent" role="menuitem">Preferences</a>
+        <hr>
+        <a href="../../Authentication/code/sign-in.html" target="_parent" role="menuitem" class="danger">Log Out</a>
+      </div>
+    </div>
+  </div>
+</header>
+
+<script>
+  function toggleProfileDropdown(){
+    var d = document.getElementById('profile-dropdown');
+    if (d) d.classList.toggle('show');
+  }
+  document.addEventListener('click', function(e){
+    if (!e.target.closest('.profile-menu')) {
+      var d = document.getElementById('profile-dropdown');
+      if (d) d.classList.remove('show');
+    }
+  });
+  (function(){
+    var params = new URLSearchParams(window.location.search);
+    var current = params.get('current');
+    if (current) document.getElementById('crumbCurrent').textContent = current;
+    // Optional middle level for detail pages: ?parent=Certificates&parentHref=../code/certificates.html&current=Item
+    var parent = params.get('parent'), parentHref = params.get('parentHref');
+    if (parent){
+      var cur = document.getElementById('crumbCurrent'), a = document.createElement('a'), sep = document.createElement('span');
+      a.textContent = parent; a.target = '_parent';
+      a.href = parentHref && /^\.\.\/code\/[\w-]+\.html$/.test(parentHref) ? parentHref : '#'; // same-folder pages only
+      sep.className = 'breadcrumb-sep'; sep.textContent = '/';
+      cur.parentNode.insertBefore(a, cur); cur.parentNode.insertBefore(sep, cur);
+    }
+  })();
+</script>
+</body>
+</html>

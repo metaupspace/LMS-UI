@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Course Player</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Course Player (CDL-003) + AI Contextual Tutor (AI-006).
+     Entered from the "Continue learning" hero on my-courses.html, or
+     Start/Continue on course-overview.html.
+     Layout: video stage left, course content (modules → lessons) right
+     (FR-02, collapsible FR-08). Below the video: transcript + AI tutor —
+     side by side when the column is wide, tabs when narrow.
+     Library components used as-is (pattern from Figma): Video player
+     (+ _Play button glassmorphism, _Video progress), Message (received /
+     sent / writing), Textarea input field, Buttons, Breadcrumbs,
+     Progress bar, Tooltip. Hand-built (approved, MISSING_COMPONENTS.md):
+     Accordion, Lesson list item, Transcript panel, Tabs, Chat composer.
+     ponytail: video playback is simulated with a clock (poster + custom
+     controls) so the mock runs offline; swap for <video> in build.
+     ponytail: only CS-301 has outline data; any ?id= shows CS-301.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --stage:#0b0b12;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --header-h:64px; --rail-w:384px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,textarea,select{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; transition:background-color .15s ease, transform .1s ease, color .15s ease; white-space:nowrap; }
+  .btn:active{ transform:scale(.97); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn:disabled{ opacity:.45; pointer-events:none; }
+  .icon-btn{ width:40px; height:40px; display:inline-flex; align-items:center; justify-content:center; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; color:var(--text-secondary); transition:background-color .15s ease; }
+  .icon-btn:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .icon-btn svg{ width:18px; height:18px; }
+
+  /* ---- Header (focused layout — no learner sidebar in the player) ---- */
+  .header{ position:sticky; top:0; z-index:20; height:var(--header-h); display:flex; align-items:center; gap:16px; padding:0 clamp(16px, 2vw, 28px); background:#fff; border-bottom:1px solid var(--border-default); }
+  .back{ display:inline-flex; align-items:center; gap:6px; height:36px; padding:0 10px 0 6px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; }
+  .back:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .back svg{ width:18px; height:18px; }
+  .divider{ width:1px; height:24px; background:var(--border-default); }
+  /* Breadcrumbs — library pattern (Only Text, Arrow separator) */
+  .crumbs{ display:flex; align-items:center; gap:6px; min-width:0; font-size:14px; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs .current{ font-weight:600; color:var(--text-primary); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .header-spacer{ flex:1; }
+  .header-progress{ display:flex; align-items:center; gap:10px; font-size:13px; color:var(--text-secondary); white-space:nowrap; }
+  .header-progress .progress-bar-bg{ width:140px; }
+  .header-progress b{ color:var(--text-primary); font-variant-numeric:tabular-nums; }
+
+  /* Progress bar — library pattern */
+  .progress-bar-bg{ height:8px; background:var(--surface-overlay); border-radius:var(--radius-full); overflow:hidden; }
+  .progress-bar-fill{ height:100%; background:var(--action-primary); border-radius:var(--radius-full); transition:width .4s var(--ease); }
+
+  /* ---- Layout ---- */
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) var(--rail-w); height:calc(100dvh - var(--header-h)); transition:grid-template-columns .3s var(--ease); }
+  .layout.rail-collapsed{ grid-template-columns:minmax(0,1fr) 0; }
+  .main-col{ overflow-y:auto; min-width:0; container-type:inline-size; }
+  .content-inner{ padding:24px clamp(16px, 2.2vw, 36px) 48px; }
+
+  /* ---- Video stage (library Video player pattern) ---- */
+  .stage{ background:var(--stage); border-radius:var(--radius-2xl); overflow:hidden; display:flex; justify-content:center; }
+  .video{ position:relative; width:100%; aspect-ratio:16/9; max-height:max(300px, calc(100dvh - var(--header-h) - 380px)); max-width:calc(max(300px, calc(100dvh - var(--header-h) - 380px)) * 16 / 9); background:#000 center/cover no-repeat; overflow:hidden; user-select:none; }
+  .stage:fullscreen .video{ max-height:100dvh; max-width:calc(100dvh * 16 / 9); }
+  .video-shade{ position:absolute; inset:auto 0 0 0; height:60%; background:linear-gradient(180deg, rgba(0,0,0,0), rgba(0,0,0,.72)); pointer-events:none; transition:opacity .3s ease; }
+  .video-hit{ position:absolute; inset:0; background:transparent; border:0; }
+  .video-hit:focus-visible{ outline-offset:-4px; }
+  /* _Play button — Glassmorphism */
+  .big-play{ position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); width:80px; height:80px; border-radius:50%; display:flex; align-items:center; justify-content:center; color:#fff; background:rgba(255,255,255,.2); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(255,255,255,.35); box-shadow:inset 0 1px 0 rgba(255,255,255,.25); pointer-events:none; transition:transform .25s var(--ease), opacity .25s ease; }
+  .big-play svg{ width:30px; height:30px; margin-left:4px; }
+  .video.playing .big-play{ opacity:0; transform:translate(-50%,-50%) scale(.85); }
+  .captions{ position:absolute; left:50%; bottom:78px; transform:translateX(-50%); width:max-content; max-width:min(80%, 760px); text-align:center; font-size:clamp(14px, 1.3vw, 19px); line-height:1.4; color:#fff; background:rgba(0,0,0,.66); padding:6px 12px; border-radius:var(--radius-md); pointer-events:none; }
+  .controls{ position:absolute; left:0; right:0; bottom:0; padding:0 16px 12px; color:#fff; transition:opacity .3s ease; }
+  .video.playing.idle .controls, .video.playing.idle .video-shade{ opacity:0; }
+  .video.playing.idle{ cursor:none; }
+  /* _Video progress */
+  .seek{ position:relative; height:16px; display:flex; align-items:center; cursor:pointer; touch-action:none; }
+  .seek-track{ position:relative; width:100%; height:6px; border-radius:var(--radius-sm); background:rgba(255,255,255,.28); overflow:hidden; transition:height .15s ease; }
+  .seek:hover .seek-track{ height:8px; }
+  .seek-buffer{ position:absolute; inset:0 auto 0 0; background:rgba(255,255,255,.45); border-radius:var(--radius-sm); }
+  .seek-fill{ position:absolute; inset:0 auto 0 0; background:#fff; border-radius:var(--radius-sm); }
+  .seek-knob{ position:absolute; top:50%; width:14px; height:14px; margin-left:-7px; border-radius:50%; background:#fff; transform:translateY(-50%) scale(0); transition:transform .15s ease; box-shadow:0 1px 4px rgba(0,0,0,.4); }
+  .seek:hover .seek-knob, .seek:focus-visible .seek-knob{ transform:translateY(-50%) scale(1); }
+  .ctrl-row{ display:flex; align-items:center; gap:4px; margin-top:6px; }
+  .ctrl{ height:36px; min-width:36px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; gap:6px; border:0; border-radius:var(--radius-md); background:transparent; color:#fff; font-size:13px; font-weight:600; }
+  .ctrl:hover{ background:rgba(255,255,255,.14); }
+  .ctrl svg{ width:20px; height:20px; }
+  .ctrl.on{ background:rgba(255,255,255,.22); }
+  .time{ font-size:13px; font-variant-numeric:tabular-nums; color:rgba(255,255,255,.9); margin-left:6px; white-space:nowrap; }
+  .ctrl-spacer{ flex:1; }
+  .end-card{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; text-align:center; color:#fff; background:rgba(11,11,18,.78); backdrop-filter:blur(6px); padding:20px; }
+  .end-card small{ font-size:13px; color:rgba(255,255,255,.7); }
+  .end-card strong{ font-size:20px; font-weight:700; letter-spacing:-.3px; }
+  .end-card .row{ display:flex; gap:10px; margin-top:6px; }
+  .end-card .btn-secondary{ background:transparent; color:#fff; border-color:rgba(255,255,255,.35); }
+  .end-card .btn-secondary:hover{ background:rgba(255,255,255,.1); }
+  .unavailable{ position:absolute; inset:0; display:flex; align-items:center; justify-content:center; padding:20px; text-align:center; color:rgba(255,255,255,.75); font-size:15px; background:#111; }
+
+  /* ---- Lesson head ---- */
+  .lesson-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px 20px; flex-wrap:wrap; margin:22px 0 20px; }
+  .lesson-eyebrow{ font-size:13px; font-weight:600; color:var(--action-primary); }
+  .lesson-title{ margin:4px 0 0; font-size:clamp(20px, 1.7vw, 26px); font-weight:700; letter-spacing:-.4px; line-height:1.25; text-wrap:balance; }
+  .lesson-nav{ display:flex; gap:8px; }
+
+  /* ---- Lower: transcript + tutor. Tabs (hand-built) only when narrow ---- */
+  .lower-tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); margin-bottom:12px; width:max-content; max-width:100%; }
+  .lower-tab{ height:36px; padding:0 16px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:600; color:var(--text-secondary); display:inline-flex; align-items:center; gap:8px; }
+  .lower-tab svg{ width:16px; height:16px; }
+  .lower-tab[aria-selected="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+  .lower > .panel{ display:none; }
+  .lower > .panel.active{ display:flex; }
+  @container (min-width:880px){
+    .lower-tabs{ display:none; }
+    .lower{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:20px; }
+    .lower > .panel{ display:flex; }
+  }
+  .panel{ flex-direction:column; height:460px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-2xl); overflow:hidden; }
+  .panel-head{ display:flex; align-items:center; gap:10px; padding:14px 18px; border-bottom:1px solid var(--border-subtle); min-height:62px; }
+  .panel-head h2{ margin:0; font-size:15px; font-weight:700; letter-spacing:-.1px; }
+  .panel-head .hint{ font-size:12.5px; color:var(--text-tertiary); }
+  .panel-head .spacer{ flex:1; }
+  .mini{ height:30px; padding:0 10px; border:1px solid var(--border-default); border-radius:var(--radius-md); background:#fff; font-size:12.5px; font-weight:600; color:var(--text-secondary); display:inline-flex; align-items:center; gap:6px; }
+  .mini:hover{ background:var(--surface-raised); }
+  .mini.on{ background:var(--action-primary-subtle); border-color:var(--action-primary-soft); color:var(--action-primary); }
+  .mini svg{ width:14px; height:14px; }
+  .ai-mark{ width:30px; height:30px; border-radius:var(--radius-lg); background:linear-gradient(135deg, #6366f1, #4338ca); color:#fff; display:flex; align-items:center; justify-content:center; }
+  .ai-mark svg{ width:16px; height:16px; }
+
+  /* Transcript panel (hand-built) */
+  .transcript{ flex:1; overflow-y:auto; padding:8px 8px 16px; position:relative; }
+  .cue{ display:grid; grid-template-columns:48px 1fr; gap:10px; width:100%; text-align:left; padding:8px 10px; border:0; border-radius:var(--radius-lg); background:transparent; font-size:14.5px; line-height:1.55; color:var(--text-tertiary); transition:background-color .15s ease, color .2s ease; }
+  .cue:hover{ background:var(--surface-canvas); color:var(--text-primary); }
+  .cue .ts{ font-size:12.5px; font-weight:600; color:var(--text-tertiary); font-variant-numeric:tabular-nums; padding-top:2px; }
+  .cue.past{ color:var(--text-secondary); }
+  .cue.active{ background:var(--action-primary-subtle); color:var(--text-primary); }
+  .cue.active .ts{ color:var(--action-primary); }
+  .empty-note{ margin:auto; max-width:320px; text-align:center; padding:24px; font-size:14px; color:var(--text-tertiary); line-height:1.5; }
+  .empty-note b{ display:block; color:var(--text-primary); font-size:15px; margin-bottom:4px; }
+
+  /* Tutor — Message (library pattern: received #f5f5f5 w/ avatar, sent #e0e7ff "You", writing dots) */
+  .chat{ flex:1; overflow-y:auto; padding:18px; display:flex; flex-direction:column; gap:18px; }
+  .msg{ display:flex; gap:12px; max-width:92%; animation:rise .3s var(--ease) both; }
+  .msg.sent{ align-self:flex-end; }
+  .msg .avatar{ width:40px; height:40px; border-radius:50%; flex-shrink:0; }
+  .msg .content{ display:flex; flex-direction:column; gap:6px; min-width:0; }
+  .msg .meta{ display:flex; align-items:baseline; gap:8px; }
+  .msg.sent .meta{ justify-content:space-between; }
+  .msg .name{ font-size:14px; font-weight:500; color:var(--text-strong); }
+  .msg .when{ font-size:12px; color:var(--text-secondary); }
+  .msg .bubble{ padding:10px 14px; font-size:15px; line-height:1.55; color:var(--text-primary); background:var(--surface-raised); border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg); white-space:pre-wrap; overflow-wrap:anywhere; }
+  .msg.sent .bubble{ background:var(--action-primary-soft); border-radius:var(--radius-lg) 0 var(--radius-lg) var(--radius-lg); }
+  .jump{ display:inline-flex; align-items:center; gap:5px; margin-top:8px; font-size:13px; font-weight:600; color:var(--action-primary); background:#fff; border:1px solid var(--action-primary-soft); border-radius:var(--radius-md); padding:4px 9px; }
+  .jump:hover{ background:var(--action-primary-subtle); }
+  .jump svg{ width:12px; height:12px; }
+  .rate{ display:flex; align-items:center; gap:2px; font-size:12px; color:var(--text-tertiary); }
+  .rate span{ margin-right:4px; }
+  .rate button{ width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-tertiary); }
+  .rate button:hover{ background:var(--surface-raised); color:var(--text-secondary); }
+  .rate button[aria-pressed="true"]{ color:var(--action-primary); background:var(--action-primary-subtle); }
+  .rate svg{ width:15px; height:15px; }
+  .typing{ display:inline-flex; gap:4px; padding:12px 10px; background:var(--surface-raised); border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg); width:max-content; }
+  .typing i{ width:4px; height:4px; border-radius:50%; background:#737373; animation:blink 1s infinite; }
+  .typing i:nth-child(2){ background:#a3a3a3; animation-delay:.15s; }
+  .typing i:nth-child(3){ animation-delay:.3s; }
+  @keyframes blink{ 0%,100%{ opacity:.35; transform:translateY(0); } 50%{ opacity:1; transform:translateY(-2px); } }
+  @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+  .chat-intro{ margin-top:auto; }
+  .chat-intro p{ margin:0 0 12px; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .suggest{ display:flex; flex-wrap:wrap; gap:8px; }
+  .suggest button{ border:1px solid var(--border-default); background:#fff; border-radius:var(--radius-full); padding:7px 12px; font-size:13px; font-weight:500; color:var(--text-strong); transition:border-color .15s ease, background-color .15s ease, color .15s ease; }
+  .suggest button:hover{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+
+  /* Chat composer (hand-built from Textarea input field + Button) */
+  .composer{ padding:12px 14px 14px; border-top:1px solid var(--border-subtle); }
+  .composer-box{ display:flex; align-items:flex-end; gap:8px; padding:6px 6px 6px 14px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; transition:border-color .15s ease, box-shadow .15s ease; }
+  .composer-box:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .composer textarea{ flex:1; border:0; outline:none; resize:none; font-size:15px; line-height:1.5; padding:7px 0; max-height:132px; color:var(--text-primary); background:transparent; }
+  .composer textarea::placeholder{ color:var(--text-tertiary); }
+  .send{ width:38px; height:38px; border:0; border-radius:var(--radius-lg); background:var(--action-primary); color:#fff; display:inline-flex; align-items:center; justify-content:center; transition:background-color .15s ease, opacity .15s ease; }
+  .send:hover{ background:var(--action-primary-hover); }
+  .send:disabled{ opacity:.35; cursor:default; }
+  .send svg{ width:17px; height:17px; }
+  .composer small{ display:block; margin-top:8px; font-size:12px; color:var(--text-tertiary); }
+
+  /* ---- Right rail: course content ---- */
+  .rail{ overflow:hidden; background:#fff; border-left:1px solid var(--border-default); min-width:0; }
+  .layout.rail-collapsed .rail{ border-left:0; }
+  .rail-inner{ width:var(--rail-w); display:flex; flex-direction:column; height:100%; }
+  .rail-head{ padding:18px 20px 16px; border-bottom:1px solid var(--border-subtle); }
+  .rail-head-row{ display:flex; align-items:center; justify-content:space-between; gap:8px; }
+  .rail-head h2{ margin:0; font-size:16px; font-weight:700; letter-spacing:-.2px; }
+  .rail-head .icon-btn{ width:34px; height:34px; }
+  .rail-progress{ margin-top:12px; }
+  .rail-progress-row{ display:flex; justify-content:space-between; font-size:13px; color:var(--text-secondary); margin-bottom:8px; }
+  .rail-progress-row b{ color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  .modules{ flex:1; overflow-y:auto; padding:4px 0 24px; }
+
+  /* Accordion (hand-built) */
+  .acc{ border-bottom:1px solid var(--border-subtle); }
+  .acc-btn{ width:100%; display:flex; align-items:flex-start; gap:12px; padding:14px 20px; border:0; background:transparent; text-align:left; transition:background-color .15s ease; }
+  .acc-btn:hover{ background:var(--surface-canvas); }
+  .acc-btn .num{ flex-shrink:0; width:26px; height:26px; border-radius:var(--radius-md); background:var(--surface-raised); font-size:12.5px; font-weight:700; color:var(--text-secondary); display:flex; align-items:center; justify-content:center; font-variant-numeric:tabular-nums; }
+  .acc.done .num{ background:var(--success-subtle); color:var(--success); }
+  .acc.current .num{ background:var(--action-primary-soft); color:var(--action-primary); }
+  .acc-btn .txt{ flex:1; min-width:0; }
+  .acc-btn .t{ display:block; font-size:14.5px; font-weight:600; color:var(--text-primary); line-height:1.35; }
+  .acc-btn .m{ display:block; font-size:12.5px; color:var(--text-tertiary); margin-top:3px; }
+  .chev{ width:18px; height:18px; color:var(--text-tertiary); margin-top:4px; transition:transform .25s var(--ease); }
+  .acc-btn[aria-expanded="true"] .chev{ transform:rotate(180deg); }
+  .acc-panel{ display:grid; grid-template-rows:0fr; transition:grid-template-rows .3s var(--ease); }
+  .acc-btn[aria-expanded="true"] + .acc-panel{ grid-template-rows:1fr; }
+  .acc-panel > div{ overflow:hidden; }
+  .acc-panel ul{ list-style:none; margin:0; padding:0 12px 12px; }
+
+  /* Lesson list item (hand-built) */
+  .lesson{ display:flex; align-items:flex-start; gap:12px; width:100%; padding:10px 10px 10px 12px; border:0; border-radius:var(--radius-lg); background:transparent; text-align:left; position:relative; transition:background-color .15s ease; }
+  .lesson:hover{ background:var(--surface-canvas); }
+  .lesson.active{ background:var(--action-primary-subtle); }
+  .lesson.active::before{ content:""; position:absolute; left:0; top:10px; bottom:10px; width:3px; border-radius:3px; background:var(--action-primary); }
+  .lesson.locked{ cursor:not-allowed; }
+  .lesson.locked:hover{ background:transparent; }
+  .lesson .st{ width:20px; height:20px; margin-top:1px; display:flex; align-items:center; justify-content:center; }
+  .lesson .st svg{ width:20px; height:20px; }
+  .lesson .lt{ display:block; font-size:14px; font-weight:500; color:var(--text-strong); line-height:1.4; }
+  .lesson.active .lt{ color:var(--text-primary); font-weight:600; }
+  .lesson.locked .lt{ color:var(--text-tertiary); }
+  .lesson .lm{ display:flex; align-items:center; gap:5px; font-size:12.5px; color:var(--text-tertiary); margin-top:3px; }
+  .lesson .lm svg{ width:13px; height:13px; }
+  .eq{ display:flex; align-items:flex-end; gap:2px; height:12px; }
+  .eq i{ width:3px; height:12px; background:var(--action-primary); border-radius:1px; transform-origin:bottom; animation:eq 1s infinite ease-in-out; }
+  .eq i:nth-child(2){ animation-delay:.2s; } .eq i:nth-child(3){ animation-delay:.4s; }
+  .paused .eq i{ animation-play-state:paused; }
+  @keyframes eq{ 0%,100%{ transform:scaleY(.4); } 50%{ transform:scaleY(1); } }
+
+  /* Tooltip — library pattern */
+  .tip{ position:fixed; z-index:50; pointer-events:none; background:#171717; color:#fff; font-size:12.5px; font-weight:500; padding:6px 10px; border-radius:var(--radius-md); box-shadow:0 6px 16px rgba(0,0,0,.2); }
+
+  .rail-backdrop{ display:none; }
+  @media (max-width:1024px){
+    .layout, .layout.rail-collapsed{ grid-template-columns:minmax(0,1fr); }
+    .rail{ position:fixed; z-index:40; top:0; right:0; bottom:0; width:min(var(--rail-w), 92vw); transform:translateX(100%); transition:transform .3s var(--ease); box-shadow:-8px 0 32px rgba(0,0,0,.14); }
+    .rail-inner{ width:100%; }
+    .layout.rail-open .rail{ transform:none; }
+    .layout.rail-open .rail-backdrop{ display:block; position:fixed; inset:0; z-index:35; background:rgba(15,23,42,.45); }
+    .header-progress .progress-bar-bg{ display:none; }
+    .video{ max-height:none; max-width:none; }
+  }
+  @media (max-width:640px){
+    .crumbs a, .crumbs svg, .divider, .back span, .header-progress{ display:none; }
+    .lesson-nav .btn span{ display:none; }
+    .lesson-nav .btn{ padding:0 12px; }
+    .panel{ height:440px; }
+    .stage{ border-radius:var(--radius-xl); }
+    .ctrl.hide-sm{ display:none; }
+    .captions{ bottom:64px; font-size:13px; }
+  }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <a class="back" href="my-courses.html" aria-label="Back to My Courses">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+    <span>My Courses</span>
+  </a>
+  <span class="divider"></span>
+  <nav class="crumbs" aria-label="Breadcrumb">
+    <a href="course-overview.html?id=CS-301">Advanced Data Structures</a>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+    <span class="current" id="crumbLesson" aria-current="page"></span>
+  </nav>
+  <div class="header-spacer"></div>
+  <div class="header-progress"><div class="progress-bar-bg"><div class="progress-bar-fill" id="headerFill"></div></div><b id="headerPct"></b> complete</div>
+  <button class="icon-btn" id="railToggle" type="button" aria-label="Toggle course content" aria-controls="rail" aria-expanded="true">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M15 3v18"/></svg>
+  </button>
+</header>
+
+<div class="layout" id="layout">
+  <main class="main-col"><div class="content-inner">
+
+    <div class="stage" id="stage">
+      <div class="video" id="video">
+        <div class="video-shade"></div>
+        <button class="video-hit" id="videoHit" type="button" aria-label="Play or pause video"></button>
+        <span class="big-play" aria-hidden="true"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg></span>
+        <div class="captions" id="captions" hidden></div>
+        <div class="controls">
+          <div class="seek" id="seek" role="slider" tabindex="0" aria-label="Seek" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+            <div class="seek-track"><div class="seek-buffer" id="seekBuffer"></div><div class="seek-fill" id="seekFill"></div></div>
+            <div class="seek-knob" id="seekKnob"></div>
+          </div>
+          <div class="ctrl-row">
+            <button class="ctrl" id="playBtn" type="button" aria-label="Play"></button>
+            <button class="ctrl hide-sm" id="back10" type="button" aria-label="Back 10 seconds">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button class="ctrl hide-sm" id="fwd10" type="button" aria-label="Forward 10 seconds">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+            </button>
+            <span class="time" id="time">0:00 / 0:00</span>
+            <span class="ctrl-spacer"></span>
+            <button class="ctrl" id="speedBtn" type="button" aria-label="Playback speed">1×</button>
+            <button class="ctrl" id="ccBtn" type="button" aria-label="Captions" aria-pressed="false">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="14" x="3" y="5" rx="2"/><path d="M7 15h4M15 15h2M7 11h2M13 11h4"/></svg>
+            </button>
+            <button class="ctrl" id="fsBtn" type="button" aria-label="Fullscreen">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3H5a2 2 0 0 0-2 2v3"/><path d="M21 8V5a2 2 0 0 0-2-2h-3"/><path d="M3 16v3a2 2 0 0 0 2 2h3"/><path d="M16 21h3a2 2 0 0 0 2-2v-3"/></svg>
+            </button>
+          </div>
+        </div>
+        <div class="end-card" id="endCard" hidden>
+          <small>Lesson complete</small>
+          <strong id="endNext"></strong>
+          <div class="row">
+            <button class="btn btn-secondary" id="replayBtn" type="button">Replay</button>
+            <button class="btn btn-primary" id="endNextBtn" type="button">Next lesson</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lesson-head">
+      <div>
+        <div class="lesson-eyebrow" id="lessonEyebrow"></div>
+        <h1 class="lesson-title" id="lessonTitle"></h1>
+      </div>
+      <div class="lesson-nav">
+        <button class="btn btn-secondary" id="prevBtn" type="button" aria-label="Previous lesson">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg><span>Previous</span>
+        </button>
+        <button class="btn btn-primary" id="nextBtn" type="button" aria-label="Next lesson">
+          <span>Next lesson</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+        </button>
+      </div>
+    </div>
+
+    <div class="lower-tabs" role="tablist" aria-label="Lesson tools">
+      <button class="lower-tab" type="button" role="tab" aria-selected="true" data-panel="transcriptPanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/></svg>Transcript
+      </button>
+      <button class="lower-tab" type="button" role="tab" aria-selected="false" data-panel="tutorPanel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/></svg>AI Tutor
+      </button>
+    </div>
+
+    <div class="lower">
+      <section class="panel active" id="transcriptPanel" aria-label="Transcript">
+        <div class="panel-head">
+          <h2>Transcript</h2>
+          <span class="spacer"></span>
+          <button class="mini on" id="followBtn" type="button" aria-pressed="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M19 12l-7 7-7-7"/></svg>Auto-scroll
+          </button>
+        </div>
+        <div class="transcript" id="transcript"></div>
+      </section>
+
+      <section class="panel" id="tutorPanel" aria-label="AI Tutor">
+        <div class="panel-head">
+          <span class="ai-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l1.9 4.6L18.5 9.5l-4.6 1.9L12 16l-1.9-4.6L5.5 9.5l4.6-1.9Z"/><path d="M19 15l.8 2 2 .8-2 .8-.8 2-.8-2-2-.8 2-.8Z"/></svg></span>
+          <div><h2>AI Tutor</h2><div class="hint">Answers from this lesson only</div></div>
+          <span class="spacer"></span>
+          <button class="mini" id="clearChat" type="button">Clear</button>
+        </div>
+        <div class="chat" id="chat" aria-live="polite"></div>
+        <form class="composer" id="composer">
+          <div class="composer-box">
+            <label for="chatInput" class="sr">Ask the AI tutor</label>
+            <textarea id="chatInput" name="question" rows="1" placeholder="Ask about this lesson…"></textarea>
+            <button class="send" id="sendBtn" type="submit" aria-label="Send" disabled>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>
+            </button>
+          </div>
+          <small>Enter to send · Shift + Enter for a new line</small>
+        </form>
+      </section>
+    </div>
+
+  </div></main>
+
+  <div class="rail-backdrop" id="railBackdrop"></div>
+  <aside class="rail" id="rail" aria-label="Course content">
+    <div class="rail-inner">
+      <div class="rail-head">
+        <div class="rail-head-row">
+          <h2>Course content</h2>
+          <button class="icon-btn" id="railClose" type="button" aria-label="Hide course content">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>
+          </button>
+        </div>
+        <div class="rail-progress">
+          <div class="rail-progress-row"><span id="railCount"></span><b id="railPct"></b></div>
+          <div class="progress-bar-bg"><div class="progress-bar-fill" id="railFill"></div></div>
+        </div>
+      </div>
+      <div class="modules" id="modules"></div>
+    </div>
+  </aside>
+</div>
+
+<div class="tip" id="tip" role="tooltip" hidden></div>
+
+<script>
+  /* ---------------- Course data (CS-301) ---------------- */
+  var PHOTO = 'https://images.unsplash.com/photo-1504639725590-34d0984388bd?auto=format&fit=crop&w=1600&h=900&q=70';
+  var COURSE = {
+    id:'CS-301', title:'Advanced Data Structures', sequential:true,
+    modules:[
+      { title:'Foundations & Complexity', lessons:[
+        { id:'1-1', title:'Why data structures matter', type:'video', dur:420, status:'completed' },
+        { id:'1-2', title:'Big-O refresher', type:'video', dur:610, status:'completed' },
+        { id:'1-3', title:'Amortized analysis', type:'reading', dur:540, status:'completed' } ]},
+      { title:'Arrays, Lists & Hashing', lessons:[
+        { id:'2-1', title:'Dynamic arrays', type:'video', dur:500, status:'completed' },
+        { id:'2-2', title:'Linked lists in practice', type:'video', dur:560, status:'completed' },
+        { id:'2-3', title:'Hash tables & collisions', type:'video', dur:720, status:'completed' },
+        { id:'2-4', title:'Knowledge check', type:'quiz', dur:300, status:'completed' } ]},
+      { title:'Stacks, Queues & Heaps', lessons:[
+        { id:'3-1', title:'Stacks and the call stack', type:'video', dur:480, status:'completed' },
+        { id:'3-2', title:'Queues & deques', type:'video', dur:450, status:'completed' },
+        { id:'3-3', title:'Binary heaps & priority queues', type:'video', dur:690, status:'completed' } ]},
+      { title:'Binary Trees', lessons:[
+        { id:'4-1', title:'Tree vocabulary', type:'video', dur:380, status:'completed' },
+        { id:'4-2', title:'Building a binary tree', type:'video', dur:540, status:'completed' },
+        { id:'4-3', title:'Tree traversals: in-order, pre-order, post-order', type:'video', dur:760, status:'in-progress', resumeAt:192 },
+        { id:'4-4', title:'Level-order traversal with a queue', type:'video', dur:520, status:'not-started' },
+        { id:'4-5', title:'Traversal practice', type:'quiz', dur:300, status:'not-started' } ]},
+      { title:'Binary Search Trees', lessons:[
+        { id:'5-1', title:'BST insert & search', type:'video', dur:600, status:'not-started' },
+        { id:'5-2', title:'Deleting nodes', type:'video', dur:640, status:'not-started' },
+        { id:'5-3', title:'Balancing: AVL rotations', type:'video', dur:820, status:'not-started' } ]},
+      { title:'Graphs', lessons:[
+        { id:'6-1', title:'Graph representations', type:'video', dur:560, status:'not-started' },
+        { id:'6-2', title:'BFS & DFS', type:'video', dur:700, status:'not-started' },
+        { id:'6-3', title:'Final assessment', type:'quiz', dur:1200, status:'not-started' } ]}
+    ]
+  };
+
+  // Transcripts exist for 3 lessons; the rest show the "no transcript" path (AI-006 edge case)
+  var TRANSCRIPTS = {
+    '4-2':[ [0,'Last lesson we named the parts of a tree. Now we build one.'],[22,'A node holds a value and two references: left and right.'],[48,'We start with a single root node and attach children to it.'],[80,'If a reference is empty, we say that child is null.'],[120,'That is all a binary tree is — nodes pointing to at most two children.'] ],
+    '4-3':[
+      [0,'Welcome back. In this lesson we look at the three depth-first ways to visit every node in a binary tree.'],
+      [18,'A traversal is simply an order for visiting nodes. The tree is the same — only the order changes.'],
+      [41,'All three orders are recursive. Each one does three things: visit the node, go left, go right.'],
+      [67,'The only difference is when you visit the node relative to its children.'],
+      [95,'Pre-order visits the node first, then the left subtree, then the right subtree.'],
+      [124,'Pre-order is useful when you want to copy a tree, because you create each parent before its children.'],
+      [158,'In-order goes left subtree first, then the node, then the right subtree.'],
+      [192,'Here is the key property: in-order traversal of a binary search tree gives you the values in sorted order.'],
+      [230,'Let us trace it on this tree: root 8, left child 3, right child 10.'],
+      [262,'We go left to 3 first. 3 has a left child, 1, so we go there. 1 has no children — we visit 1.'],
+      [301,'Back up to 3, visit it, then go to its right child, 6. Visit 6. Then back to the root, visit 8, then 10.'],
+      [345,'So the output is 1, 3, 6, 8, 10 — sorted, as promised.'],
+      [372,'Post-order visits the left subtree, then the right subtree, and the node last.'],
+      [405,'Post-order is what you want when deleting a tree, because children are freed before their parent.'],
+      [446,'Every traversal visits each node exactly once, so all three run in O(n) time.'],
+      [482,'The extra space is the recursion depth — O(h), where h is the height of the tree.'],
+      [520,'On a balanced tree that is O(log n). On a degenerate tree, like a linked list, it becomes O(n).'],
+      [566,'You can avoid recursion by using an explicit stack. We will write that version in the practice.'],
+      [612,'Quick recap: pre-order is node first, in-order is node in the middle, post-order is node last.'],
+      [660,'Next lesson, we switch from depth-first to breadth-first with level-order traversal.'],
+      [700,'Pause here and try tracing post-order on the same tree before moving on.'] ],
+    '4-4':[ [0,'Depth-first traversals dive down one branch. Level-order goes across instead.'],[26,'We visit the root, then every node at depth one, then depth two, and so on.'],[58,'The tool that makes this work is a queue — first in, first out.'],[92,'Enqueue the root. Then repeat: dequeue a node, visit it, enqueue its children.'],[140,'Level-order also runs in O(n) time, but uses O(w) space, where w is the widest level.'] ]
+  };
+
+  /* ---------------- Helpers ---------------- */
+  var I = {
+    play:'<svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z"/></svg>',
+    pause:'<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4.5" width="4" height="15" rx="1"/><rect x="14" y="4.5" width="4" height="15" rx="1"/></svg>',
+    check:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="10" fill="#15803d"/><path d="m6 10.2 2.6 2.6L14 7.4" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    todo:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="none" stroke="#d4d4d4" stroke-width="1.8"/></svg>',
+    progress:'<svg viewBox="0 0 20 20"><circle cx="10" cy="10" r="8.5" fill="none" stroke="#e0e7ff" stroke-width="2"/><path d="M10 1.5a8.5 8.5 0 0 1 8.5 8.5" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="#a3a3a3" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.2 3.5a.5.5 0 0 0 .8-.4V7.9a.5.5 0 0 0-.8-.4L16 11"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    reading:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2Z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7Z"/></svg>',
+    quiz:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>',
+    chev:'<svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    up:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 10v12"/><path d="M15 5.9 14 10h5.8a2 2 0 0 1 1.9 2.6l-2.3 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.8a2 2 0 0 0 1.8-1.1L12 2a3.1 3.1 0 0 1 3 3.9Z"/></svg>',
+    down:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 14V2"/><path d="M9 18.1 10 14H4.2a2 2 0 0 1-1.9-2.6l2.3-8A2 2 0 0 1 6.5 2H20a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-2.8a2 2 0 0 0-1.8 1.1L12 22a3.1 3.1 0 0 1-3-3.9Z"/></svg>'
+  };
+  var TYPE_LABEL = { video:'Video', reading:'Reading', quiz:'Quiz' };
+  var AI_AVATAR = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6366f1"/><stop offset="1" stop-color="#4338ca"/></linearGradient></defs><circle cx="20" cy="20" r="20" fill="url(#g)"/><path d="M20 10l2.1 5.4 5.4 2.1-5.4 2.1L20 25l-2.1-5.4-5.4-2.1 5.4-2.1Z" fill="#fff"/><path d="M27 24l.8 1.9 1.9.8-1.9.8-.8 1.9-.8-1.9-1.9-.8 1.9-.8Z" fill="#fff" opacity=".8"/></svg>');
+
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function fmt(s){ s = Math.max(0, Math.floor(s)); return Math.floor(s/60) + ':' + String(s%60).padStart(2,'0'); }
+  function load(key){ try{ return JSON.parse(localStorage.getItem(key)); }catch(e){ return null; } }
+  function save(key, val){ try{ localStorage.setItem(key, JSON.stringify(val)); }catch(e){} }
+  function clockNow(){ return new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
+  var isMobile = function(){ return matchMedia('(max-width:1024px)').matches; };
+
+  var ALL = [];
+  COURSE.modules.forEach(function(m, mi){ m.lessons.forEach(function(l){ l.mi = mi; ALL.push(l); }); });
+  // FR-06: sequential enforcement — lessons after the first unfinished one are locked
+  function isLocked(l){
+    if (!COURSE.sequential) return false;
+    var firstOpen = ALL.findIndex(function(x){ return x.status !== 'completed'; });
+    return firstOpen !== -1 && ALL.indexOf(l) > firstOpen;
+  }
+
+  /* ---------------- State ---------------- */
+  var POS_KEY = 'upspace-player-' + COURSE.id;
+  var saved = load(POS_KEY) || {};
+  var current = ALL.find(function(l){ return l.id === saved.lesson && !isLocked(l); }) || ALL.find(function(l){ return l.status === 'in-progress'; }) || ALL[0];
+  var t = saved.lesson === current.id && saved.t ? saved.t : (current.resumeAt || 0);
+  var playing = false, speed = 1, captionsOn = false, follow = true, timer = null, lastCue = -2, cueEls = [];
+  var SPEEDS = [0.5, 0.75, 1, 1.25, 1.5, 2];
+  var videoEl = document.getElementById('video');
+  var $ = function(id){ return document.getElementById(id); };
+
+  /* ---------------- Rail (accordion + lesson items) ---------------- */
+  function renderRail(){
+    var done = ALL.filter(function(l){ return l.status === 'completed'; }).length;
+    var pct = Math.round(done / ALL.length * 100);
+    $('railCount').textContent = done + ' of ' + ALL.length + ' lessons';
+    $('railPct').textContent = pct + '%';
+    $('railFill').style.width = pct + '%';
+    $('headerFill').style.width = pct + '%';
+    $('headerPct').textContent = pct + '%';
+
+    var open = {};
+    document.querySelectorAll('.acc-btn[aria-expanded="true"]').forEach(function(b){ open[b.dataset.mi] = true; });
+    open[current.mi] = true;
+
+    $('modules').innerHTML = COURSE.modules.map(function(m, mi){
+      var mDone = m.lessons.filter(function(l){ return l.status === 'completed'; }).length;
+      var mins = Math.round(m.lessons.reduce(function(s,l){ return s + l.dur; }, 0) / 60);
+      var allDone = mDone === m.lessons.length;
+      return '<div class="acc' + (allDone ? ' done' : (mi === current.mi ? ' current' : '')) + '">' +
+        '<button class="acc-btn" type="button" data-mi="' + mi + '" aria-expanded="' + !!open[mi] + '" aria-controls="acc-' + mi + '">' +
+          '<span class="num">' + (allDone ? '✓' : mi + 1) + '</span>' +
+          '<span class="txt"><span class="t">' + esc(m.title) + '</span><span class="m">' + mDone + '/' + m.lessons.length + ' done · ' + mins + ' min</span></span>' + I.chev +
+        '</button>' +
+        '<div class="acc-panel" id="acc-' + mi + '"><div><ul>' + m.lessons.map(function(l){
+          var locked = isLocked(l), active = l === current;
+          var st = locked ? I.lock : active ? '<span class="eq"><i></i><i></i><i></i></span>' : l.status === 'completed' ? I.check : l.status === 'in-progress' ? I.progress : I.todo;
+          return '<li><button class="lesson' + (active ? ' active' : '') + (locked ? ' locked' : '') + '" type="button" data-id="' + l.id + '"' +
+            (locked ? ' aria-disabled="true" data-tip="Complete the previous lesson first"' : '') + (active ? ' aria-current="true"' : '') + '>' +
+            '<span class="st">' + st + '</span>' +
+            '<span><span class="lt">' + esc(l.title) + '</span><span class="lm">' + I[l.type] + TYPE_LABEL[l.type] + ' · ' + Math.round(l.dur/60) + ' min' + (l.status === 'completed' && !active ? ' · Done' : '') + '</span></span>' +
+          '</button></li>';
+        }).join('') + '</ul></div></div>' +
+      '</div>';
+    }).join('');
+    $('modules').classList.toggle('paused', !playing);
+  }
+
+  $('modules').addEventListener('click', function(e){
+    var acc = e.target.closest('.acc-btn');
+    if (acc){ acc.setAttribute('aria-expanded', acc.getAttribute('aria-expanded') !== 'true'); return; }
+    var btn = e.target.closest('.lesson');
+    if (!btn || btn.classList.contains('locked') || btn.classList.contains('active')) return;
+    loadLesson(ALL.find(function(l){ return l.id === btn.dataset.id; }), 0, true);
+    if (isMobile()) setRail(false);
+  });
+
+  var tip = $('tip');
+  document.addEventListener('mouseover', function(e){
+    var el = e.target.closest('[data-tip]');
+    if (!el){ tip.hidden = true; return; }
+    tip.textContent = el.dataset.tip; tip.hidden = false;
+    var r = el.getBoundingClientRect();
+    tip.style.left = Math.max(8, r.left + 12) + 'px'; tip.style.top = (r.bottom + 6) + 'px';
+  });
+
+  /* ---------------- Player (simulated clock) ---------------- */
+  function loadLesson(l, at, autoplay){
+    current = l;
+    t = at || 0;
+    if (l.status === 'not-started') l.status = 'in-progress';
+    $('endCard').hidden = true;
+    var old = videoEl.querySelector('.unavailable'); if (old) old.remove();
+    videoEl.style.backgroundImage = 'url(' + PHOTO + ')';
+    if (l.type !== 'video'){
+      var u = document.createElement('div'); u.className = 'unavailable';
+      u.textContent = TYPE_LABEL[l.type] + ' lesson — content renders here in the build.';
+      videoEl.appendChild(u);
+    }
+    var m = COURSE.modules[l.mi];
+    $('lessonEyebrow').textContent = 'Module ' + (l.mi + 1) + ' · ' + m.title + ' · Lesson ' + (m.lessons.indexOf(l) + 1);
+    $('lessonTitle').textContent = l.title;
+    $('crumbLesson').textContent = l.title;
+    document.title = l.title + ' — ' + COURSE.title;
+    lastCue = -2;
+    renderTranscript();
+    renderRail();
+    renderChat();
+    updateNav();
+    setPlaying(!!autoplay && l.type === 'video');
+    tick(0);
+  }
+  function updateNav(){
+    var idx = ALL.indexOf(current);
+    $('prevBtn').disabled = idx === 0;
+    $('nextBtn').disabled = idx === ALL.length - 1;
+  }
+
+  function setPlaying(p){
+    playing = p;
+    videoEl.classList.toggle('playing', p);
+    $('playBtn').innerHTML = p ? I.pause : I.play;
+    $('playBtn').setAttribute('aria-label', p ? 'Pause' : 'Play');
+    $('modules').classList.toggle('paused', !p);
+    clearInterval(timer);
+    if (p) timer = setInterval(function(){ tick(0.25 * speed); }, 250);
+    poke();
+  }
+
+  function tick(dt){
+    t = Math.min(current.dur, t + dt);
+    var pct = t / current.dur * 100;
+    $('seekFill').style.width = pct + '%';
+    $('seekKnob').style.left = pct + '%';
+    $('seekBuffer').style.width = Math.min(100, pct + 12) + '%';
+    $('seek').setAttribute('aria-valuenow', Math.round(pct));
+    $('seek').setAttribute('aria-valuetext', fmt(t) + ' of ' + fmt(current.dur));
+    $('time').textContent = fmt(t) + ' / ' + fmt(current.dur);
+    syncCues();
+    if (dt) save(POS_KEY, { lesson:current.id, t:t }); // FR-04: auto-save exact position
+    if (t >= current.dur && playing) finishLesson();
+  }
+
+  function finishLesson(){
+    setPlaying(false);
+    current.status = 'completed';
+    var next = ALL[ALL.indexOf(current) + 1];
+    $('endNext').textContent = next ? 'Up next: ' + next.title : 'Course complete';
+    $('endNextBtn').hidden = !next;
+    $('endCard').hidden = false;
+    renderRail();
+  }
+
+  function seekTo(s){ t = Math.max(0, Math.min(current.dur - 0.01, s)); $('endCard').hidden = true; tick(0); }
+  function togglePlay(){ if (current.type === 'video') setPlaying(!playing); }
+
+  $('videoHit').addEventListener('click', togglePlay);
+  $('playBtn').addEventListener('click', togglePlay);
+  $('back10').addEventListener('click', function(){ seekTo(t - 10); });
+  $('fwd10').addEventListener('click', function(){ seekTo(t + 10); });
+  $('replayBtn').addEventListener('click', function(){ seekTo(0); setPlaying(true); });
+  $('endNextBtn').addEventListener('click', function(){ goRel(1); });
+  $('speedBtn').addEventListener('click', function(){ // FR-05: 0.5x–2x
+    speed = SPEEDS[(SPEEDS.indexOf(speed) + 1) % SPEEDS.length];
+    this.textContent = speed + '×';
+    if (playing) setPlaying(true);
+  });
+  $('ccBtn').addEventListener('click', function(){
+    captionsOn = !captionsOn;
+    this.classList.toggle('on', captionsOn);
+    this.setAttribute('aria-pressed', captionsOn);
+    lastCue = -2; syncCues();
+  });
+  $('fsBtn').addEventListener('click', function(){
+    if (document.fullscreenElement) document.exitFullscreen(); else if ($('stage').requestFullscreen) $('stage').requestFullscreen();
+  });
+  var seek = $('seek');
+  function seekFromEvent(e){ var r = seek.getBoundingClientRect(); seekTo((e.clientX - r.left) / r.width * current.dur); }
+  seek.addEventListener('pointerdown', function(e){
+    seekFromEvent(e); seek.setPointerCapture(e.pointerId);
+    seek.onpointermove = seekFromEvent;
+    seek.onpointerup = function(){ seek.onpointermove = null; };
+  });
+  seek.addEventListener('keydown', function(e){
+    if (e.key === 'ArrowRight'){ seekTo(t + 5); e.preventDefault(); }
+    if (e.key === 'ArrowLeft'){ seekTo(t - 5); e.preventDefault(); }
+  });
+  var idleTimer;
+  function poke(){ videoEl.classList.remove('idle'); clearTimeout(idleTimer); idleTimer = setTimeout(function(){ videoEl.classList.add('idle'); }, 2600); }
+  videoEl.addEventListener('pointermove', poke);
+  videoEl.addEventListener('focusin', poke);
+  document.addEventListener('keydown', function(e){
+    var a = document.activeElement;
+    if (/INPUT|TEXTAREA|SELECT|BUTTON|A/.test(a.tagName) || a.getAttribute('role') === 'slider') return;
+    if (e.key === ' '){ e.preventDefault(); togglePlay(); }
+    if (e.key === 'ArrowRight') seekTo(t + 5);
+    if (e.key === 'ArrowLeft') seekTo(t - 5);
+  });
+
+  function goRel(d){
+    var n = ALL[ALL.indexOf(current) + d];
+    if (!n) return;
+    if (d > 0) current.status = 'completed'; // ponytail: moving on marks the lesson done; real rule comes from CDL-004
+    loadLesson(n, 0, true);
+  }
+  $('prevBtn').addEventListener('click', function(){ goRel(-1); });
+  $('nextBtn').addEventListener('click', function(){ goRel(1); });
+
+  /* ---------------- Transcript ---------------- */
+  function renderTranscript(){
+    var box = $('transcript'), cues = TRANSCRIPTS[current.id];
+    if (!cues){
+      box.style.display = 'flex';
+      box.innerHTML = '<div class="empty-note"><b>No transcript for this lesson</b>' + (current.type === 'video' ? 'Captions and a transcript weren’t provided for this video.' : 'This lesson isn’t a video.') + '</div>';
+      cueEls = [];
+      return;
+    }
+    box.style.display = '';
+    box.innerHTML = cues.map(function(c, i){
+      return '<button class="cue" type="button" data-i="' + i + '"><span class="ts">' + fmt(c[0]) + '</span><span>' + esc(c[1]) + '</span></button>';
+    }).join('');
+    cueEls = Array.prototype.slice.call(box.querySelectorAll('.cue'));
+  }
+  $('transcript').addEventListener('click', function(e){
+    var c = e.target.closest('.cue'); if (!c) return;
+    seekTo(TRANSCRIPTS[current.id][c.dataset.i][0]);
+    if (!playing) togglePlay();
+  });
+  function syncCues(){
+    var cues = TRANSCRIPTS[current.id] || [], idx = -1;
+    for (var i = 0; i < cues.length; i++) if (t >= cues[i][0]) idx = i;
+    $('captions').hidden = !captionsOn || idx < 0;
+    if (idx >= 0) $('captions').textContent = cues[idx][1];
+    if (idx === lastCue) return;
+    lastCue = idx;
+    cueEls.forEach(function(el, i){ el.classList.toggle('active', i === idx); el.classList.toggle('past', i < idx); });
+    if (follow && cueEls[idx]){
+      var box = $('transcript');
+      box.scrollTo({ top:cueEls[idx].offsetTop - box.clientHeight / 3, behavior:'smooth' });
+    }
+  }
+  $('followBtn').addEventListener('click', function(){
+    follow = !follow; this.classList.toggle('on', follow); this.setAttribute('aria-pressed', follow);
+    if (follow){ lastCue = -2; syncCues(); }
+  });
+
+  /* ---------------- AI Tutor (AI-006) — mocked replies, lesson-scoped ---------------- */
+  var CHAT_KEY = 'upspace-tutor-' + COURSE.id; // FR-06: history persists per course
+  var chatLog = load(CHAT_KEY) || [];
+  var DECLINE = 'I can only help with content from this lesson. Try rephrasing your question about the topic';
+  var TOPIC = /tree|node|travers|order|recurs|stack|queue|binary|root|leaf|child|left|right|bst|depth|height|visit|level|sort|complex|o\(|big-?o|space|time|lesson|explain|example|trace|delet|copy|heap|search/i;
+
+  function reply(q){
+    if (!TRANSCRIPTS[current.id] && current.type === 'video') return { text:'I have limited context for this video lesson. Try asking after the video or in a text-based lesson.' };
+    if (/\b(answer|solution|quiz|correct option|which option)\b/i.test(q))
+      return { text:'I can’t give quiz answers, but here’s a hint: think about when each traversal visits the node relative to its children. Review the section on in-order traversal — the answer is explained there.', jump:192 };
+    if (!TOPIC.test(q)) return { text:DECLINE };
+    if (/in-?order/i.test(q)) return { text:'In-order visits left subtree → node → right subtree.\n\nTry it: root 8, left child 3, right child 10, with 1 and 6 under 3. Which value would in-order print first, and why?', jump:158 };
+    if (/pre-?order|copy/i.test(q)) return { text:'Pre-order visits the node before its children — so when copying a tree, every parent exists before you attach its children.\n\nWhat would go wrong if you copied a tree in post-order instead?', jump:95 };
+    if (/post-?order|delet/i.test(q)) return { text:'Post-order handles both children before the node. Why might that order matter when you’re freeing memory?', jump:372 };
+    if (/space|stack|recurs|height|depth/i.test(q)) return { text:'The extra space comes from recursion — one call frame for each level you’re inside, so O(h) where h is the tree height.\n\nWhat shape of tree would make h equal to n?', jump:482 };
+    if (/time|complex|o\(|big-?o/i.test(q)) return { text:'Each node is visited exactly once, so every depth-first traversal is O(n) time. What stays the same across all three orders, and what changes?', jump:446 };
+    if (/level|queue|breadth/i.test(q)) return { text:'Level-order uses a queue instead of recursion. This topic is also covered in “Level-order traversal with a queue” — you may want to review that lesson as well.' };
+    return { text:'Let’s break it down: all three traversals do the same three steps — visit, go left, go right. Only the position of “visit” moves.\n\nWhich of the three puts “visit” in the middle?', jump:67 };
+  }
+
+  function msgHtml(m, i){
+    if (m.role === 'user')
+      return '<div class="msg sent"><div class="content"><div class="meta"><span class="name">You</span><span class="when">' + esc(m.when) + '</span></div><div class="bubble">' + esc(m.text) + '</div></div></div>';
+    return '<div class="msg"><img class="avatar" src="' + AI_AVATAR + '" alt=""><div class="content">' +
+      '<div class="meta"><span class="name">AI Tutor</span><span class="when">' + esc(m.when) + '</span></div>' +
+      '<div class="bubble">' + esc(m.text) + (m.jump != null && m.lesson === current.id ? '\n<button class="jump" type="button" data-t="' + m.jump + '">' + I.play + 'Jump to ' + fmt(m.jump) + '</button>' : '') + '</div>' +
+      '<div class="rate"><span>Helpful?</span>' +
+        '<button type="button" data-rate="up" data-i="' + i + '" aria-label="Helpful" aria-pressed="' + (m.rating === 'up') + '">' + I.up + '</button>' +
+        '<button type="button" data-rate="down" data-i="' + i + '" aria-label="Not helpful" aria-pressed="' + (m.rating === 'down') + '">' + I.down + '</button>' +
+      '</div></div></div>';
+  }
+
+  function renderChat(){
+    var chat = $('chat');
+    if (!chatLog.length){
+      var limited = !TRANSCRIPTS[current.id] && current.type === 'video';
+      chat.innerHTML = '<div class="chat-intro"><p>' + (limited
+        ? 'This video has no transcript, so I have limited context here.'
+        : 'Stuck on something in this lesson? Ask me — I’ll explain it or guide you with a question.') + '</p>' +
+        '<div class="suggest">' + ['Explain in-order traversal', 'Why is space O(h)?', 'When would I use post-order?'].map(function(s){ return '<button type="button">' + s + '</button>'; }).join('') + '</div></div>';
+      return;
+    }
+    chat.innerHTML = chatLog.map(msgHtml).join('');
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  var busy = false;
+  function ask(q){
+    q = q.trim(); if (!q || busy) return;
+    busy = true;
+    chatLog.push({ role:'user', text:q, when:clockNow() });
+    save(CHAT_KEY, chatLog);
+    renderChat();
+    var chat = $('chat'), typing = document.createElement('div');
+    typing.className = 'msg';
+    typing.innerHTML = '<img class="avatar" src="' + AI_AVATAR + '" alt=""><div class="content"><div class="meta"><span class="name">AI Tutor</span></div><div class="typing" role="status" aria-label="AI Tutor is writing"><i></i><i></i><i></i></div></div>';
+    chat.appendChild(typing);
+    chat.scrollTop = chat.scrollHeight;
+    setTimeout(function(){
+      var r = reply(q);
+      chatLog.push({ role:'ai', text:r.text, jump:r.jump, lesson:current.id, when:clockNow() });
+      save(CHAT_KEY, chatLog);
+      busy = false;
+      renderChat();
+    }, 900 + Math.random() * 600);
+  }
+
+  var input = $('chatInput');
+  input.addEventListener('input', function(){
+    this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 132) + 'px';
+    $('sendBtn').disabled = !this.value.trim();
+  });
+  input.addEventListener('keydown', function(e){
+    if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); $('composer').requestSubmit(); }
+  });
+  $('composer').addEventListener('submit', function(e){
+    e.preventDefault();
+    if (busy) return;
+    ask(input.value);
+    input.value = ''; input.style.height = 'auto';
+    $('sendBtn').disabled = true;
+  });
+  $('chat').addEventListener('click', function(e){
+    var s = e.target.closest('.suggest button'); if (s){ ask(s.textContent); return; }
+    var j = e.target.closest('.jump'); if (j){ seekTo(+j.dataset.t); if (!playing) togglePlay(); return; }
+    var r = e.target.closest('[data-rate]');
+    if (r){ // FR-07: helpful / not helpful
+      var m = chatLog[r.dataset.i];
+      m.rating = m.rating === r.dataset.rate ? null : r.dataset.rate;
+      save(CHAT_KEY, chatLog); renderChat();
+    }
+  });
+  $('clearChat').addEventListener('click', function(){ chatLog = []; save(CHAT_KEY, chatLog); renderChat(); });
+
+  /* ---------------- Tabs (narrow widths only) ---------------- */
+  document.querySelectorAll('.lower-tab').forEach(function(tab){
+    tab.addEventListener('click', function(){
+      document.querySelectorAll('.lower-tab').forEach(function(x){ x.setAttribute('aria-selected', x === tab); });
+      document.querySelectorAll('.lower > .panel').forEach(function(p){ p.classList.toggle('active', p.id === tab.dataset.panel); });
+    });
+  });
+
+  /* ---------------- Rail toggle (FR-08) ---------------- */
+  var layout = $('layout');
+  function railIsOpen(){ return isMobile() ? layout.classList.contains('rail-open') : !layout.classList.contains('rail-collapsed'); }
+  function setRail(open){
+    if (isMobile()) layout.classList.toggle('rail-open', open); else layout.classList.toggle('rail-collapsed', !open);
+    $('railToggle').setAttribute('aria-expanded', open);
+  }
+  $('railToggle').addEventListener('click', function(){ setRail(!railIsOpen()); });
+  $('railClose').addEventListener('click', function(){ setRail(false); });
+  $('railBackdrop').addEventListener('click', function(){ setRail(false); });
+  if (isMobile()) $('railToggle').setAttribute('aria-expanded', 'false');
+
+  loadLesson(current, t, false);
+  requestAnimationFrame(function(){
+    var a = document.querySelector('.lesson.active');
+    if (a) a.scrollIntoView({ block:'center' });
+    window.scrollTo(0, 0);
+  });
+</script>
+</body>
+</html>

@@ -1,0 +1,1180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Generate Questions with AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Question Bank · Generate with AI (AI-002 inside
+     ASM-003). Entered from question-bank.html. Flow:
+       Setup (source + settings) → Progress (real stages) → Review →
+       "Save Selected to Question Bank" → question-bank.html?saved=N
+     Nothing is saved until the creator saves selected questions.
+     Source: Upload (PDF / DOCX / PPTX / image / TXT) · Paste text ·
+     Course lesson (upspace.cd.courses.v1). Text is really extracted:
+     PDF via pdf.js (cdnjs, lazy), DOCX/PPTX via a tiny native zip
+     reader (DecompressionStream), images via Tesseract.js OCR
+     (jsDelivr, lazy).
+     Generator: no AI service exists in this repo (user decision
+     2026-09-24: "Local grounded engine"). Questions are built only from
+     sentences in the source (AI-002-NFR-01); each keeps its excerpt.
+     Swap generate() for the AI service call later.
+     Writes to localStorage `upspace.cd.qbank.v1` (shared with
+     question-bank.html / course-builder.html), org-stamped via `api`.
+     Library reused: Buttons, Badge, Input field, Textarea, Select,
+     File Dropper, Alerts, Toast, Modal. Approved hand-built: Tabs,
+     AI generation progress (step list), question editor pattern, Tag
+     input, Checkbox, Fill-blank marker, AI review item (2026-09-24).
+     Demo states: ?state=ai-fail | save-fail, or the Preview control.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-sm:4px; --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; max-width:1180px; padding:24px clamp(20px, 2.6vw, 48px) 40px; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-xs{ height:28px; padding:0 10px; font-size:12.5px; gap:6px; }
+  .btn-xs svg{ width:14px; height:14px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary[disabled]{ background:#a5b4fc; cursor:not-allowed; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:#fff; }
+  .btn-ghost{ background:transparent; color:var(--text-secondary); }
+  .btn-ghost:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .btn-ghost[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:none; }
+  .btn-ghost.danger{ color:var(--error); }
+  .btn-ghost.danger:hover{ background:var(--error-subtle); }
+  .btn-danger{ background:var(--error); color:#fff; }
+  .btn-danger:hover{ background:#b91c1c; }
+  .ib{ width:34px; height:34px; display:inline-flex; align-items:center; justify-content:center; border:1px solid transparent; border-radius:var(--radius-lg); background:transparent; color:var(--text-secondary); flex-shrink:0; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:18px; height:18px; }
+  .ib.sm{ width:28px; height:28px; }
+  .ib.sm svg{ width:15px; height:15px; }
+  .ib[disabled]{ color:var(--text-disabled); cursor:not-allowed; background:none; }
+  .ib.danger:hover{ background:var(--error-subtle); color:var(--error); }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; flex-shrink:0; }
+  .spin.dark{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Badge (library) */
+  .badge{ display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12.5px; font-weight:600; white-space:nowrap; }
+  .badge svg{ width:12px; height:12px; }
+  .badge.sm{ height:20px; padding:0 7px; font-size:11.5px; }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.outline{ background:#fff; color:var(--text-secondary); box-shadow:inset 0 0 0 1px var(--border-default); }
+
+  /* Header */
+  .back-link{ display:inline-flex; align-items:center; gap:6px; margin-bottom:12px; font-size:13.5px; font-weight:600; color:var(--text-secondary); }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+  .page-h{ margin-bottom:20px; }
+  .page-h h1{ margin:0 0 4px; font-size:26px; font-weight:700; letter-spacing:-.5px; }
+  .page-h p{ margin:0; font-size:15px; color:var(--text-secondary); max-width:640px; line-height:1.5; }
+
+  /* Cards + layout */
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:20px; }
+  .card > h2{ margin:0 0 4px; font-size:16px; font-weight:700; }
+  .card > .sub{ margin:0 0 16px; font-size:13.5px; color:var(--text-secondary); line-height:1.5; }
+  .gen-grid{ display:grid; grid-template-columns:minmax(0, 1.35fr) minmax(0, 1fr); gap:16px; align-items:start; }
+  @media (max-width:1099px){ .gen-grid{ grid-template-columns:1fr; } }
+  .gen-foot{ display:flex; align-items:center; justify-content:flex-end; gap:12px; margin-top:16px; flex-wrap:wrap; }
+  .gen-foot .hint{ margin:0; }
+
+  /* Tabs (approved hand-built, segmented) */
+  .tabs{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); margin-bottom:16px; width:fit-content; max-width:100%; overflow-x:auto; }
+  .tab{ height:34px; padding:0 14px; border:0; border-radius:var(--radius-md); background:transparent; font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; display:inline-flex; align-items:center; gap:6px; }
+  .tab svg{ width:15px; height:15px; }
+  .tab:hover{ color:var(--text-primary); }
+  .tab[aria-selected="true"]{ background:#fff; color:var(--text-primary); box-shadow:0 1px 3px rgba(23,23,17,.1); }
+
+  /* Input field / Select / Textarea (library) */
+  .field{ margin-bottom:14px; min-width:0; }
+  .field > label, .sec-h label, .lbl{ display:block; font-size:13px; font-weight:600; color:var(--text-strong); margin-bottom:6px; }
+  .req{ color:var(--error); }
+  .input{ width:100%; height:40px; padding:0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  textarea.input{ height:auto; min-height:64px; padding:10px 12px; line-height:1.5; resize:vertical; }
+  .select{ height:40px; width:100%; padding:0 34px 0 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23a3a3a3' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center/16px; font-size:14px; color:var(--text-primary); outline:none; appearance:none; max-width:100%; }
+  .input:focus, .select:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .hint{ font-size:12.5px; color:var(--text-tertiary); margin:6px 0 0; line-height:1.45; }
+  .hint.warn{ color:#a16207; }
+  .hint.error{ color:var(--error); font-weight:600; }
+  .row2{ display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+
+  /* Checkbox (hand-built, approved) */
+  .check{ display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; cursor:pointer; min-width:0; }
+  .check:hover{ background:var(--surface-canvas); }
+  .check:has(input:checked){ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); }
+  .cb{ width:16px; height:16px; margin:0; accent-color:var(--action-primary); flex-shrink:0; cursor:pointer; }
+  .types{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+
+  /* File Dropper (library) */
+  .dropzone{ display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; gap:4px; padding:26px 16px; border:1.5px dashed var(--border-default); border-radius:var(--radius-xl); background:var(--surface-canvas); transition:border-color .15s ease, background-color .15s ease; cursor:pointer; }
+  .dropzone:hover, .dropzone.over{ border-color:var(--action-primary); background:var(--action-primary-subtle); }
+  .dropzone svg{ width:26px; height:26px; color:var(--text-tertiary); margin-bottom:4px; }
+  .dropzone b{ font-size:14px; }
+  .dropzone b span{ color:var(--action-primary); }
+  .dropzone small{ font-size:12.5px; color:var(--text-tertiary); }
+  .file-row{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .file-row .fi{ width:36px; height:36px; border-radius:var(--radius-lg); background:var(--action-primary-subtle); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .file-row .fi svg{ width:18px; height:18px; }
+  .file-row .grow{ flex:1; min-width:0; }
+  .file-row b{ display:block; font-size:14px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .file-row small{ font-size:12.5px; color:var(--text-tertiary); }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); margin-bottom:14px; }
+  .alert > svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); } .alert.error > svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning > svg{ color:var(--warning); }
+  .alert.info{ background:var(--info-subtle); border-color:var(--info-border); } .alert.info > svg{ color:var(--info); }
+  .alert ul{ margin:2px 0 0; padding-left:18px; }
+  .alert .acts{ display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+
+  /* AI generation progress (approved step list) */
+  .prog{ max-width:560px; margin:24px auto 0; padding:28px; }
+  .prog h2{ margin:0 0 4px; font-size:18px; }
+  .prog > p{ margin:0 0 22px; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .steps{ list-style:none; margin:0; padding:0; display:grid; gap:16px; }
+  .steps li{ display:flex; align-items:center; gap:12px; font-size:15px; color:var(--text-tertiary); transition:color .2s ease; }
+  .steps li.active{ color:var(--text-primary); font-weight:500; }
+  .steps li.done{ color:var(--text-secondary); }
+  .steps li.failed{ color:var(--error); font-weight:500; }
+  .steps .dot{ width:22px; height:22px; border-radius:50%; border:1.5px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .steps li.active .dot{ border-color:var(--action-primary-soft); border-top-color:var(--action-primary); animation:spin .8s linear infinite; }
+  .steps li.done .dot{ border-color:var(--action-primary); background:var(--action-primary); color:#fff; }
+  .steps li.failed .dot{ border-color:var(--error); background:var(--error); color:#fff; }
+  .steps .dot svg{ width:12px; height:12px; }
+  .prog-note{ margin:18px 0 0; font-size:13px; color:var(--text-tertiary); }
+  .prog-foot{ display:flex; justify-content:flex-end; gap:8px; margin-top:22px; }
+  .prog .alert{ margin:20px 0 0; }
+
+  /* Review — AI generated question review item (hand-built, approved) */
+  .rev-h{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:16px; }
+  .rev-h h1{ margin:0 0 4px; font-size:24px; font-weight:700; letter-spacing:-.4px; }
+  .rev-h p{ margin:0; font-size:14.5px; color:var(--text-secondary); }
+  .rev-bar{ display:flex; align-items:center; gap:12px; padding:10px 14px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl) var(--radius-xl) 0 0; flex-wrap:wrap; }
+  .rev-bar label{ display:flex; align-items:center; gap:10px; font-size:14px; font-weight:600; cursor:pointer; }
+  .rev-bar .grow{ flex:1; }
+  .rev-bar .cnt{ font-size:13.5px; color:var(--text-secondary); }
+  .rev-list{ border:1px solid var(--border-default); border-top:0; border-radius:0 0 var(--radius-xl) var(--radius-xl); background:#fff; }
+  .ri{ border-top:1px solid var(--border-subtle); }
+  .ri:first-child{ border-top:0; }
+  .ri:last-child .ri-h{ border-radius:0 0 var(--radius-xl) var(--radius-xl); }
+  .ri-h{ display:flex; gap:12px; align-items:flex-start; padding:14px 14px 14px 16px; }
+  .ri:not(.sel) .ri-main{ opacity:.55; }
+  .ri-h .cb{ margin-top:3px; }
+  .ri-n{ width:24px; font-size:12.5px; font-weight:700; color:var(--text-tertiary); padding-top:2px; flex-shrink:0; text-align:right; }
+  .ri-main{ flex:1; min-width:0; transition:opacity .15s ease; }
+  .ri-badges{ display:flex; gap:6px; flex-wrap:wrap; margin-bottom:6px; }
+  .ri-q{ margin:0; font-size:14.5px; font-weight:600; line-height:1.5; white-space:pre-wrap; overflow-wrap:anywhere; }
+  .ri-a{ margin:4px 0 0; font-size:13px; color:var(--success); font-weight:600; overflow-wrap:anywhere; }
+  .ri-a.none{ color:var(--error); }
+  .ri-src{ margin:6px 0 0; font-size:12.5px; color:var(--text-tertiary); line-height:1.5; overflow-wrap:anywhere; }
+  .ri-src b{ font-weight:600; color:var(--text-secondary); }
+  .ri-acts{ display:flex; gap:2px; align-items:center; flex-shrink:0; }
+  .ri-errs{ margin:8px 0 0; padding:8px 10px; border-radius:var(--radius-md); background:var(--error-subtle); color:var(--error); font-size:13px; }
+  .ri-errs ul{ margin:0; padding-left:16px; }
+  .ri-ed{ padding:0 16px 16px 66px; }
+  .ri-ed .ed-sec{ background:var(--surface-canvas); }
+  .ri-ed-foot{ display:flex; justify-content:flex-end; margin-top:12px; }
+  .rev-add{ margin-top:10px; }
+  .rev-foot{ position:sticky; bottom:16px; z-index:5; display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-top:16px; padding:12px 16px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); box-shadow:0 8px 24px rgba(23,23,23,.08); }
+  .rev-foot .cnt{ flex:1; font-size:14px; color:var(--text-secondary); }
+  .rev-foot .cnt b{ color:var(--text-primary); }
+  .blank{ display:inline-flex; align-items:center; min-width:72px; height:24px; padding:0 8px; margin:0 2px; border-radius:var(--radius-md); background:var(--action-primary-subtle); border-bottom:2px solid var(--action-primary); color:var(--action-primary); font-weight:600; font-size:13px; vertical-align:baseline; }
+  .blank.unset{ color:var(--text-tertiary); font-weight:500; }
+
+  /* Question editor (pattern from instructor/assessment-editor.html) */
+  .ed{ display:grid; gap:12px; }
+  .ed-sec{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:14px; }
+  .ed-top{ display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr) 110px; gap:12px; }
+  .ed-top .field{ margin:0; }
+  .ed-top.two{ grid-template-columns:minmax(0,1fr) 110px; }
+  .sec-h{ display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  .sec-h label{ margin:0; flex:1; }
+  .sec-h .hint{ margin:0; }
+  .q-prompt{ font-size:15px; font-weight:600; }
+  .option-stack{ display:flex; flex-direction:column; gap:6px; }
+  .option-item{ display:flex; align-items:center; gap:8px; padding:5px 5px 5px 6px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .option-item.correct{ border-color:var(--success-border); background:var(--success-subtle); }
+  .option-item.drag-over{ box-shadow:0 -2px 0 var(--action-primary); }
+  .option-item.dragging{ opacity:.45; }
+  .option-item input[type="radio"], .option-item input[type="checkbox"]{ width:16px; height:16px; accent-color:var(--success); flex-shrink:0; margin:0 2px; }
+  .option-item input[type="text"]{ flex:1; min-width:0; border:0; background:transparent; font-size:14px; outline:none; height:30px; color:var(--text-primary); }
+  .option-item .grip{ width:18px; height:30px; display:flex; align-items:center; justify-content:center; color:var(--text-tertiary); cursor:grab; flex-shrink:0; }
+  .option-item .grip svg{ width:14px; height:14px; }
+  .opt-l{ width:20px; font-size:12px; font-weight:700; color:var(--text-tertiary); text-align:center; flex-shrink:0; }
+  .option-item.correct .opt-l{ color:var(--success); }
+  .ok-tag{ font-size:11.5px; font-weight:700; color:var(--success); padding:0 6px; white-space:nowrap; }
+  .opts-foot{ display:flex; align-items:center; gap:10px; margin-top:8px; flex-wrap:wrap; }
+  .opts-foot .hint{ margin:0; }
+  .multi-note{ display:flex; gap:8px; align-items:flex-start; padding:9px 12px; margin-bottom:10px; border-radius:var(--radius-lg); background:var(--info-subtle); color:#1e40af; font-size:13px; line-height:1.45; }
+  .multi-note svg{ width:16px; height:16px; flex-shrink:0; margin-top:1px; }
+  .alt-row{ display:flex; gap:6px; margin-top:6px; }
+  .blank-prev{ margin-top:10px; padding:10px 12px; border-radius:var(--radius-lg); background:var(--surface-canvas); border:1px dashed var(--border-default); font-size:14px; line-height:1.9; color:var(--text-strong); }
+  .blank-prev small{ display:block; font-size:11.5px; font-weight:600; text-transform:uppercase; letter-spacing:.04em; color:var(--text-tertiary); line-height:1.4; margin-bottom:2px; }
+
+  /* Tag input (hand-built, approved) */
+  .tagin-wrap{ position:relative; }
+  .tagin{ display:flex; flex-wrap:wrap; align-items:center; gap:6px; min-height:40px; padding:5px 8px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; cursor:text; }
+  .tagin:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .chip{ display:inline-flex; align-items:center; gap:2px; height:26px; padding:0 4px 0 10px; border-radius:var(--radius-full); background:var(--action-primary-subtle); color:var(--action-primary); font-size:13px; font-weight:600; max-width:220px; }
+  .chip span{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .chip button{ width:20px; height:20px; border:0; border-radius:50%; background:transparent; color:inherit; display:flex; align-items:center; justify-content:center; padding:0; flex-shrink:0; }
+  .chip button:hover{ background:var(--action-primary-soft); }
+  .chip button svg{ width:12px; height:12px; }
+  .tagin input{ flex:1; min-width:120px; height:28px; border:0; outline:none; font-size:14px; background:transparent; }
+  .tag-sug{ position:absolute; left:0; right:0; top:calc(100% + 4px); z-index:5; max-height:220px; overflow-y:auto; padding:4px; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-lg); box-shadow:0 8px 24px rgba(23,23,17,.08); }
+  .tag-sug button{ width:100%; display:flex; align-items:center; gap:8px; height:34px; padding:0 10px; border:0; border-radius:var(--radius-md); background:transparent; font-size:13.5px; color:var(--text-strong); text-align:left; }
+  .tag-sug button[aria-selected="true"], .tag-sug button:hover{ background:var(--surface-raised); }
+  .tag-sug button svg{ width:14px; height:14px; color:var(--text-tertiary); }
+  .tag-sug button small{ margin-left:auto; color:var(--text-tertiary); font-size:12px; }
+
+  /* Image question (File Dropper + Image figure) */
+  .img-or{ display:flex; align-items:center; gap:10px; margin-top:10px; font-size:12.5px; color:var(--text-tertiary); }
+  .img-box{ display:grid; grid-template-columns:minmax(0, 1.2fr) minmax(0, 1fr); gap:14px; align-items:start; }
+  .img-frame{ border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-raised); overflow:hidden; min-height:140px; display:flex; align-items:center; justify-content:center; }
+  .img-frame img{ display:block; width:100%; max-height:320px; object-fit:contain; background:#fff; }
+  .img-acts{ display:flex; gap:6px; flex-wrap:wrap; }
+  .uploading{ display:flex; align-items:center; gap:10px; padding:18px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; color:var(--text-secondary); }
+  .lib-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:10px; max-height:420px; overflow-y:auto; padding:2px; }
+  .asset{ display:flex; flex-direction:column; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; overflow:hidden; text-align:left; padding:0; }
+  .asset:hover, .asset:focus-visible{ border-color:var(--action-primary); box-shadow:0 0 0 3px var(--action-primary-subtle); outline:none; }
+  .asset .th{ aspect-ratio:4/3; background:var(--surface-raised) center/cover no-repeat; }
+  .asset .inf{ padding:8px 10px; }
+  .asset b{ display:block; font-size:12.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .asset small{ font-size:11.5px; color:var(--text-tertiary); }
+  .empty{ padding:32px; text-align:center; }
+  .empty b{ display:block; font-size:16px; margin-bottom:6px; }
+  .empty span{ display:block; font-size:14px; color:var(--text-secondary); }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f3f3f3 25%, #e9e9e9 50%, #f3f3f3 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+
+  /* Modal (library) */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:60; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:560px; max-width:100%; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal.sm{ width:440px; }
+  .modal.lg{ width:720px; }
+  .modal-h{ display:flex; align-items:flex-start; justify-content:space-between; gap:12px; margin-bottom:18px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; letter-spacing:-.2px; }
+  .modal-h p{ margin:4px 0 0; font-size:14px; color:var(--text-secondary); line-height:1.5; }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; flex-wrap:wrap; }
+
+  /* Toast (library) */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:10px 12px 10px 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:12px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:80; max-width:calc(100vw - 48px); }
+  .toast.show{ transform:translateY(0); opacity:1; pointer-events:auto; }
+  .toast.err{ background:#7f1d1d; }
+  .toast button{ height:28px; padding:0 10px; border:0; border-radius:var(--radius-md); background:rgba(255,255,255,.14); color:#fff; font-size:13px; font-weight:600; flex-shrink:0; }
+  .toast button:hover{ background:rgba(255,255,255,.24); }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 11px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #e5e5e5; border-radius:4px; background:#fff; padding:3px 4px; }
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:22px 16px 40px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+    .ed-top{ grid-template-columns:1fr 1fr; }
+    .img-box{ grid-template-columns:1fr; }
+    .ri-ed{ padding-left:16px; }
+  }
+  @media (max-width:560px){ .types, .row2{ grid-template-columns:1fr; } }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" id="sideFrame" title="Navigation"></iframe>
+  <iframe class="topbar-frame" id="topFrame" title="Top bar"></iframe>
+  <main class="main"><div class="main-inner">
+    <a class="back-link" id="backLink" href="question-bank.html"></a>
+
+    <!-- Setup -->
+    <section id="vSetup">
+      <header class="page-h">
+        <h1>Generate questions with AI</h1>
+        <p>Questions are drafted only from the source you provide. You review every question before anything is saved.</p>
+      </header>
+      <div class="gen-grid">
+        <div class="card">
+          <h2>Source material</h2>
+          <p class="sub">AI writes questions from this content only.</p>
+          <div class="tabs" role="tablist" aria-label="Source type" id="srcTabs"></div>
+          <div id="srcPanel"></div>
+          <div class="field" style="margin:16px 0 0">
+            <label for="instr">Instructions <span style="font-weight:500;color:var(--text-tertiary)">(optional)</span></label>
+            <textarea class="input" id="instr" rows="2" placeholder="e.g. Create 10 questions about conflict resolution for intermediate managers."></textarea>
+            <p class="hint">Used to focus on the parts of your source that matter. AI won't add facts that aren't in the source.</p>
+          </div>
+        </div>
+        <div class="card">
+          <h2>Settings</h2>
+          <p class="sub">Choose how many questions to draft and which types.</p>
+          <div class="row2">
+            <div class="field"><label for="count">Number of questions</label><input class="input" id="count" type="number" min="1" max="100" value="10"></div>
+            <div class="field"><label for="points">Points per question</label><input class="input" id="points" type="number" min="0" step="1" value="1"></div>
+          </div>
+          <p class="hint warn" id="countHint" hidden></p>
+          <div class="field" style="margin-top:6px">
+            <span class="lbl" id="typesLbl">Question types <span class="req">*</span></span>
+            <div class="types" role="group" aria-labelledby="typesLbl" id="types"></div>
+          </div>
+          <div class="field" style="margin:0" id="tagsField"></div>
+        </div>
+      </div>
+      <div class="gen-foot">
+        <span class="hint" id="genHint"></span>
+        <button class="btn btn-primary" type="button" id="genBtn" disabled></button>
+      </div>
+    </section>
+
+    <!-- Progress -->
+    <section id="vProg" hidden>
+      <div class="card prog" aria-live="polite">
+        <h2 id="progTitle">Generating questions</h2>
+        <p id="progSub"></p>
+        <ol class="steps" id="steps"></ol>
+        <div id="progErr"></div>
+        <p class="prog-note" id="progNote">Most sources up to 50 pages take under 30 seconds.</p>
+        <div class="prog-foot" id="progFoot"></div>
+      </div>
+    </section>
+
+    <!-- Review -->
+    <section id="vReview" hidden></section>
+  </div></main>
+</div>
+
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal" id="modalBody"></div></div>
+<div class="toast" id="toast" role="status" aria-live="polite"><span></span></div>
+
+<label class="preview">Preview
+  <select id="ps" aria-label="Preview state">
+    <option value="normal">Normal</option>
+    <option value="ai-fail">Generation fails</option>
+    <option value="save-fail">Save fails</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){ if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed'); });
+
+  /* ================= Helpers ================= */
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function fmtDate(iso){ return new Date(iso).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' }); }
+  function norm(s){ return String(s || '').toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim(); }
+  function demo(){ return $('ps').value; }
+  function wait(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+  function plural(n, one, many){ return n + ' ' + (n === 1 ? one : (many || one + 's')); }
+  function fmtSize(b){ return b > 1048576 ? (b / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(b / 1024)) + ' KB'; }
+
+  /* ================= Session / persona ================= */
+  var params = new URLSearchParams(location.search);
+  var AS_INSTRUCTOR = params.get('as') === 'instructor';
+  // ponytail: session stand-in. The real session (and its orgId) comes from auth, server-side.
+  var SESSION = { name:'Maya Reed', orgId:'org-upspace', role:AS_INSTRUCTOR ? 'instructor' : 'creator' };
+  var BANK_URL = 'question-bank.html' + (AS_INSTRUCTOR ? '?as=instructor' : '');
+  $('sideFrame').src = AS_INSTRUCTOR ? '../../instructor/component/sidebar.html?active=assessments' : '../component/sidebar.html?active=question-bank';
+  $('topFrame').src = (AS_INSTRUCTOR ? '../../instructor/component/topnavbar.html' : '../component/topnavbar.html') + '?current=Generate+with+AI';
+
+  var sv = function(p){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + p + '</svg>'; };
+  var I = {
+    plus:sv('<path d="M12 5v14M5 12h14"/>'), x:sv('<path d="M18 6 6 18M6 6l12 12"/>'), back:sv('<path d="m12 19-7-7 7-7"/><path d="M19 12H5"/>'),
+    edit:sv('<path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/>'),
+    trash:sv('<path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/>'),
+    spark:sv('<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>'),
+    upload:sv('<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/>'), alert:sv('<circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>'),
+    check:sv('<path d="M20 6 9 17l-5-5"/>'), image:sv('<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>'),
+    grip:sv('<circle cx="9" cy="6" r="1"/><circle cx="15" cy="6" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="15" cy="12" r="1"/><circle cx="9" cy="18" r="1"/><circle cx="15" cy="18" r="1"/>'),
+    up:sv('<path d="m18 15-6-6-6 6"/>'), down:sv('<path d="m6 9 6 6 6-6"/>'),
+    tag:sv('<path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5"/>'),
+    info:sv('<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>'), file:sv('<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/>'),
+    paste:sv('<rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/>'),
+    book:sv('<path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/>'),
+    rotate:sv('<path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/>'), blank:sv('<path d="M4 18h6M14 18h6"/><path d="M4 12h16"/>')
+  };
+  $('backLink').href = BANK_URL; $('backLink').innerHTML = I.back + 'Question Bank';
+
+  /* ================= Question model (same as question-bank.html) ================= */
+  var KINDS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', fill:'Fill in the blank', short:'Short answer', long:'Long answer', image:'Image-based' };
+  var FORMATS = { mcq:'Multiple choice', multi:'Multiple select', tf:'True / False', short:'Short answer' };
+  var GEN_TYPES = ['mcq', 'multi', 'tf', 'short', 'fill']; // AI-002-FR-03
+  var BLANK_RE = /_{3,}/g;
+  function effKind(q){ return q.kind === 'image' ? (q.format || 'mcq') : q.kind; }
+  function isObjective(k){ return k === 'mcq' || k === 'multi' || k === 'tf'; }
+  function opt(text, correct){ return { id:uid('o'), text:text || '', correct:!!correct }; }
+  function blankQ(kind){
+    var q = { id:uid('qb'), kind:kind, format:null, prompt:'', image:null, options:[], answer:'', alts:[], explanation:'', points:1, tags:[], ai:false, aiSource:null };
+    setKind(q, kind, true); return q;
+  }
+  function setKind(q, kind, fresh, format){
+    var before = effKind(q);
+    q.kind = kind;
+    q.format = kind === 'image' ? (format || q.format || 'mcq') : null;
+    var k = effKind(q);
+    if (k === 'tf'){ var ok = q.options.length === 2 && /^true$/i.test(q.options[0].text) && /^false$/i.test(q.options[1].text); if (!ok) q.options = [opt('True', true), opt('False')]; }
+    else if (k === 'mcq' || k === 'multi'){
+      if (fresh || before === 'tf' || q.options.length < 2) q.options = [opt('', true), opt(''), opt(''), opt('')];
+      if (k === 'mcq'){ var seen = false; q.options.forEach(function(o){ if (o.correct && !seen) seen = true; else o.correct = false; }); if (!seen) q.options[0].correct = true; }
+    } else q.options = [];
+    if (k !== 'fill') q.alts = [];
+  }
+  function validateQ(q){
+    var e = [], k = effKind(q);
+    if (!String(q.prompt).trim()) e.push('Write the question.');
+    if (q.kind === 'image' && !q.image) e.push('Add an image for this image-based question.');
+    if (k === 'mcq' || k === 'multi'){
+      if (q.options.length < 2) e.push('Add at least two options.');
+      if (q.options.some(function(o){ return !o.text.trim(); })) e.push('Fill in or remove empty options.');
+      var seen = {}; if (q.options.some(function(o){ var n = norm(o.text); if (n && seen[n]) return true; seen[n] = 1; return false; })) e.push('Options must be unique.');
+      if (!q.options.some(function(o){ return o.correct; })) e.push(k === 'multi' ? 'Mark at least one correct answer.' : 'Mark the correct answer.');
+    }
+    if (k === 'tf' && !q.options.some(function(o){ return o.correct; })) e.push('Choose whether the statement is true or false.');
+    if (k === 'fill'){ var n = (String(q.prompt).match(BLANK_RE) || []).length; if (n !== 1) e.push(n ? 'Use one blank per question.' : 'Mark the blank in the question with ____ (use Insert blank).'); if (!q.answer.trim()) e.push('Add the accepted answer for the blank.'); }
+    if (k === 'short' && !q.answer.trim()) e.push('Add the expected answer.');
+    if (k === 'long' && !q.answer.trim()) e.push('Add a rubric or marking guidance.');
+    if (!(q.points >= 0)) e.push('Points must be 0 or more.');
+    return e;
+  }
+
+  /* ================= Storage + Content Library images ================= */
+  var QB_KEY = 'upspace.cd.qbank.v1', LIB_KEY = 'upspace.cd.library.v1', COURSE_KEY = 'upspace.cd.courses.v1';
+  var MEM = {};
+  function readJSON(k){ try { var s = JSON.parse(localStorage.getItem(k)); if (s) return s; } catch (e) {} return MEM[k] || null; }
+  function writeJSON(k, v){ MEM[k] = v; try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { return false; } }
+  var dbP = null;
+  function db(){ if (!dbP) dbP = new Promise(function(res, rej){ var r = indexedDB.open('upspace-cd', 1); r.onupgradeneeded = function(){ r.result.createObjectStore('blobs'); }; r.onsuccess = function(){ res(r.result); }; r.onerror = function(){ rej(r.error); }; }); return dbP; }
+  function idbPut(id, blob){ return db().then(function(d){ return new Promise(function(res, rej){ var t = d.transaction('blobs', 'readwrite'); t.objectStore('blobs').put(blob, id); t.oncomplete = function(){ res(); }; t.onerror = function(){ rej(t.error); }; }); }); }
+  function idbGet(id){ return db().then(function(d){ return new Promise(function(res){ var r = d.transaction('blobs').objectStore('blobs').get(id); r.onsuccess = function(){ res(r.result || null); }; r.onerror = function(){ res(null); }; }); }).catch(function(){ return null; }); }
+  var urlCache = {};
+  function imgURL(img){
+    if (!img) return Promise.resolve(null);
+    if (img.url) return Promise.resolve(img.url);
+    var a = (readJSON(LIB_KEY) || []).find(function(x){ return x.id === img.assetId; });
+    if (!a || a.status === 'failed') return Promise.resolve(null);
+    if (a.url) return Promise.resolve(a.url);
+    if (urlCache[a.id]) return Promise.resolve(urlCache[a.id]);
+    return idbGet(a.id).then(function(b){ return b ? (urlCache[a.id] = URL.createObjectURL(b)) : null; });
+  }
+  function hydrateImgs(root){
+    root.querySelectorAll('img[data-img]').forEach(function(el){
+      var img = JSON.parse(el.dataset.img);
+      imgURL(img).then(function(u){ if (u) el.src = u; else el.replaceWith(Object.assign(document.createElement('div'), { className:'hint', style:'padding:24px;text-align:center', textContent:'This image is no longer available in the Content Library.' })); });
+    });
+  }
+  function imgTag(img){ return '<img data-img="' + esc(JSON.stringify(img)) + '" alt="' + esc(img.alt || '') + '">'; }
+  var IMG_EXT = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg'];
+  function uploadImage(file){
+    var ext = (file.name.split('.').pop() || '').toLowerCase();
+    if (IMG_EXT.indexOf(ext) < 0) return Promise.reject('Use a JPG, PNG, GIF, WEBP or SVG image.');
+    if (file.size > 10 * 1024 * 1024) return Promise.reject('Images must be 10 MB or smaller.');
+    // ponytail: IndexedDB + Content Library entry stands in for the media upload API (CRS-009-FR-07)
+    return wait(500).then(function(){
+      var id = uid('a');
+      return idbPut(id, file).then(function(){
+        var lib = readJSON(LIB_KEY) || [];
+        lib.unshift({ id:id, name:file.name, kind:'image', ext:ext, mime:file.type, size:file.size, url:null, stored:true, status:'ready', uploaded:new Date().toISOString(), uploadedBy:SESSION.name });
+        writeJSON(LIB_KEY, lib);
+        return { assetId:id, alt:'' };
+      });
+    });
+  }
+
+  /* ================= API (server stand-in, org-scoped) ================= */
+  // ponytail: mirrors the Question Bank API. The server stamps orgId from the authenticated session
+  // (ASM-003-NFR-01); the client never chooses its org. Swap for fetch() calls.
+  function mine(q){ return q.orgId === SESSION.orgId; }
+  var api = {
+    saveMany:function(list){
+      return wait(600).then(function(){
+        if (demo() === 'save-fail') throw new Error('save');
+        var all = readJSON(QB_KEY); if (!Array.isArray(all)) all = [];
+        var now = new Date().toISOString();
+        var rows = list.map(function(q){ var r = clone(q); r.orgId = SESSION.orgId; r.createdBy = r.updatedBy = SESSION.name; r.createdAt = r.updatedAt = now; r.usage = []; return r; });
+        if (!writeJSON(QB_KEY, rows.concat(all))) throw new Error('quota');
+        return rows;
+      });
+    },
+    tags:function(){ var m = {}; (readJSON(QB_KEY) || []).filter(mine).forEach(function(x){ (x.tags || []).forEach(function(g){ m[g.toLowerCase()] = m[g.toLowerCase()] || g; }); }); return Object.keys(m).map(function(k){ return m[k]; }).sort(function(a, b){ return a.localeCompare(b); }); }
+  };
+
+  /* ================= Toast / modal ================= */
+  var toastTimer;
+  function toast(msg, act, fn, err){
+    var t = $('toast'); t.className = 'toast' + (err ? ' err' : '');
+    t.innerHTML = '<span>' + esc(msg) + '</span>' + (act ? '<button type="button">' + esc(act) + '</button>' : '');
+    if (act) t.querySelector('button').onclick = function(){ t.classList.remove('show'); fn(); };
+    requestAnimationFrame(function(){ t.classList.add('show'); });
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.classList.remove('show'); }, act ? 6000 : 3400);
+  }
+  function openModal(html, cls){ $('modalBody').className = 'modal' + (cls ? ' ' + cls : ''); $('modalBody').innerHTML = html; $('modal').classList.add('open'); var f = $('modalBody').querySelector('[data-autofocus]') || $('modalBody').querySelector('button'); if (f) f.focus(); }
+  function closeModal(){ $('modal').classList.remove('open'); $('modalBody').innerHTML = ''; }
+  $('modal').addEventListener('click', function(e){ if (e.target === $('modal') || e.target.closest('[data-close]')) closeModal(); });
+  function confirmModal(title, body, okLabel, onOk, danger){
+    openModal('<div class="modal-h"><div><h3 id="modalTitle">' + esc(title) + '</h3><p>' + body + '</p></div></div><div class="modal-foot"><button class="btn btn-secondary" type="button" data-close data-autofocus>Cancel</button><button class="btn ' + (danger ? 'btn-danger' : 'btn-primary') + '" type="button" id="cfOk">' + esc(okLabel) + '</button></div>', 'sm');
+    $('cfOk').onclick = function(){ closeModal(); onOk(); };
+  }
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('modal').classList.contains('open')) closeModal(); });
+
+  /* ================= Question editor (copied from question-bank.html) ================= */
+  function autoGrow(root){ root.querySelectorAll('textarea[data-e="prompt"]').forEach(function(t){ t.style.height = 'auto'; t.style.height = Math.max(64, t.scrollHeight + 2) + 'px'; }); }
+  function edHTML(q, ctx){
+    var k = effKind(q), id = q.id, h = '<div class="ed">';
+    h += '<div class="ed-top' + (q.kind === 'image' ? '' : ' two') + '"><div class="field"><label for="k-' + id + '">Question type</label><select class="select" id="k-' + id + '" data-e="kind">' + Object.keys(KINDS).map(function(x){ return '<option value="' + x + '"' + (x === q.kind ? ' selected' : '') + '>' + KINDS[x] + '</option>'; }).join('') + '</select></div>' +
+      (q.kind === 'image' ? '<div class="field"><label for="f-' + id + '">Answer format</label><select class="select" id="f-' + id + '" data-e="format">' + Object.keys(FORMATS).map(function(x){ return '<option value="' + x + '"' + (x === q.format ? ' selected' : '') + '>' + FORMATS[x] + '</option>'; }).join('') + '</select></div>' : '') +
+      '<div class="field"><label for="p-' + id + '">Points</label><input class="input" id="p-' + id + '" type="number" min="0" step="1" data-e="points" value="' + (isNaN(q.points) ? '' : q.points) + '"></div></div>';
+    h += '<section class="ed-sec"><div class="sec-h"><label for="q-' + id + '">Question <span class="req">*</span></label>' + (k === 'fill' ? '<button class="btn btn-secondary btn-xs" type="button" data-ea="blank">' + I.blank + 'Insert blank</button>' : '') + '</div>' +
+      '<textarea class="input q-prompt" id="q-' + id + '" data-e="prompt" rows="2" placeholder="' + (k === 'fill' ? 'e.g. GDPR stands for General Data ____ Regulation.' : k === 'tf' ? 'Write a statement learners mark true or false' : 'Write the question') + '">' + esc(q.prompt) + '</textarea>' +
+      (k === 'fill' ? '<div class="blank-prev" data-blankprev>' + blankPrev(q) + '</div>' : '') + '</section>';
+    if (q.kind === 'image') h += '<section class="ed-sec"><div class="sec-h"><label>Image <span class="req">*</span></label></div>' + imageEdHTML(q, ctx) + '</section>';
+    h += '<section class="ed-sec">' + answersEdHTML(q, k) + '</section>';
+    if (isObjective(k) || k === 'fill') h += ctx.showExp || q.explanation ? '<section class="ed-sec"><div class="sec-h"><label for="x-' + id + '">Explanation</label><span class="hint">Optional · explains the correct answer</span></div><textarea class="input" id="x-' + id + '" data-e="explanation" rows="2" placeholder="Why this answer is correct">' + esc(q.explanation) + '</textarea></section>' : '<div><button class="btn btn-ghost btn-sm" type="button" data-ea="exp">' + I.plus + 'Add explanation</button></div>';
+    h += '<section class="ed-sec"><div class="sec-h"><label for="t-' + id + '">Tags</label><span class="hint">Used to search and filter the bank</span></div>' + tagInHTML(q) + '</section>';
+    return h + '</div>';
+  }
+  function blankPrev(q){
+    var n = (q.prompt.match(BLANK_RE) || []).length, i = 0;
+    if (!n) return '<small>Preview</small><span style="color:var(--text-tertiary)">Type ____ or use <b>Insert blank</b> to mark where learners type the answer.</span>';
+    return '<small>Preview' + (n > 1 ? ' · only one blank is supported' : '') + '</small>' + esc(q.prompt).replace(BLANK_RE, function(){ i++; var show = i === 1 && q.answer.trim(); return '<span class="blank' + (show ? '' : ' unset') + '">' + (show ? esc(q.answer) : 'blank') + '</span>'; });
+  }
+  function imageEdHTML(q, ctx){
+    if (ctx.uploading) return '<div class="uploading" aria-live="polite"><span class="spin dark"></span>Uploading ' + esc(ctx.uploading) + '…</div>';
+    var err = ctx.imgErr ? '<p class="hint error" role="alert">' + esc(ctx.imgErr) + '</p>' : '';
+    if (!q.image) return '<label class="dropzone" data-drop>' + I.upload + '<b><span>Click to upload</span> or drag and drop</b><small>JPG, PNG, GIF, WEBP or SVG · up to 10 MB · saved to your Content Library</small><input type="file" hidden accept=".jpg,.jpeg,.png,.gif,.webp,.svg" data-imgfile></label><div class="img-or">or <button class="btn btn-secondary btn-sm" type="button" data-ea="img-lib">' + I.image + 'Choose from Content Library</button></div>' + err;
+    return '<div class="img-box"><div class="img-frame">' + imgTag(q.image) + '</div><div><div class="field"><label for="alt-' + q.id + '">Alt text</label><input class="input" id="alt-' + q.id + '" data-e="alt" value="' + esc(q.image.alt || '') + '" placeholder="Describe the image for screen readers"></div><div class="img-acts"><label class="btn btn-secondary btn-sm">' + I.upload + 'Replace<input type="file" hidden accept=".jpg,.jpeg,.png,.gif,.webp,.svg" data-imgfile></label><button class="btn btn-secondary btn-sm" type="button" data-ea="img-lib">From library</button><button class="btn btn-ghost danger btn-sm" type="button" data-ea="img-del">Remove</button></div>' + err + '</div></div>';
+  }
+  function answersEdHTML(q, k){
+    var id = q.id;
+    if (isObjective(k)){
+      var multi = k === 'multi', tf = k === 'tf';
+      return '<div class="sec-h"><label>' + (tf ? 'Correct answer' : 'Answer options') + ' <span class="req">*</span></label><span class="hint">' + (multi ? 'Tick every correct answer' : tf ? 'Select true or false' : 'Select the one correct answer') + '</span></div>' +
+        (multi ? '<div class="multi-note">' + I.info + '<span>Learners can select more than one answer. Mark every option that is correct.</span></div>' : '') +
+        '<div class="option-stack" data-opts>' + q.options.map(function(o, i){
+          var L = String.fromCharCode(65 + i);
+          return '<div class="option-item' + (o.correct ? ' correct' : '') + '" data-o="' + o.id + '">' + (tf ? '' : '<span class="grip" draggable="true" data-grip title="Drag to reorder">' + I.grip + '</span><span class="opt-l">' + L + '</span>') +
+            '<input type="' + (multi ? 'checkbox' : 'radio') + '" name="c-' + id + '" data-oc' + (o.correct ? ' checked' : '') + ' aria-label="Mark ' + (tf ? esc(o.text) : 'option ' + L) + ' correct">' +
+            '<input type="text" data-ot value="' + esc(o.text) + '"' + (tf ? ' readonly tabindex="-1"' : ' placeholder="Option ' + L + '" aria-label="Option ' + L + ' text"') + '>' +
+            (o.correct ? '<span class="ok-tag">Correct</span>' : '') +
+            (tf ? '' : '<button class="ib sm" type="button" data-ea="up" aria-label="Move option ' + L + ' up"' + (i ? '' : ' disabled') + '>' + I.up + '</button><button class="ib sm" type="button" data-ea="down" aria-label="Move option ' + L + ' down"' + (i < q.options.length - 1 ? '' : ' disabled') + '>' + I.down + '</button><button class="ib sm" type="button" data-ea="del-opt" aria-label="Remove option ' + L + '"' + (q.options.length > 2 ? '' : ' disabled') + '>' + I.x + '</button>') + '</div>';
+        }).join('') + '</div>' +
+        (tf ? '' : '<div class="opts-foot"><button class="btn btn-ghost btn-sm" type="button" data-ea="add-opt"' + (q.options.length >= 10 ? ' disabled' : '') + '>' + I.plus + 'Add option</button>' + (q.options.length >= 10 ? '<span class="hint">Up to 10 options.</span>' : '') + '</div>');
+    }
+    if (k === 'fill') return '<div class="field" style="margin:0"><label for="a-' + id + '">Accepted answer <span class="req">*</span></label><input class="input" id="a-' + id + '" data-e="answer" value="' + esc(q.answer) + '" placeholder="Word or phrase that fills the blank"></div>' +
+      (q.alts || []).map(function(a, i){ return '<div class="alt-row"><input class="input" data-alt="' + i + '" value="' + esc(a) + '" placeholder="Another accepted answer" aria-label="Accepted answer ' + (i + 2) + '"><button class="ib" type="button" data-ea="del-alt" data-i="' + i + '" aria-label="Remove accepted answer ' + (i + 2) + '">' + I.x + '</button></div>'; }).join('') +
+      '<div class="opts-foot"><button class="btn btn-ghost btn-sm" type="button" data-ea="add-alt">' + I.plus + 'Add another accepted answer</button><span class="hint">Answers are matched ignoring upper/lower case.</span></div>';
+    if (k === 'short') return '<div class="field" style="margin:0"><label for="a-' + id + '">Expected answer <span class="req">*</span></label><textarea class="input" id="a-' + id + '" data-e="answer" rows="2" placeholder="The answer you expect, or guidance for marking">' + esc(q.answer) + '</textarea></div>';
+    return '<div class="field" style="margin:0"><label for="a-' + id + '">Rubric / marking guidance <span class="req">*</span></label><textarea class="input" id="a-' + id + '" data-e="answer" rows="5" placeholder="What a strong answer includes and how points are awarded">' + esc(q.answer) + '</textarea><p class="hint">Graders see this when marking. Learners don\'t.</p></div>';
+  }
+  function tagInHTML(q){
+    return '<div class="tagin-wrap" data-tagwrap><div class="tagin" data-tagbox>' + q.tags.map(function(t){ return '<span class="chip"><span>' + esc(t) + '</span><button type="button" data-ea="del-tag" data-t="' + esc(t) + '" aria-label="Remove tag ' + esc(t) + '">' + I.x + '</button></span>'; }).join('') +
+      '<input id="t-' + q.id + '" data-tagin placeholder="' + (q.tags.length ? 'Add tag' : 'Add a tag, e.g. Leadership') + '" autocomplete="off" role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="sug-' + q.id + '" maxlength="40"></div><div class="tag-sug" id="sug-' + q.id + '" role="listbox" hidden></div></div>';
+  }
+  function bindEditor(root, get, changed, ctxOf){
+    function oById(q, el){ var id = el.closest('[data-o]').dataset.o; return q.options.find(function(o){ return o.id === id; }); }
+    function doUpload(file){
+      var q = get(), ctx = ctxOf(); ctx.uploading = file.name; ctx.imgErr = null; changed(true);
+      uploadImage(file).then(function(img){ ctx.uploading = null; if (q.image && q.image.alt) img.alt = q.image.alt; q.image = img; changed(true); })
+        .catch(function(msg){ ctx.uploading = null; ctx.imgErr = typeof msg === 'string' ? msg : 'The image couldn\'t be uploaded. Try again.'; changed(true); });
+    }
+    root.addEventListener('input', function(e){
+      var q = get(); if (!q) return; var t = e.target, f = t.dataset.e;
+      if (t.matches('[data-tagin]')) return tagSuggest(q, t);
+      if (f && f !== 'kind' && f !== 'format'){
+        if (f === 'points') q.points = t.value === '' ? NaN : Math.max(0, Math.round(+t.value));
+        else if (f === 'alt') q.image.alt = t.value;
+        else q[f] = t.value;
+        if (f === 'prompt') autoGrow(root);
+        if ((f === 'prompt' || f === 'answer') && effKind(q) === 'fill'){ var bp = t.closest('.ed').querySelector('[data-blankprev]'); if (bp) bp.innerHTML = blankPrev(q); }
+        changed(false); return;
+      }
+      if (t.matches('[data-ot]')){ oById(q, t).text = t.value; changed(false); return; }
+      if (t.dataset.alt != null){ q.alts[+t.dataset.alt] = t.value; changed(false); }
+    });
+    root.addEventListener('change', function(e){
+      var q = get(); if (!q) return; var t = e.target;
+      if (t.dataset.e === 'kind'){ setKind(q, t.value); changed(true); return; }
+      if (t.dataset.e === 'format'){ setKind(q, 'image', false, t.value); changed(true); return; }
+      if (t.matches('[data-oc]')){ var o = oById(q, t); q.options.forEach(function(x){ if (effKind(q) === 'multi'){ if (x === o) x.correct = t.checked; } else x.correct = x === o; }); changed(true); return; }
+      if (t.matches('[data-imgfile]') && t.files[0]) doUpload(t.files[0]);
+    });
+    root.addEventListener('click', function(e){
+      var box = e.target.closest('[data-tagbox]'); if (box && e.target === box) box.querySelector('[data-tagin]').focus();
+      var b = e.target.closest('[data-ea]'), q = get(); if (!b || !q) return;
+      var a = b.dataset.ea, i;
+      if (a === 'blank'){
+        var ta = root.querySelector('#q-' + CSS.escape(q.id)), s = ta.selectionStart, en = ta.selectionEnd, v = q.prompt;
+        if ((v.match(BLANK_RE) || []).length) return toast('This question already has a blank.', null, null, true);
+        var ins = (s && v[s - 1] !== ' ' ? ' ' : '') + '____' + (v[en] && v[en] !== ' ' ? ' ' : '');
+        q.prompt = v.slice(0, s) + ins + v.slice(en); changed(true);
+        var n2 = root.querySelector('#q-' + CSS.escape(q.id)), p = q.prompt.indexOf('____') + 4; n2.focus(); n2.setSelectionRange(p, p); return;
+      }
+      if (a === 'exp'){ ctxOf().showExp = true; changed(true); var x = root.querySelector('#x-' + CSS.escape(q.id)); if (x) x.focus(); return; }
+      if (a === 'add-opt'){ q.options.push(opt('')); changed(true); var ots = root.querySelectorAll('[data-ot]'); ots[ots.length - 1].focus(); return; }
+      if (a === 'del-opt' || a === 'up' || a === 'down'){
+        i = q.options.findIndex(function(o){ return o.id === b.closest('[data-o]').dataset.o; });
+        var moved = q.options[i];
+        if (a === 'del-opt'){ q.options.splice(i, 1); if (moved.correct && effKind(q) === 'mcq') q.options[0].correct = true; changed(true); var rest = root.querySelectorAll('[data-ot]'); if (rest[Math.min(i, rest.length - 1)]) rest[Math.min(i, rest.length - 1)].focus(); return; }
+        var j = a === 'up' ? i - 1 : i + 1; if (j < 0 || j >= q.options.length) return;
+        q.options[i] = q.options[j]; q.options[j] = moved; changed(true);
+        var mb = root.querySelector('[data-o="' + moved.id + '"] [data-ea="' + a + '"]'); if (mb && !mb.disabled) mb.focus(); else { var mt = root.querySelector('[data-o="' + moved.id + '"] [data-ot]'); if (mt) mt.focus(); }
+        return;
+      }
+      if (a === 'add-alt'){ q.alts.push(''); changed(true); var al = root.querySelectorAll('[data-alt]'); al[al.length - 1].focus(); return; }
+      if (a === 'del-alt'){ q.alts.splice(+b.dataset.i, 1); changed(true); return; }
+      if (a === 'del-tag'){ q.tags = q.tags.filter(function(t){ return t !== b.dataset.t; }); changed(true); focusTag(root, q); return; }
+      if (a === 'sug'){ addTag(root, q, b.dataset.v, changed); return; }
+      if (a === 'img-del'){ q.image = null; changed(true); return; }
+      if (a === 'img-lib') openLibrary(function(assetId){ q.image = { assetId:assetId, alt:(q.image && q.image.alt) || '' }; ctxOf().imgErr = null; changed(true); });
+    });
+    root.addEventListener('keydown', function(e){
+      var t = e.target; if (!t.matches('[data-tagin]')) return;
+      var q = get(), box = t.closest('[data-tagwrap]').querySelector('.tag-sug'), items = box.hidden ? [] : Array.prototype.slice.call(box.querySelectorAll('button')), cur = items.findIndex(function(x){ return x.getAttribute('aria-selected') === 'true'; });
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp'){ if (!items.length) return; e.preventDefault(); var n = e.key === 'ArrowDown' ? (cur + 1) % items.length : (cur - 1 + items.length) % items.length; items.forEach(function(x, k){ x.setAttribute('aria-selected', String(k === n)); }); return; }
+      if (e.key === 'Enter' || e.key === ','){ e.preventDefault(); var v = cur > -1 ? items[cur].dataset.v : t.value; if (cleanTag(v)) addTag(root, q, v, changed); return; }
+      if (e.key === 'Backspace' && !t.value && q.tags.length){ q.tags.pop(); changed(true); focusTag(root, q); return; }
+      if (e.key === 'Escape' && !box.hidden){ e.stopPropagation(); box.hidden = true; t.setAttribute('aria-expanded', 'false'); }
+    });
+    root.addEventListener('focusout', function(e){ if (!e.target.matches('[data-tagin]')) return; var w = e.target.closest('[data-tagwrap]'); setTimeout(function(){ if (w.isConnected && !w.contains(document.activeElement)) w.querySelector('.tag-sug').hidden = true; }, 150); });
+    var dragId = null;
+    root.addEventListener('dragstart', function(e){ var g = e.target.closest && e.target.closest('[data-grip]'); if (!g) return; var row = g.closest('[data-o]'); dragId = row.dataset.o; row.classList.add('dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', dragId); e.dataTransfer.setDragImage(row, 20, 20); });
+    root.addEventListener('dragover', function(e){
+      var dz = e.target.closest && e.target.closest('[data-drop]');
+      if (dz && !dragId){ e.preventDefault(); dz.classList.add('over'); return; }
+      if (!dragId) return; var row = e.target.closest('[data-o]'); if (!row) return; e.preventDefault();
+      root.querySelectorAll('.drag-over').forEach(function(x){ x.classList.remove('drag-over'); }); if (row.dataset.o !== dragId) row.classList.add('drag-over');
+    });
+    root.addEventListener('dragleave', function(e){ var dz = e.target.closest && e.target.closest('[data-drop]'); if (dz) dz.classList.remove('over'); });
+    root.addEventListener('drop', function(e){
+      var dz = e.target.closest && e.target.closest('[data-drop]');
+      if (dz && !dragId){ e.preventDefault(); dz.classList.remove('over'); if (e.dataTransfer.files[0]) doUpload(e.dataTransfer.files[0]); return; }
+      if (!dragId) return; e.preventDefault();
+      var q = get(), row = e.target.closest('[data-o]');
+      if (row && row.dataset.o !== dragId){ var from = q.options.findIndex(function(o){ return o.id === dragId; }), it = q.options.splice(from, 1)[0], to = q.options.findIndex(function(o){ return o.id === row.dataset.o; }); q.options.splice(to, 0, it); }
+      dragId = null; changed(true);
+    });
+    root.addEventListener('dragend', function(){ dragId = null; root.querySelectorAll('.dragging,.drag-over').forEach(function(x){ x.classList.remove('dragging', 'drag-over'); }); });
+  }
+  function focusTag(root, q){ var inp = root.querySelector('#t-' + CSS.escape(q.id)); if (inp) inp.focus(); }
+  function cleanTag(v){ return String(v || '').replace(/,/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 40); }
+  function addTag(root, q, v, changed){
+    v = cleanTag(v); if (!v) return;
+    var existing = api.tags().find(function(t){ return t.toLowerCase() === v.toLowerCase(); }) || v;
+    if (!q.tags.some(function(t){ return t.toLowerCase() === existing.toLowerCase(); })) q.tags.push(existing);
+    changed(true); focusTag(root, q);
+  }
+  function tagSuggest(q, inp){
+    var v = cleanTag(inp.value), box = inp.closest('[data-tagwrap]').querySelector('.tag-sug');
+    if (!v){ box.hidden = true; inp.setAttribute('aria-expanded', 'false'); return; }
+    var have = q.tags.map(function(t){ return t.toLowerCase(); }), all = api.tags(), lv = v.toLowerCase();
+    var hits = all.filter(function(t){ return have.indexOf(t.toLowerCase()) < 0 && t.toLowerCase().indexOf(lv) > -1; }).slice(0, 8);
+    var exact = all.some(function(t){ return t.toLowerCase() === lv; }) || have.indexOf(lv) > -1;
+    box.innerHTML = hits.map(function(t, i){ return '<button type="button" role="option" data-ea="sug" data-v="' + esc(t) + '" aria-selected="' + (i === 0) + '">' + I.tag + esc(t) + '</button>'; }).join('') + (exact ? '' : '<button type="button" role="option" data-ea="sug" data-v="' + esc(v) + '" aria-selected="' + !hits.length + '">' + I.plus + 'Create “' + esc(v) + '”<small>New tag</small></button>');
+    box.hidden = !box.innerHTML; inp.setAttribute('aria-expanded', String(!box.hidden));
+  }
+  function openLibrary(cb){
+    openModal('<div class="modal-h"><div><h3 id="modalTitle">Choose from Content Library</h3><p>Images your organization has uploaded.</p></div><button class="ib" type="button" data-close aria-label="Close">' + I.x + '</button></div><div id="libGrid"></div>', 'lg');
+    var g = $('libGrid'), items = (readJSON(LIB_KEY) || []).filter(function(a){ return a.kind === 'image' && a.status === 'ready'; });
+    if (!items.length){ g.innerHTML = '<div class="empty"><b>No images in your Content Library yet</b><span>Upload an image in the question editor and it\'s saved here for reuse.</span></div>'; return; }
+    g.innerHTML = '<div class="lib-grid">' + items.map(function(a){ return '<button class="asset" type="button" data-asset="' + a.id + '"><div class="th" data-thumb="' + a.id + '"></div><div class="inf"><b title="' + esc(a.name) + '">' + esc(a.name) + '</b><small>' + esc(a.uploadedBy || '') + ' · ' + fmtDate(a.uploaded) + '</small></div></button>'; }).join('') + '</div>';
+    g.querySelectorAll('[data-thumb]').forEach(function(t){ imgURL({ assetId:t.dataset.thumb }).then(function(u){ if (u) t.style.backgroundImage = 'url("' + u + '")'; }); });
+    g.onclick = function(e){ var b = e.target.closest('[data-asset]'); if (b){ closeModal(); cb(b.dataset.asset); } };
+  }
+
+  /* ================= Setup: source + settings ================= */
+  var SRC_EXT = ['pdf', 'docx', 'pptx', 'txt', 'md', 'png', 'jpg', 'jpeg', 'webp'], OCR_EXT = ['png', 'jpg', 'jpeg', 'webp'];
+  var S = { tab:'upload', file:null, fileErr:'', text:'', courseId:'', lessonId:'', countTouched:false, types:{ mcq:true, multi:true, tf:true, short:false, fill:true }, set:{ id:'settings', tags:[] } };
+  var TABS = [['upload', 'file', 'Upload file'], ['paste', 'paste', 'Paste text'], ['lesson', 'book', 'Course lesson']];
+  function extOf(n){ return (String(n).split('.').pop() || '').toLowerCase(); }
+  function courses(){ var c = readJSON(COURSE_KEY); return Array.isArray(c) ? c : []; }
+  function drawTabs(){ $('srcTabs').innerHTML = TABS.map(function(t){ return '<button class="tab" type="button" role="tab" data-tab="' + t[0] + '" aria-selected="' + (S.tab === t[0]) + '">' + I[t[1]] + t[2] + '</button>'; }).join(''); }
+  function drawSrc(){
+    var p = $('srcPanel');
+    if (S.tab === 'upload'){
+      p.innerHTML = S.file ? '<div class="file-row"><span class="fi">' + I.file + '</span><div class="grow"><b title="' + esc(S.file.name) + '">' + esc(S.file.name) + '</b><small>' + extOf(S.file.name).toUpperCase() + ' · ' + fmtSize(S.file.size) + (OCR_EXT.indexOf(extOf(S.file.name)) > -1 ? ' · text is read with OCR' : '') + '</small></div><button class="ib" type="button" id="rmFile" aria-label="Remove file">' + I.x + '</button></div>'
+        : '<label class="dropzone" id="drop">' + I.upload + '<b><span>Click to upload</span> or drag and drop</b><small>PDF, DOCX, PPTX, TXT or images (PNG, JPG, WEBP) · up to 25 MB</small><input type="file" id="fileIn" hidden accept="' + SRC_EXT.map(function(x){ return '.' + x; }).join(',') + '"></label>' + (S.fileErr ? '<p class="hint error" role="alert">' + esc(S.fileErr) + '</p>' : '');
+      if ($('rmFile')) $('rmFile').onclick = function(){ S.file = null; drawSrc(); validate(); };
+      if ($('fileIn')){
+        $('fileIn').onchange = function(){ if (this.files[0]) pickFile(this.files[0]); };
+        var dz = $('drop');
+        ['dragenter', 'dragover'].forEach(function(t){ dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.add('over'); }); });
+        ['dragleave', 'drop'].forEach(function(t){ dz.addEventListener(t, function(e){ e.preventDefault(); dz.classList.remove('over'); }); });
+        dz.addEventListener('drop', function(e){ if (e.dataTransfer.files[0]) pickFile(e.dataTransfer.files[0]); });
+      }
+    } else if (S.tab === 'paste'){
+      p.innerHTML = '<div class="field" style="margin:0"><label for="pasteIn">Source text</label><textarea class="input" id="pasteIn" rows="9" placeholder="Paste the material learners studied — lesson notes, a policy, an article…">' + esc(S.text) + '</textarea><p class="hint" id="pasteCount"></p></div>';
+      $('pasteIn').oninput = function(){ S.text = this.value; pasteCount(); validate(); }; pasteCount();
+    } else {
+      var cs = courses().filter(function(c){ return c.status !== 'archived'; });
+      if (!cs.length){ p.innerHTML = '<p class="hint">No courses yet. Create a course in My Courses, or upload a file instead.</p>'; return; }
+      var c = cs.find(function(x){ return x.id === S.courseId; });
+      p.innerHTML = '<div class="row2"><div class="field" style="margin:0"><label for="cSel">Course</label><select class="select" id="cSel"><option value="">Choose a course</option>' + cs.map(function(x){ return '<option value="' + esc(x.id) + '"' + (x.id === S.courseId ? ' selected' : '') + '>' + esc(x.title) + '</option>'; }).join('') + '</select></div>' +
+        '<div class="field" style="margin:0"><label for="lSel">Lesson</label><select class="select" id="lSel"' + (c ? '' : ' disabled') + '><option value="">' + (c ? 'Choose a lesson' : 'Choose a course first') + '</option>' + (c ? (c.modules || []).map(function(m){ return '<optgroup label="' + esc(m.title) + '">' + m.lessons.map(function(l){ return '<option value="' + esc(l.id) + '"' + (l.id === S.lessonId ? ' selected' : '') + '>' + esc(l.title || 'Untitled lesson') + '</option>'; }).join('') + '</optgroup>'; }).join('') : '') + '</select></div></div><p class="hint" id="lessonHint"></p>';
+      $('cSel').onchange = function(){ S.courseId = this.value; S.lessonId = ''; drawSrc(); validate(); };
+      $('lSel').onchange = function(){ S.lessonId = this.value; lessonHint(); validate(); };
+      lessonHint();
+    }
+  }
+  function pasteCount(){ var w = (S.text.match(/\S+/g) || []).length; $('pasteCount').textContent = w ? plural(w, 'word') : ''; }
+  function findLesson(){ var c = courses().find(function(x){ return x.id === S.courseId; }), out = null; if (c) (c.modules || []).forEach(function(m){ m.lessons.forEach(function(l){ if (l.id === S.lessonId) out = { c:c, l:l }; }); }); return out; }
+  function htmlText(h){ var d = document.createElement('div'); d.innerHTML = String(h || '').replace(/<\/(p|li|h[1-6]|div|blockquote)>|<br\s*\/?>/gi, '\n'); return d.textContent; }
+  function lessonText(l){
+    if (!l.blocks) return htmlText(l.content);
+    return l.blocks.map(function(b){ var d = b.data || {}; if (b.type === 'text' || b.type === 'callout' || b.type === 'quote') return (d.title ? d.title + '\n' : '') + htmlText(d.html); if (b.type === 'heading') return d.text || ''; return ''; }).join('\n');
+  }
+  function lessonHint(){ var f = findLesson(), h = $('lessonHint'); if (!h) return; h.className = 'hint'; if (!f){ h.textContent = ''; return; } var w = (lessonText(f.l).match(/\S+/g) || []).length; if (!w){ h.className = 'hint error'; h.textContent = 'This lesson has no text content for question generation. Upload a transcript or use a text-based lesson.'; } else h.textContent = plural(w, 'word') + ' of lesson text will be used.'; }
+  function pickFile(f){
+    var ext = extOf(f.name); S.fileErr = '';
+    if (SRC_EXT.indexOf(ext) < 0) S.fileErr = 'Unsupported file. Upload a PDF, DOCX, PPTX, image or text file.';
+    else if (f.size > 25 * 1024 * 1024) S.fileErr = 'This file is larger than 25 MB. Upload a smaller file or split it.';
+    else if (!f.size) S.fileErr = 'This file is empty.';
+    S.file = S.fileErr ? null : f; drawSrc(); validate();
+  }
+  $('srcTabs').addEventListener('click', function(e){ var t = e.target.closest('[data-tab]'); if (!t) return; S.tab = t.dataset.tab; drawTabs(); drawSrc(); validate(); });
+
+  $('types').innerHTML = GEN_TYPES.map(function(k){ return '<label class="check"><input class="cb" type="checkbox" data-type="' + k + '"' + (S.types[k] ? ' checked' : '') + '>' + KINDS[k] + '</label>'; }).join('');
+  $('types').addEventListener('change', function(e){ var k = e.target.dataset.type; if (k){ S.types[k] = e.target.checked; validate(); } });
+  function drawSetTags(){ $('tagsField').innerHTML = '<label for="t-settings">Tags / topics</label>' + tagInHTML(S.set) + '<p class="hint">Added to every generated question. AI also suggests topic tags from the source.</p>'; }
+  bindEditor($('tagsField'), function(){ return S.set; }, function(redraw){ if (redraw){ drawSetTags(); $('t-settings').focus(); } }, function(){ return {}; });
+  $('count').addEventListener('input', function(){ S.countTouched = true; validate(); });
+  $('points').addEventListener('input', validate);
+  $('instr').addEventListener('input', function(){
+    var m = this.value.match(/\b(\d{1,3})\s+(?:[a-z-]+\s+){0,3}questions?\b/i);
+    if (m && !S.countTouched){ $('count').value = Math.min(100, Math.max(1, +m[1])); }
+    validate();
+  });
+  function settings(){ return { count:Math.round(+$('count').value), points:Math.round(+$('points').value), types:GEN_TYPES.filter(function(k){ return S.types[k]; }), tags:S.set.tags.slice(), instr:$('instr').value.trim() }; }
+  function sourceReady(){
+    if (S.tab === 'upload') return !!S.file;
+    if (S.tab === 'paste') return !!S.text.trim();
+    var f = findLesson(); return !!(f && lessonText(f.l).trim());
+  }
+  function validate(){
+    var s = settings(), msg = '';
+    if (!sourceReady()) msg = S.tab === 'upload' ? 'Upload a file to generate questions.' : S.tab === 'paste' ? 'Paste some source text to generate questions.' : 'Choose a lesson with text content.';
+    else if (!(s.count >= 1 && s.count <= 100)) msg = 'Choose between 1 and 100 questions.';
+    else if (!s.types.length) msg = 'Choose at least one question type.';
+    else if (!(s.points >= 0)) msg = 'Points must be 0 or more.';
+    $('genHint').textContent = msg; $('genHint').className = 'hint' + (msg && /1 and 100|Points/.test(msg) ? ' error' : '');
+    $('genBtn').disabled = !!msg;
+    var ch = $('countHint'); ch.hidden = !(s.count > 50 && s.count <= 100); ch.textContent = 'Large question counts may produce lower quality. Review carefully.';
+    return !msg;
+  }
+  $('genBtn').innerHTML = I.spark + 'Generate questions';
+
+  /* ================= Extraction (real) ================= */
+  function uErr(title, msg, action){ var e = new Error(title); e.user = { title:title, msg:msg, action:action || 'source' }; return e; }
+  var scripts = {};
+  function loadScript(src){
+    if (!scripts[src]) scripts[src] = new Promise(function(res, rej){ var s = document.createElement('script'); s.src = src; s.onload = res; s.onerror = function(){ delete scripts[src]; rej(new Error('script')); }; document.head.appendChild(s); });
+    return scripts[src];
+  }
+  var PDFJS = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/';
+  function pdfText(buf){
+    return loadScript(PDFJS + 'pdf.min.js').catch(function(){ throw uErr('We couldn\'t read this PDF', 'The PDF reader didn\'t load. Check your connection and try again.', 'retry'); }).then(function(){
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc = PDFJS + 'pdf.worker.min.js';
+      return window.pdfjsLib.getDocument({ data:new Uint8Array(buf) }).promise.catch(function(){ throw uErr('This PDF couldn\'t be opened', 'It may be password-protected or damaged. Try another file or paste the text instead.'); });
+    }).then(function(doc){
+      var pages = [], n = doc.numPages, chain = Promise.resolve();
+      for (var i = 1; i <= n; i++) (function(i){ chain = chain.then(function(){ return doc.getPage(i).then(function(p){ return p.getTextContent(); }).then(function(tc){ pages.push(tc.items.map(function(it){ return it.str + (it.hasEOL ? ' ' : ''); }).join(' ')); }); }); })(i);
+      return chain.then(function(){ return { text:pages.join('\n'), warnings:n > 50 ? ['This document has ' + n + ' pages. Generation may take longer for documents over 50 pages.'] : [], pages:n }; });
+    });
+  }
+  // Tiny zip reader for DOCX/PPTX (stored + deflate via native DecompressionStream)
+  function unzip(buf){
+    var dv = new DataView(buf), u8 = new Uint8Array(buf), e = -1, td = new TextDecoder();
+    for (var i = u8.length - 22; i >= Math.max(0, u8.length - 65557); i--) if (dv.getUint32(i, true) === 0x06054b50){ e = i; break; }
+    if (e < 0) throw uErr('This file couldn\'t be opened', 'It may be damaged or not a real DOCX/PPTX file. Try another file or paste the text instead.');
+    var n = dv.getUint16(e + 10, true), off = dv.getUint32(e + 16, true), files = {};
+    for (var k = 0; k < n; k++){
+      if (dv.getUint32(off, true) !== 0x02014b50) break;
+      var nlen = dv.getUint16(off + 28, true), name = td.decode(u8.subarray(off + 46, off + 46 + nlen));
+      files[name] = { method:dv.getUint16(off + 10, true), csize:dv.getUint32(off + 20, true), loff:dv.getUint32(off + 42, true) };
+      off += 46 + nlen + dv.getUint16(off + 30, true) + dv.getUint16(off + 32, true);
+    }
+    return { names:Object.keys(files), read:function(name){
+      var f = files[name]; if (!f) return Promise.resolve(null);
+      var start = f.loff + 30 + dv.getUint16(f.loff + 26, true) + dv.getUint16(f.loff + 28, true), data = u8.slice(start, start + f.csize);
+      if (f.method === 0) return Promise.resolve(td.decode(data));
+      if (f.method !== 8) return Promise.reject(uErr('This file couldn\'t be opened', 'It uses a compression format we can\'t read. Save it again and retry.'));
+      return new Response(new Blob([data]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).text();
+    } };
+  }
+  function xmlParas(xml, p, t){
+    var doc = new DOMParser().parseFromString(xml, 'application/xml');
+    return Array.prototype.map.call(doc.getElementsByTagName(p), function(el){ return Array.prototype.map.call(el.getElementsByTagName(t), function(x){ return x.textContent; }).join(''); }).join('\n');
+  }
+  function docxText(buf){ var z = unzip(buf); return z.read('word/document.xml').then(function(x){ if (!x) throw uErr('This file couldn\'t be opened', 'It doesn\'t look like a Word document. Try another file.'); return { text:xmlParas(x, 'w:p', 'w:t'), warnings:[] }; }); }
+  function pptxText(buf){
+    var z = unzip(buf), slides = z.names.filter(function(n){ return /^ppt\/slides\/slide\d+\.xml$/.test(n); }).sort(function(a, b){ return +a.match(/\d+/)[0] - +b.match(/\d+/)[0]; });
+    if (!slides.length) return Promise.reject(uErr('This file couldn\'t be opened', 'It doesn\'t look like a PowerPoint file. Try another file.'));
+    return Promise.all(slides.map(function(s){ return z.read(s); })).then(function(xs){ return { text:xs.map(function(x){ return xmlParas(x, 'a:p', 'a:t'); }).join('\n'), warnings:[] }; });
+  }
+  function ocrText(file){
+    return loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js').then(function(){ return window.Tesseract.recognize(file, 'eng'); })
+      .catch(function(){ throw uErr('We couldn\'t read text from this image', 'The text reader didn\'t load or couldn\'t process the image. Check your connection and try again.', 'retry'); })
+      .then(function(r){
+        var text = r.data.text || '', w = (text.match(/\S+/g) || []).length, warn = [];
+        if (r.data.confidence < 70) warn.push('Some content could not be read clearly. Review generated questions carefully.');
+        if (w < 80) warn.push('Limited text content found. Generated questions may need manual additions.');
+        return { text:text, warnings:warn };
+      });
+  }
+  function readSource(){
+    if (S.tab === 'paste') return Promise.resolve({ name:'Pasted text', text:S.text });
+    if (S.tab === 'lesson'){ var f = findLesson(); return Promise.resolve({ name:f.c.title + ' · ' + (f.l.title || 'Untitled lesson'), text:lessonText(f.l) }); }
+    var file = S.file, ext = extOf(file.name);
+    if (OCR_EXT.indexOf(ext) > -1) return Promise.resolve({ name:file.name, image:file });
+    return file.arrayBuffer().then(function(buf){ return { name:file.name, ext:ext, buf:buf }; }).catch(function(){ throw uErr('This file couldn\'t be read', 'It may have been moved or changed. Choose it again.'); });
+  }
+  function extract(src){
+    if (src.text != null) return Promise.resolve({ text:src.text, warnings:[] });
+    if (src.image) return ocrText(src.image);
+    if (src.ext === 'pdf') return pdfText(src.buf);
+    if (src.ext === 'docx') return docxText(src.buf);
+    if (src.ext === 'pptx') return pptxText(src.buf);
+    return Promise.resolve({ text:new TextDecoder().decode(src.buf), warnings:[] });
+  }
+
+  /* ================= Grounded generator ================= */
+  // ponytail: local extractive stand-in for the AI service (no AI backend in this repo). Every question is
+  // built from a sentence that exists in the source, so nothing is invented (AI-002-NFR-01). Ceiling:
+  // heuristic phrasing, English only, term-swap distractors. Swap generate()/regenOne() for the AI API.
+  var STOP = {};
+  ('a about above after again against all also am an and any are as at be because been before being below between both but by can could did do does doing down during each few for from further had has have having he her here hers him his how i if in into is it its itself just more most my no nor not now of off on once only or other our out over own same she should so some such than that the their them then there these they this those through to too under until up very was we were what when where which while who whom why will with would you your yours yourself however within without every many much must may might shall onto upon also often usually always never ever still yet even really well able across along among around away back become becomes before behind beyond cannot done either else enough etc get gets given gives go goes going got keep keeps let like made make makes making need needs next one ones part per put said say says see seen set sets show shows since take takes than thing things think three two use used uses using way ways whether whose work works year years first second new good best better').split(' ').forEach(function(w){ STOP[w] = 1; });
+  var GENERIC = { create:1, generate:1, question:1, questions:1, quiz:1, test:1, about:1, write:1, based:1, learners:1, learner:1, level:1, beginner:1, intermediate:1, advanced:1, multiple:1, choice:1, please:1 };
+  function escRe(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+  function shuffle(a){ for (var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+  function words(s){ return s.match(/[A-Za-z][A-Za-z'’-]*[A-Za-z]|[A-Za-z]/g) || []; }
+  function sentencesOf(text){
+    var seg = typeof Intl !== 'undefined' && Intl.Segmenter ? new Intl.Segmenter('en', { granularity:'sentence' }) : null, out = [], seen = {};
+    String(text).split(/\n+/).forEach(function(par){
+      par = par.replace(/\s+/g, ' ').trim(); if (!par) return;
+      var parts = seg ? Array.from(seg.segment(par), function(x){ return x.segment; }) : par.split(/(?<=[.!?])\s+/);
+      parts.forEach(function(s){
+        s = s.trim().replace(/^[•▪◦\-–*]+\s*|^\d+[.)]\s+/, '');
+        var w = s.split(/\s+/).length, k = norm(s);
+        if (w < 6 || w > 40 || seen[k] || /https?:\/\/|www\.|@\w+\./i.test(s) || !/[a-z]/.test(s)) return;
+        seen[k] = 1; out.push(/[.!?]$/.test(s) ? s : s + '.');
+      });
+    });
+    return out;
+  }
+  function analyze(text, instr){
+    var sents = sentencesOf(text), freq = {}, disp = {}, phrase = {};
+    sents.forEach(function(s){
+      words(s).forEach(function(w){ var k = w.toLowerCase(), acr = /^[A-Z]{2,6}$/.test(w); if ((k.length < 4 && !acr) || STOP[k]) return; freq[k] = (freq[k] || 0) + (acr ? 2 : 1); if (!disp[k] || acr) disp[k] = w; });
+      (s.match(/\b[A-Z][a-zA-Z]+(?:\s+[A-Z][a-zA-Z]+){1,2}\b/g) || []).forEach(function(p){ var ws = p.split(/\s+/); while (ws.length && STOP[ws[0].toLowerCase()]) ws.shift(); if (ws.length < 2) return; var ph = ws.join(' '), k = ph.toLowerCase(); phrase[k] = (phrase[k] || 0) + 1; disp[k] = ph; });
+    });
+    var terms = [];
+    Object.keys(freq).forEach(function(k){ terms.push({ key:k, text:disp[k], w:freq[k] + (k.length > 7 ? 0.5 : 0), phrase:false, acr:/^[A-Z]{2,6}$/.test(disp[k]) }); });
+    Object.keys(phrase).forEach(function(k){ terms.push({ key:k, text:disp[k], w:phrase[k] * 2.5, phrase:true }); });
+    terms.sort(function(a, b){ return b.w - a.w || b.key.length - a.key.length; });
+    terms = terms.slice(0, 400);
+    var focus = words(instr || '').map(function(w){ return w.toLowerCase(); }).filter(function(w){ return w.length > 3 && !STOP[w] && !GENERIC[w]; });
+    var rows = sents.map(function(s, i){
+      var lw = s.toLowerCase(), set = {};
+      words(s).forEach(function(w){ set[w.toLowerCase()] = 1; });
+      var has = terms.filter(function(t){ return t.phrase ? lw.indexOf(t.key) > -1 : set[t.key]; });
+      var score = has.slice(0, 4).reduce(function(a, t){ return a + t.w; }, 0) + focus.filter(function(f){ return lw.indexOf(f) > -1 || lw.indexOf(f.replace(/s$/, '')) > -1; }).length * 6;
+      return { i:i, text:s, terms:has, score:score, words:s.split(/\s+/).length };
+    }).filter(function(r){ return r.terms.length; });
+    rows.sort(function(a, b){ return b.score - a.score; });
+    return { sents:sents, rows:rows, terms:terms };
+  }
+  function Generator(src, an, set){
+    var used = {};
+    function inSentence(t, s){ var m = s.text.match(new RegExp('\\b' + escRe(t.key) + '\\b', 'i')); return m ? m[0] : null; }
+    function keyTerm(s){ for (var i = 0; i < s.terms.length; i++){ var m = inSentence(s.terms[i], s); if (m && m.length > 2) return { t:s.terms[i], m:m }; } return null; }
+    function caseLike(d, like){ if (/^[A-Z]{2,}$/.test(d)) return d; if (/^[A-Z]/.test(like)) return d.charAt(0).toUpperCase() + d.slice(1); if (/^[a-z]/.test(like) && !/[A-Z].*[A-Z]/.test(d)) return d.toLowerCase(); return d; }
+    function distractors(k, s, n){
+      var lw = s.text.toLowerCase(), pool = an.terms.filter(function(t){ return t.key !== k.t.key && lw.indexOf(t.key) < 0 && k.t.key.indexOf(t.key) < 0 && t.key.indexOf(k.t.key) < 0; });
+      var same = pool.filter(function(t){ return t.phrase === k.t.phrase && !!t.acr === !!k.t.acr; });
+      var pick = (same.length >= n ? same : pool).slice(0, Math.max(n * 4, 12)), seen = {}, out = [];
+      shuffle(pick.slice()).forEach(function(t){ var d = caseLike(t.text, k.m), kk = d.toLowerCase(); if (out.length < n && !seen[kk] && kk !== k.m.toLowerCase()){ seen[kk] = 1; out.push(d); } });
+      return out;
+    }
+    function swap(s, k, d){ return s.text.replace(new RegExp('\\b' + escRe(k.m) + '\\b'), d); }
+    function blanked(s, k){ return s.text.replace(new RegExp('\\b' + escRe(k.m) + '\\b'), '____'); }
+    function titleTag(t){ var x = t.text; return /[A-Z]/.test(x) ? x : x.replace(/\b\w/g, function(c){ return c.toUpperCase(); }); }
+    function base(kind, s, extra){
+      var q = blankQ(kind); q.ai = true; q.points = set.points; q.aiSource = { name:src.name, excerpt:s.text };
+      var tags = set.tags.slice();
+      s.terms.slice(0, 2).forEach(function(t){ if (t.text.length <= 30){ var tg = titleTag(t); if (!tags.some(function(x){ return x.toLowerCase() === tg.toLowerCase(); })) tags.push(tg); } });
+      var org = api.tags(); q.tags = tags.map(function(tg){ return org.find(function(o){ return o.toLowerCase() === tg.toLowerCase(); }) || tg; });
+      for (var k in extra) q[k] = extra[k];
+      return q;
+    }
+    var B = {
+      fill:function(s){ var k = keyTerm(s); if (!k) return null; return base('fill', s, { prompt:blanked(s, k), answer:k.m, explanation:'Source: “' + s.text + '”' }); },
+      mcq:function(s){ var k = keyTerm(s); if (!k) return null; var ds = distractors(k, s, 3); if (ds.length < 3) return null;
+        return base('mcq', s, { prompt:'Which term best completes this statement from the source?\n“' + blanked(s, k) + '”', options:shuffle([opt(k.m, true)].concat(ds.map(function(d){ return opt(d); }))), explanation:'Source: “' + s.text + '”' }); },
+      tf:function(s){ var k = keyTerm(s); if (!k) return null; var truth = Math.random() < 0.5, d = truth ? null : distractors(k, s, 1)[0]; if (!d) truth = true;
+        return base('tf', s, { prompt:truth ? s.text : swap(s, k, d), options:[opt('True', truth), opt('False', !truth)], explanation:'Source: “' + s.text + '”' }); },
+      short:function(s){ var k = keyTerm(s); if (!k) return null; return base('short', s, { prompt:'According to the source, what is said about “' + k.m + '”?', answer:s.text }); },
+      multi:function(s){
+        if (s.words > 25) return null;
+        var others = [], rows = an.rows;
+        for (var i = 0; i < rows.length && others.length < 3; i++){ var r = rows[i]; if (r !== s && !used[r.i] && r.words <= 25 && keyTerm(r)) others.push(r); }
+        if (others.length < 3) return null;
+        var t2 = others[0], f1 = others[1], f2 = others[2], bad = [];
+        [f1, f2].forEach(function(r){ var k = keyTerm(r), d = distractors(k, r, 1)[0]; if (d) bad.push(swap(r, k, d)); });
+        if (bad.length < 2) return null;
+        others.forEach(function(r){ used[r.i] = 1; });
+        return base('multi', s, { prompt:'Which of these statements are supported by the source?', options:shuffle([opt(s.text, true), opt(t2.text, true), opt(bad[0]), opt(bad[1])]), explanation:'Supported by the source: “' + s.text + '” and “' + t2.text + '”' });
+      }
+    };
+    function build(type){
+      for (var i = 0; i < an.rows.length; i++){
+        var s = an.rows[i]; if (used[s.i]) continue;
+        var q = B[type](s); if (q){ used[s.i] = 1; q._type = type; return q; }
+      }
+      return null;
+    }
+    return {
+      run:function(){
+        var out = [], dead = {}, i = 0;
+        while (out.length < set.count && Object.keys(dead).length < set.types.length){
+          var type = set.types[i++ % set.types.length]; if (dead[type]) continue;
+          var q = build(type); if (q) out.push(q); else dead[type] = 1;
+        }
+        return out;
+      },
+      one:build
+    };
+  }
+
+  /* ================= Run: progress with real stages ================= */
+  var STEPS = ['Uploading source…', 'Analyzing content…', 'Generating questions…', 'Preparing review…'];
+  var runId = 0, gen = null, meta = null, items = [];
+  function show(v){ ['vSetup', 'vProg', 'vReview'].forEach(function(id){ $(id).hidden = id !== v; }); document.querySelector('.main').scrollTop = 0; }
+  function setStep(i, failed){
+    $('steps').innerHTML = STEPS.map(function(t, k){ var c = k < i ? 'done' : k === i ? (failed ? 'failed' : 'active') : ''; return '<li class="' + c + '"><span class="dot">' + (c === 'done' ? I.check : c === 'failed' ? I.x : '') + '</span>' + t + '</li>'; }).join('');
+  }
+  function paint(){ return new Promise(function(r){ requestAnimationFrame(function(){ setTimeout(r, 60); }); }); }
+  function start(){
+    if (!validate()) return;
+    var my = ++runId, set = settings(), stage = 0, warnings = [];
+    show('vProg'); $('progTitle').textContent = 'Generating questions'; $('progErr').innerHTML = ''; $('progNote').hidden = false;
+    $('progSub').textContent = 'Drafting ' + plural(set.count, 'question') + ' from ' + (S.tab === 'upload' ? S.file.name : S.tab === 'paste' ? 'your pasted text' : 'the selected lesson') + '.';
+    $('progFoot').innerHTML = '<button class="btn btn-secondary" type="button" id="cancelGen">Cancel</button>';
+    $('cancelGen').onclick = function(){ runId++; show('vSetup'); toast('Generation cancelled.'); };
+    setStep(0);
+    var src;
+    paint().then(readSource).then(function(s){
+      if (my !== runId) throw 'stale'; src = s; stage = 1; setStep(1); return paint().then(function(){ return extract(s); });
+    }).then(function(x){
+      if (my !== runId) throw 'stale';
+      warnings = x.warnings || [];
+      if (!String(x.text).trim()) throw uErr('No readable text found', src.ext === 'pdf' ? 'This PDF may be scanned images. Upload the pages as images (PNG/JPG) so the text can be read, or paste the text instead.' : 'Try another file, or paste the text instead.');
+      var an = analyze(x.text, set.instr);
+      if (an.rows.length < 3) throw uErr('Not enough text to generate questions', 'This source doesn\'t have enough text to generate questions. Add more material or paste text.');
+      stage = 2; setStep(2);
+      return paint().then(function(){
+        // ponytail: generation is local and fast; the AI service call replaces this (AI-002-NFR-02: ≤30s)
+        if (demo() === 'ai-fail') throw uErr('Questions couldn\'t be generated.', 'The AI service didn\'t respond. Your source and settings are kept — try again.', 'retry');
+        var g = Generator(src, an, set), qs = g.run();
+        if (!qs.length) throw uErr('Questions couldn\'t be generated from this source', 'The text didn\'t contain clear statements to build questions from. Try adding more material, choosing other question types, or pasting text.');
+        return { g:g, qs:qs };
+      });
+    }).then(function(r){
+      if (my !== runId) throw 'stale';
+      stage = 3; setStep(3);
+      return paint().then(function(){
+        if (my !== runId) throw 'stale';
+        gen = r.g; meta = { name:src.name, requested:set.count, produced:r.qs.length, warnings:warnings, instr:set.instr };
+        items = r.qs.map(function(q){ return { id:q.id, q:q, type:q._type, sel:true, open:false, errs:null, dirty:false }; });
+        items.forEach(function(it){ delete it.q._type; });
+        drawReview(); show('vReview');
+      });
+    }).catch(function(e){
+      if (e === 'stale' || my !== runId) return;
+      var u = e && e.user ? e.user : { title:'Questions couldn\'t be generated.', msg:'Something went wrong while reading the source. Try again.', action:'retry' };
+      setStep(stage, true); $('progTitle').textContent = 'Generation stopped'; $('progNote').hidden = true;
+      $('progErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>' + esc(u.title) + '</b>' + esc(u.msg) + '</div></div>';
+      $('progFoot').innerHTML = (u.action === 'retry' ? '<button class="btn btn-secondary" type="button" id="toSetup">Change source</button><button class="btn btn-primary" type="button" id="retryGen">Try again</button>' : '<button class="btn btn-primary" type="button" id="toSetup">' + (S.tab === 'upload' ? 'Choose another file' : 'Edit source') + '</button>');
+      $('toSetup').onclick = function(){ show('vSetup'); };
+      if ($('retryGen')) $('retryGen').onclick = function(){ if (demo() === 'ai-fail') $('ps').value = 'normal'; start(); };
+    });
+  }
+  $('genBtn').onclick = start;
+
+  /* ================= Review ================= */
+  function reviewDirty(){ return !$('vReview').hidden && items.length > 0; }
+  function summary(q){
+    var k = effKind(q);
+    if (isObjective(k)){ var c = q.options.map(function(o, i){ return o.correct ? (k === 'tf' ? o.text : String.fromCharCode(65 + i)) : null; }).filter(Boolean); return c.length ? (k === 'tf' ? 'Answer: ' + c[0] : 'Correct: ' + c.join(', ')) + (k === 'tf' ? '' : ' · ' + plural(q.options.length, 'option')) : ''; }
+    return q.answer.trim() ? (k === 'long' ? 'Marking guidance added' : 'Answer: ' + q.answer.trim()) : '';
+  }
+  function itemHTML(it, n){
+    var q = it.q, sum = summary(q), k = effKind(q);
+    var prompt = k === 'fill' ? esc(q.prompt).replace(BLANK_RE, '<span class="blank unset">blank</span>') : esc(q.prompt);
+    return '<article class="ri' + (it.sel ? ' sel' : '') + '" data-item="' + it.id + '"><div class="ri-h">' +
+      '<input class="cb" type="checkbox" data-sel' + (it.sel ? ' checked' : '') + ' aria-label="Select question ' + n + '">' +
+      '<span class="ri-n">' + n + '</span><div class="ri-main"><div class="ri-badges"><span class="badge gray sm">' + KINDS[q.kind] + '</span>' + (q.ai ? '<span class="badge brand sm">' + I.spark + 'AI generated</span>' : '<span class="badge outline sm">Added manually</span>') + (q.ai && it.dirty ? '<span class="badge outline sm">Edited</span>' : '') + '</div>' +
+      '<p class="ri-q">' + (prompt || '<span style="color:var(--text-tertiary);font-weight:500">No question text yet</span>') + '</p>' +
+      (sum ? '<p class="ri-a">' + esc(sum) + '</p>' : '<p class="ri-a none">No answer set</p>') +
+      (q.aiSource ? '<p class="ri-src"><b>From source:</b> “' + esc(q.aiSource.excerpt) + '”</p>' : '') +
+      (it.errs && it.errs.length ? '<div class="ri-errs" role="alert"><ul>' + it.errs.map(function(e){ return '<li>' + esc(e) + '</li>'; }).join('') + '</ul></div>' : '') +
+      '</div><div class="ri-acts"><button class="btn btn-ghost btn-sm" type="button" data-ia="edit" aria-expanded="' + it.open + '">' + (it.open ? I.check + 'Done' : I.edit + 'Edit') + '</button>' +
+      (it.type ? '<button class="ib sm" type="button" data-ia="regen" aria-label="Regenerate question ' + n + '" title="Regenerate">' + I.rotate + '</button>' : '') +
+      '<button class="ib sm danger" type="button" data-ia="del" aria-label="Delete question ' + n + '" title="Delete">' + I.trash + '</button></div></div>' +
+      (it.open ? '<div class="ri-ed" data-edroot></div>' : '') + '</article>';
+  }
+  function drawReview(){
+    var v = $('vReview'), gotAll = meta.produced >= meta.requested;
+    v.innerHTML = '<div class="rev-h"><div><h1>AI generated ' + plural(meta.produced, 'question') + '</h1><p>From <b>' + esc(meta.name) + '</b> · Review and edit, then choose which to save. Nothing is saved yet.</p></div><button class="btn btn-secondary" type="button" id="restart">' + I.rotate + 'Start over</button></div>' +
+      (!gotAll ? '<div class="alert info">' + I.info + '<div>Only ' + meta.produced + ' questions could be generated from the available content. Add more source material for additional questions.</div></div>' : '') +
+      meta.warnings.map(function(w){ return '<div class="alert warning">' + I.alert + '<div>' + esc(w) + '</div></div>'; }).join('') +
+      '<div id="revErr"></div>' +
+      '<div class="rev-bar"><label><input class="cb" type="checkbox" id="selAll">Select all</label><span class="cnt" id="selCnt"></span><span class="grow"></span><button class="btn btn-ghost btn-sm" type="button" id="addManual">' + I.plus + 'Add question manually</button></div>' +
+      '<div class="rev-list" id="revList"></div>' +
+      '<div class="rev-foot"><span class="cnt" id="footCnt"></span><button class="btn btn-secondary" type="button" id="discard">Discard</button><button class="btn btn-primary" type="button" id="saveSel"></button></div>';
+    drawList();
+    $('restart').onclick = function(){ confirmModal('Start over?', 'The generated questions will be discarded. Your source and settings are kept.', 'Start over', function(){ items = []; show('vSetup'); }, true); };
+    $('discard').onclick = function(){ confirmModal('Discard generated questions?', 'None of these questions will be added to the Question Bank.', 'Discard', function(){ items = []; location.href = BANK_URL; }, true); };
+    $('addManual').onclick = function(){ var q = blankQ('mcq'); q.points = settings().points || 1; q.tags = S.set.tags.slice(); var it = { id:q.id, q:q, type:null, sel:true, open:true, errs:null, dirty:true }; items.push(it); drawList(); var el = document.querySelector('[data-item="' + it.id + '"]'); el.scrollIntoView({ block:'center', behavior:'smooth' }); el.querySelector('[data-e="prompt"]').focus(); };
+    $('selAll').onchange = function(){ var on = this.checked; items.forEach(function(it){ it.sel = on; }); drawList(); };
+    $('saveSel').onclick = saveSelected;
+  }
+  function drawList(){
+    var list = $('revList');
+    list.innerHTML = items.length ? items.map(function(it, i){ return itemHTML(it, i + 1); }).join('') : '<div class="empty"><b>No questions left</b><span>Add a question manually or start over with a different source.</span></div>';
+    items.forEach(function(it){ if (it.open) mountEditor(it); });
+    counts();
+  }
+  function counts(){
+    var n = items.filter(function(it){ return it.sel; }).length, all = $('selAll');
+    all.checked = !!items.length && n === items.length; all.indeterminate = n > 0 && n < items.length; all.disabled = !items.length;
+    $('selCnt').textContent = n + ' of ' + items.length + ' selected';
+    $('footCnt').innerHTML = '<b>' + n + '</b> of ' + plural(items.length, 'question') + ' selected';
+    var b = $('saveSel'); b.disabled = !n; b.innerHTML = 'Save Selected to Question Bank';
+  }
+  function itemById(id){ return items.find(function(it){ return it.id === id; }); }
+  function mountEditor(it){
+    var root = document.querySelector('[data-item="' + it.id + '"] [data-edroot]'); if (!root) return;
+    function draw(){ root.innerHTML = edHTML(it.q, it) + '<div class="ri-ed-foot"><button class="btn btn-secondary btn-sm" type="button" data-ia="done">' + I.check + 'Done</button></div>'; hydrateImgs(root); autoGrow(root); }
+    draw();
+    bindEditor(root, function(){ return it.q; }, function(redraw){
+      it.dirty = true; if (it.q.ai) it.q.edited = true;
+      if (redraw){ var f = document.activeElement && document.activeElement.id; draw(); if (f && $(f)) $(f).focus(); }
+      refreshHead(it);
+    }, function(){ return it; });
+  }
+  function refreshHead(it){
+    var el = document.querySelector('[data-item="' + it.id + '"]'); if (!el) return;
+    var n = items.indexOf(it) + 1, tmp = document.createElement('div'); tmp.innerHTML = itemHTML(it, n);
+    el.replaceChild(tmp.querySelector('.ri-h'), el.querySelector('.ri-h'));
+  }
+  $('vReview').addEventListener('change', function(e){
+    if (!e.target.matches('[data-sel]')) return;
+    var it = itemById(e.target.closest('[data-item]').dataset.item); it.sel = e.target.checked;
+    e.target.closest('.ri').classList.toggle('sel', it.sel); counts();
+  });
+  $('vReview').addEventListener('click', function(e){
+    var b = e.target.closest('[data-ia]'); if (!b) return;
+    var art = b.closest('[data-item]'), it = itemById(art.dataset.item), a = b.dataset.ia, idx = items.indexOf(it);
+    if (a === 'edit' || a === 'done'){
+      if (it.open){ it.errs = validateQ(it.q); if (it.errs.length){ refreshHead(it); art.querySelector('.ri-errs').scrollIntoView({ block:'nearest' }); return; } it.open = false; }
+      else { it.open = true; it.errs = null; }
+      drawList(); var el = document.querySelector('[data-item="' + it.id + '"]'); if (it.open){ var p = el.querySelector('[data-e="prompt"]'); if (p) p.focus(); } else el.querySelector('[data-ia="edit"]').focus();
+      return;
+    }
+    if (a === 'regen'){
+      var q = gen && gen.one(it.type);
+      if (!q) return toast('No more source material for another question of this type.', null, null, true);
+      delete q._type; items[idx] = { id:q.id, q:q, type:it.type, sel:it.sel, open:false, errs:null, dirty:false };
+      drawList(); document.querySelector('[data-item="' + q.id + '"] [data-ia="regen"]').focus();
+      toast('Question regenerated from another part of the source.');
+      return;
+    }
+    if (a === 'del'){
+      items.splice(idx, 1); drawList();
+      toast('Question removed.', 'Undo', function(){ items.splice(Math.min(idx, items.length), 0, it); drawList(); });
+    }
+  });
+  function saveSelected(){
+    var sel = items.filter(function(it){ return it.sel; }), bad = [];
+    sel.forEach(function(it){ var errs = validateQ(it.q); if (it.uploading) errs.push('Wait for the image to finish uploading.'); it.errs = errs.length ? errs : null; if (errs.length){ it.open = true; bad.push(it); } });
+    if (bad.length){
+      drawList();
+      $('revErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>' + plural(bad.length, 'selected question') + ' need' + (bad.length === 1 ? 's' : '') + ' fixing before saving</b>Fix the highlighted questions, or deselect them to leave them out.</div></div>';
+      document.querySelector('[data-item="' + bad[0].id + '"]').scrollIntoView({ block:'center', behavior:'smooth' });
+      return;
+    }
+    $('revErr').innerHTML = '';
+    var rows = sel.map(function(it){
+      var q = clone(it.q);
+      q.prompt = q.prompt.trim(); q.answer = q.answer.trim(); q.explanation = q.explanation.trim();
+      q.options.forEach(function(o){ o.text = o.text.trim(); }); q.alts = (q.alts || []).map(function(a){ return a.trim(); }).filter(Boolean);
+      if (q.ai) q.edited = !!it.dirty;
+      return q;
+    });
+    var b = $('saveSel'), btns = document.querySelectorAll('.rev-foot .btn'); btns.forEach(function(x){ x.disabled = true; }); b.innerHTML = '<span class="spin"></span>Saving…';
+    api.saveMany(rows).then(function(){
+      items = []; location.href = 'question-bank.html?saved=' + rows.length + (AS_INSTRUCTOR ? '&as=instructor' : '');
+    }).catch(function(){
+      btns.forEach(function(x){ x.disabled = false; }); counts();
+      $('revErr').innerHTML = '<div class="alert error" role="alert">' + I.alert + '<div><b>Questions couldn\'t be saved</b>Nothing was lost — your review is still here. Check your connection and try again.<div class="acts"><button class="btn btn-secondary btn-sm" type="button" id="retrySave">Try again</button></div></div></div>';
+      $('retrySave').onclick = function(){ if (demo() === 'save-fail') $('ps').value = 'normal'; saveSelected(); };
+      document.querySelector('.main').scrollTop = 0;
+    });
+  }
+  window.addEventListener('beforeunload', function(e){ if (reviewDirty()){ e.preventDefault(); e.returnValue = ''; } });
+  $('backLink').addEventListener('click', function(e){ if (reviewDirty()){ e.preventDefault(); confirmModal('Leave without saving?', 'The generated questions haven\'t been saved to the Question Bank.', 'Leave', function(){ items = []; location.href = BANK_URL; }, true); } });
+
+  /* ================= Boot ================= */
+  (function(){
+    var s = params.get('state'); if (s && $('ps').querySelector('option[value="' + s + '"]')) $('ps').value = s;
+    drawTabs(); drawSrc(); drawSetTags(); validate();
+  })();
+</script>
+</body>
+</html>

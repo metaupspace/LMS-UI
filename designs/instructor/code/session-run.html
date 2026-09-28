@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Instructor — Live Session</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Instructor — Start/Run Session (LSN-003 Start/Join/Run Session).
+     Reached from live-sessions-overview.html's drawer (Start /
+     Open session). Standalone file (Rule 7) except sidebar/topbar
+     iframes (Rule 8 instructor exception).
+     Demo controls (top-right) let you preview the online video-
+     platform connection states and the in-person branch without
+     needing a real integration — ponytail: this is a design mockup,
+     not a live Zoom/Meet embed.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-border:#bbf7d0;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-lg:8px; --radius-xl:12px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select{ font-family:var(--font); }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; min-height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:24px 32px 48px; }
+
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-tertiary); margin-bottom:14px; }
+  .back-link:hover{ color:var(--text-primary); }
+  .back-link svg{ width:15px; height:15px; }
+
+  .run-header{ display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .run-header h1{ margin:0 0 4px; font-size:24px; font-weight:700; }
+  .run-header .sub{ font-size:13px; color:var(--text-tertiary); }
+  .run-status{ display:flex; align-items:center; gap:12px; }
+  .status-pill{ display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:600; line-height:1; padding:5px 10px; border-radius:999px; }
+  .status-pill i{ width:6px; height:6px; border-radius:50%; display:inline-block; }
+  .status-pill.in-progress{ background:var(--success-subtle); color:var(--success); } .status-pill.in-progress i{ background:var(--success); animation:pulse 1.6s ease-in-out infinite; }
+  @keyframes pulse{ 0%,100%{ opacity:1; } 50%{ opacity:.35; } }
+  .elapsed{ font-size:13px; font-weight:700; font-variant-numeric:tabular-nums; color:var(--text-secondary); }
+
+  .demo-controls{ display:flex; align-items:center; gap:8px; margin-bottom:18px; padding:10px 14px; background:#fff; border:1px dashed var(--border-strong); border-radius:var(--radius-lg); font-size:12px; flex-wrap:wrap; }
+  .demo-controls b{ color:var(--text-tertiary); font-weight:700; text-transform:uppercase; letter-spacing:.03em; font-size:10.5px; }
+  .demo-controls select{ height:30px; border:1px solid var(--border-default); border-radius:6px; padding:0 8px; font-size:12px; }
+
+  .btn{ display:inline-flex; align-items:center; gap:8px; height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13.5px; font-weight:600; cursor:pointer; border:none; white-space:nowrap; }
+  .btn svg{ width:15px; height:15px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-secondary); border:1px solid var(--border-default); }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-danger-outline{ background:#fff; color:var(--error); border:1px solid var(--error-border); }
+  .btn-danger-outline:hover{ background:var(--error-subtle); }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:22px 24px; }
+  .run-grid{ display:grid; grid-template-columns:1fr 300px; gap:20px; align-items:start; }
+  @media (max-width:960px){ .run-grid{ grid-template-columns:1fr; } }
+
+  /* ---- Online video panel ---- */
+  .video-panel{ min-height:360px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; background:#171717; color:#fff; border-radius:var(--radius-xl); padding:32px; }
+  .video-panel.state-alert{ background:#fff; color:var(--text-primary); border:1px solid var(--border-default); }
+  .video-panel .icon-circle{ width:56px; height:56px; border-radius:50%; display:flex; align-items:center; justify-content:center; margin-bottom:16px; background:rgba(255,255,255,.1); }
+  .video-panel.state-alert .icon-circle{ background:var(--surface-raised); }
+  .video-panel .icon-circle svg{ width:26px; height:26px; }
+  .video-panel h2{ margin:0 0 6px; font-size:18px; font-weight:700; }
+  .video-panel p{ margin:0 0 18px; font-size:13.5px; opacity:.75; max-width:360px; }
+  .video-panel.state-alert p{ opacity:1; color:var(--text-tertiary); }
+  .meeting-link-box{ display:flex; align-items:center; gap:8px; background:var(--surface-canvas); border:1px dashed var(--border-strong); border-radius:var(--radius-lg); padding:10px 14px; font-size:12.5px; font-family:monospace; color:var(--text-secondary); margin-bottom:14px; }
+  .meeting-link-box button{ background:none; border:none; color:var(--action-primary); font-weight:700; font-size:12px; cursor:pointer; font-family:var(--font); flex-shrink:0; }
+
+  /* ---- In-person QR panel ---- */
+  .qr-panel{ min-height:360px; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:32px; }
+  .qr-box{ width:180px; height:180px; border:1px solid var(--border-default); border-radius:var(--radius-lg); padding:12px; margin-bottom:16px; }
+  .qr-refresh{ font-size:12.5px; color:var(--text-tertiary); margin-bottom:14px; }
+  .qr-refresh b{ color:var(--warning); font-variant-numeric:tabular-nums; }
+
+  .zero-state{ text-align:center; padding:40px 20px; }
+  .zero-state svg{ width:34px; height:34px; color:var(--text-disabled); margin-bottom:12px; }
+  .zero-state h3{ margin:0 0 6px; font-size:14.5px; font-weight:700; }
+  .zero-state p{ margin:0; font-size:13px; color:var(--text-tertiary); }
+
+  /* ---- Side rail ---- */
+  .rail-card{ margin-bottom:14px; }
+  .rail-card h3{ margin:0 0 12px; font-size:13px; font-weight:700; color:var(--text-tertiary); text-transform:uppercase; letter-spacing:.04em; }
+  .rail-row{ display:flex; justify-content:space-between; gap:10px; font-size:13.5px; padding:6px 0; }
+  .rail-row .k{ color:var(--text-tertiary); }
+  .rail-row .v{ font-weight:600; text-align:right; }
+  .rail-actions{ display:flex; flex-direction:column; gap:8px; margin-top:6px; }
+  .rail-actions .btn{ justify-content:center; width:100%; }
+  .rec-dot{ width:8px; height:8px; border-radius:50%; background:var(--error); display:inline-block; margin-right:6px; animation:pulse 1.4s ease-in-out infinite; }
+
+  /* ---- Modal ---- */
+  .modal-overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:70; padding:20px; }
+  .modal-overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:420px; max-width:100%; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal h3{ margin:0 0 8px; font-size:16px; font-weight:700; }
+  .modal p{ margin:0 0 16px; font-size:13px; color:var(--text-secondary); line-height:1.5; }
+  .modal-actions{ display:flex; justify-content:flex-end; gap:8px; }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=live-sessions&amp;pending=34" title="Instructor navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Live+Session" title="Top bar"></iframe>
+
+  <main class="main">
+    <a class="back-link" href="live-sessions-overview.html">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+      Back to Live Sessions
+    </a>
+
+    <div class="run-header">
+      <div>
+        <h1 id="rTitle">Weekly Standup: Group Projects</h1>
+        <div class="sub" id="rGroup">UX Research Methods</div>
+      </div>
+      <div class="run-status">
+        <span class="status-pill in-progress"><i></i>In Progress</span>
+        <span class="elapsed" id="elapsed">00:10:00</span>
+        <button class="btn btn-danger-outline" onclick="openEndModal()">End session</button>
+      </div>
+    </div>
+
+    <div class="demo-controls">
+      <b>Demo</b>
+      <span>Type:</span>
+      <select id="demoType" onchange="applyDemo()">
+        <option value="online">Online</option>
+        <option value="in-person">In-person</option>
+      </select>
+      <span id="demoConnWrap">Connection:</span>
+      <select id="demoConn" onchange="applyDemo()">
+        <option value="connected">Connected</option>
+        <option value="disconnected">Disconnected</option>
+        <option value="failed">Launch failed</option>
+        <option value="none">No platform configured</option>
+      </select>
+      <span>Learners:</span>
+      <select id="demoLearners" onchange="applyDemo()">
+        <option value="some">Enrolled</option>
+        <option value="zero">Zero enrolled</option>
+      </select>
+    </div>
+
+    <div class="run-grid">
+      <div id="mainPanelWrap"></div>
+
+      <div>
+        <div class="card rail-card">
+          <h3>Session</h3>
+          <div class="rail-row"><span class="k">Duration</span><span class="v">30 min</span></div>
+          <div class="rail-row"><span class="k">Started</span><span class="v">10 min ago</span></div>
+          <div class="rail-row"><span class="k">Attendance</span><span class="v" id="railAttendance">6 tracked</span></div>
+        </div>
+        <div class="card rail-card">
+          <h3>Recording</h3>
+          <div id="recBody" style="font-size:13.5px;"><span class="rec-dot"></span>Recording — 00:10:00</div>
+        </div>
+        <div class="rail-actions">
+          <button class="btn btn-secondary" onclick="location.href='session-attendance.html?session=' + sessionId">View attendance</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="modal-overlay" id="endModal">
+  <div class="modal">
+    <h3>End this session?</h3>
+    <p>This stops recording (if enabled) and takes you to attendance review to finalize before it's locked.</p>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" type="button" onclick="closeEndModal()">Keep going</button>
+      <button class="btn btn-danger-outline" type="button" onclick="confirmEnd()">End session</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  var SESSIONS = {
+    s2: { title:'Data Structures Lab Session', group:'Data Structures & Algorithms', type:'in-person', location:'Room 204B' },
+    s3: { title:'Weekly Standup: Group Projects', group:'UX Research Methods', type:'online', platform:'Zoom' },
+    s8: { title:'Guest Speaker: Security in Practice', group:'New Cohort — Fall Intake', type:'online', platform:'Zoom', zeroLearners:true }
+  };
+
+  var sessionId = new URLSearchParams(location.search).get('session') || 's3';
+  var s = SESSIONS[sessionId] || SESSIONS.s3;
+
+  document.getElementById('rTitle').textContent = s.title;
+  document.getElementById('rGroup').textContent = s.group;
+  document.getElementById('demoType').value = s.type;
+  if (s.zeroLearners) document.getElementById('demoLearners').value = 'zero';
+
+  var ICON = {
+    online: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    off: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M8.5 8.5A2 2 0 0 0 8 10v4a2 2 0 0 0 2 2h3"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>',
+    plug: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22v-5"/><path d="M9 8V2"/><path d="M15 8V2"/><path d="M18 8v5a4 4 0 0 1-4 4h-4a4 4 0 0 1-4-4V8Z"/></svg>'
+  };
+
+  function renderOnlinePanel(conn){
+    if (conn === 'connected') {
+      return '<div class="video-panel">' +
+        '<div class="icon-circle">' + ICON.online + '</div>' +
+        '<h2>' + s.platform + ' meeting is live</h2>' +
+        '<p>8 participants connected · attendance is being captured automatically as learners join and leave.</p>' +
+        '<button class="btn btn-primary" onclick="return false;">Open in ' + s.platform + '</button>' +
+      '</div>';
+    }
+    if (conn === 'disconnected') {
+      return '<div class="video-panel state-alert">' +
+        '<div class="icon-circle" style="color:var(--warning);">' + ICON.plug + '</div>' +
+        '<h2>Lost connection to ' + s.platform + '</h2>' +
+        '<p>Your meeting connection dropped. Learners already in the call aren\'t affected — reconnect to resume tracking.</p>' +
+        '<button class="btn btn-primary" onclick="return false;">Reconnect</button>' +
+      '</div>';
+    }
+    if (conn === 'failed') {
+      return '<div class="video-panel state-alert">' +
+        '<div class="icon-circle" style="color:var(--error);">' + ICON.alert + '</div>' +
+        '<h2>Couldn\'t launch ' + s.platform + '</h2>' +
+        '<p>Share this link with your learners manually while we retry the connection.</p>' +
+        '<div class="meeting-link-box"><span>meet.upspace.link/' + sessionId + '</span><button onclick="return false;">Copy</button></div>' +
+        '<button class="btn btn-secondary" onclick="return false;">Retry launch</button>' +
+      '</div>';
+    }
+    return '<div class="video-panel state-alert">' +
+      '<div class="icon-circle" style="color:var(--text-tertiary);">' + ICON.off + '</div>' +
+      '<h2>No video platform connected</h2>' +
+      '<p>Connect Zoom, Google Meet, or Microsoft Teams to launch online sessions automatically.</p>' +
+      '<button class="btn btn-primary" onclick="return false;">Connect a video platform</button>' +
+    '</div>';
+  }
+
+  function renderInPersonPanel(zero){
+    if (zero) {
+      return '<div class="card"><div class="zero-state">' +
+        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>' +
+        '<h3>This group has no learners enrolled yet</h3>' +
+        '<p>Attendance tracking will activate once learners are enrolled in "' + s.group + '".</p>' +
+      '</div></div>';
+    }
+    return '<div class="card qr-panel">' +
+      '<svg class="qr-box" viewBox="0 0 100 100"><rect width="100" height="100" fill="#fff"/>' +
+        '<rect x="6" y="6" width="20" height="20" fill="#171717"/><rect x="30" y="6" width="8" height="8" fill="#171717"/><rect x="42" y="6" width="8" height="20" fill="#171717"/><rect x="74" y="6" width="20" height="20" fill="#171717"/>' +
+        '<rect x="6" y="30" width="8" height="8" fill="#171717"/><rect x="18" y="30" width="8" height="8" fill="#171717"/><rect x="42" y="34" width="16" height="8" fill="#171717"/><rect x="74" y="30" width="8" height="8" fill="#171717"/>' +
+        '<rect x="6" y="42" width="20" height="20" fill="#171717"/><rect x="34" y="46" width="8" height="24" fill="#171717"/><rect x="58" y="42" width="8" height="8" fill="#171717"/><rect x="74" y="42" width="20" height="20" fill="#171717"/>' +
+        '<rect x="30" y="66" width="8" height="8" fill="#171717"/><rect x="50" y="66" width="8" height="8" fill="#171717"/><rect x="6" y="74" width="20" height="20" fill="#171717"/><rect x="42" y="78" width="8" height="8" fill="#171717"/><rect x="58" y="74" width="8" height="20" fill="#171717"/><rect x="74" y="74" width="20" height="20" fill="#171717"/>' +
+      '</svg>' +
+      '<h2 style="margin:0 0 6px; font-size:16px; font-weight:700;">Scan to check in</h2>' +
+      '<div class="qr-refresh">Code refreshes in <b>04:32</b> — time-limited for accuracy</div>' +
+      '<button class="btn btn-secondary" onclick="return false;">Regenerate code</button>' +
+      '<div style="margin-top:14px;"><a href="session-attendance.html?session=' + sessionId + '" style="font-size:13px; font-weight:700; color:var(--action-primary);">Manage attendance manually →</a></div>' +
+    '</div>';
+  }
+
+  function applyDemo(){
+    var type = document.getElementById('demoType').value;
+    var conn = document.getElementById('demoConn').value;
+    var zero = document.getElementById('demoLearners').value === 'zero';
+    document.getElementById('demoConnWrap').style.display = type === 'online' ? '' : 'none';
+    document.getElementById('demoConn').style.display = type === 'online' ? '' : 'none';
+    document.getElementById('mainPanelWrap').innerHTML = type === 'online' ? renderOnlinePanel(conn) : renderInPersonPanel(zero);
+    document.getElementById('railAttendance').textContent = zero ? '0 enrolled' : (type === 'online' ? '6 tracked' : '18 checked in');
+    if (type === 'online') {
+      document.getElementById('recBody').innerHTML = conn === 'connected'
+        ? '<span class="rec-dot"></span>Recording — 00:10:00'
+        : '<span style="color:var(--text-tertiary);">Recording paused — reconnect to resume</span>';
+    } else {
+      document.getElementById('recBody').innerHTML = '<span style="color:var(--text-tertiary);">Recording isn\'t available for in-person sessions</span>';
+    }
+  }
+  applyDemo();
+
+  /* Elapsed timer (cosmetic) */
+  var elapsedSeconds = 600;
+  setInterval(function(){
+    elapsedSeconds++;
+    var h = Math.floor(elapsedSeconds/3600), m = Math.floor((elapsedSeconds%3600)/60), sec = elapsedSeconds%60;
+    document.getElementById('elapsed').textContent = [h,m,sec].map(function(n){ return (n<10?'0':'')+n; }).join(':');
+  }, 1000);
+
+  function openEndModal(){ document.getElementById('endModal').classList.add('open'); }
+  function closeEndModal(){ document.getElementById('endModal').classList.remove('open'); }
+  function confirmEnd(){ location.href = 'session-attendance.html?session=' + sessionId + '&review=1'; }
+</script>
+</body>
+</html>
