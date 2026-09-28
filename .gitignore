@@ -4,3 +4,5 @@ src/
 knowledge/
 graphify-out/
 docs/
+config.bat
+node_modules
