@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Learner — Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Learner — Quiz assignment (ASM-005 take assessment, ASM-006 results).
+     Opened from assignments.html for quiz-type rows (?id=q1…q3).
+     States, driven by the quiz config + saved attempt:
+       Intro → "Start quiz" / "Resume quiz" (timer starts on Start, FR-03)
+       Taking → one question per page + question navigator (FR-01),
+         answers auto-save on every change and navigation (FR-04)
+       Review → answered / unanswered list (FR-05). User decision:
+         Submit stays disabled until every question is answered. Timer expiry
+         still auto-submits whatever is saved (FR-03).
+       Result → score, pass/fail, time taken; per-question breakdown only
+         when visibility = answers (ASM-006-FR-02/05/06); hidden → not released
+     Quiz = objective questions only (ASM-002-FR-01): MCQ, multiple select,
+     true/false, fill-in-the-blank, image-based.
+     Library: Breadcrumbs, Badge (dot), Buttons, Radio group item (radio +
+     checkbox), Input field, Progress bar, Alerts, Modal, Toast. Hand-built
+     (approved, MISSING_COMPONENTS.md): Question navigator, learner question
+     render (course-preview.html .opt), Empty state.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-popover:#d4d4d4;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4; --success-soft:#dcfce7; --success-border:#bbf7d0;
+    --radius-sm:2px; --radius-md:4px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  svg{ flex-shrink:0; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
+  .main-inner{ width:100%; padding:24px clamp(20px, 2.6vw, 48px) 64px; }
+
+  /* Buttons — library sizes (md 40 / lg 44) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; border:none; white-space:nowrap; transition:background-color .15s ease, transform .1s ease; }
+  .btn:active{ transform:scale(.98); }
+  .btn svg{ width:16px; height:16px; }
+  .btn-lg{ height:44px; padding:0 18px; font-size:14px; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid #d4d4d4; }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+  .btn-primary.busy{ background:var(--action-primary); color:#fff; opacity:.75; }
+  .btn-block{ width:100%; }
+  .spin{ width:16px; height:16px; border-radius:50%; border:2px solid rgba(255,255,255,.45); border-top-color:#fff; animation:spin .8s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+
+  /* Breadcrumbs — library */
+  .crumbs{ display:flex; align-items:center; gap:6px; font-size:14px; margin-bottom:18px; min-width:0; }
+  .crumbs a{ color:var(--text-secondary); font-weight:500; white-space:nowrap; }
+  .crumbs a:hover{ color:var(--text-primary); }
+  .crumbs svg{ width:16px; height:16px; color:var(--text-disabled); }
+  .crumbs > span{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+  /* Head */
+  .head{ margin-bottom:24px; }
+  .eyebrow{ font-size:14px; color:var(--text-secondary); }
+  .eyebrow a{ font-weight:600; color:var(--text-primary); }
+  .eyebrow a:hover{ color:var(--action-primary); }
+  .head h1{ margin:6px 0 0; font-size:clamp(28px, 2.2vw, 32px); font-weight:700; letter-spacing:-.6px; line-height:1.2; text-wrap:balance; }
+
+  /* Layout */
+  .layout{ display:grid; grid-template-columns:minmax(0,1fr) 320px; gap:clamp(24px, 2.4vw, 36px); align-items:start; }
+  .side{ position:sticky; top:0; }
+  .stack{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+
+  /* Status — Badge (dot), same vocabulary as assignments.html */
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:600; color:var(--text-strong); }
+  .status i{ width:8px; height:8px; border-radius:50%; background:var(--text-disabled); }
+  .status.todo i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
+  .status.in-progress i{ background:var(--action-primary); }
+  .status.submitted i{ background:var(--text-tertiary); }
+  .status.graded i{ background:var(--success); }
+  .status.overdue, .status.closed{ color:var(--error); }
+  .status.overdue i, .status.closed i{ background:var(--error); }
+
+  .card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); }
+  .summary{ padding:20px; }
+  .summary .status{ font-size:16px; }
+  .summary dl{ margin:16px 0 18px; display:grid; grid-template-columns:auto 1fr; gap:10px 16px; font-size:14px; }
+  .summary dt{ color:var(--text-tertiary); }
+  .summary dd{ margin:0; text-align:right; font-weight:700; color:var(--text-strong); font-variant-numeric:tabular-nums; }
+  .summary dd small{ display:block; font-weight:500; font-size:12px; color:var(--text-tertiary); }
+  .summary dd.late small{ color:var(--error); }
+  .summary .note{ margin:12px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .summary .actions{ display:grid; gap:8px; }
+
+  .section{ padding:22px 24px; }
+  .section h2{ margin:0 0 14px; font-size:16px; font-weight:700; letter-spacing:-.2px; outline:none; }
+  .prose{ max-width:72ch; font-size:16px; line-height:1.65; color:var(--text-strong); }
+  .prose p{ margin:0 0 12px; }
+  .prose ul{ margin:0 0 12px; padding-left:22px; }
+  .prose li{ margin:4px 0; }
+  .prose > :last-child{ margin-bottom:0; }
+
+  /* Alerts — library, tinted by feedback family */
+  .alert{ display:flex; gap:12px; padding:14px 16px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); flex-wrap:wrap; }
+  .alert > svg{ width:20px; height:20px; margin-top:1px; color:var(--text-secondary); }
+  .alert > div{ flex:1; min-width:200px; }
+  .alert b{ display:block; font-weight:600; color:var(--text-primary); }
+  .alert.error{ background:var(--error-subtle); border-color:var(--error-border); }
+  .alert.error > svg{ color:var(--error); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); }
+  .alert.warning > svg{ color:var(--warning); }
+  .alert .act{ align-self:center; }
+
+  /* Question */
+  .qcard{ padding:24px 28px; }
+  .q-meta{ display:flex; flex-wrap:wrap; gap:4px 12px; font-size:14px; color:var(--text-tertiary); }
+  .q-meta b{ color:var(--text-strong); font-weight:600; }
+  .q-prompt{ margin:10px 0 20px; font-size:20px; font-weight:600; line-height:1.45; letter-spacing:-.2px; max-width:68ch; outline:none; }
+  .q-fig{ margin:0 0 20px; width:min(360px, 100%); padding:12px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); }
+  .q-fig svg{ display:block; width:100%; height:auto; }
+  /* Radio group item (Radio button / Checkbox) — reuses the approved learner question render (course-preview.html .opt) */
+  .opts{ display:grid; gap:8px; max-width:640px; }
+  .opt{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:16px; line-height:1.4; cursor:pointer; background:#fff; transition:border-color .15s ease, background-color .15s ease; }
+  .opt:hover{ background:var(--surface-canvas); }
+  .opt input{ width:17px; height:17px; accent-color:var(--action-primary); margin:0; flex-shrink:0; }
+  .opt:has(input:checked){ border-color:var(--action-primary); background:var(--action-primary-subtle); }
+  .opt:has(input:focus-visible){ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  .opt input:focus-visible{ outline:none; }
+  /* Input field — library */
+  .input{ width:100%; max-width:480px; height:44px; padding:0 14px; border:1px solid #d4d4d4; border-radius:var(--radius-lg); font-size:16px; outline:none; background:#fff; color:var(--text-primary); }
+  .input::placeholder{ color:var(--text-tertiary); }
+  .input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .q-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:28px; padding-top:18px; border-top:1px solid var(--border-subtle); }
+
+  /* Side panel: timer, progress, navigator */
+  .panel{ padding:20px; }
+  .timer{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; margin-bottom:18px; border-radius:var(--radius-lg); background:var(--surface-canvas); border:1px solid var(--border-default); font-size:14px; color:var(--text-secondary); }
+  .timer span{ display:flex; align-items:center; gap:8px; }
+  .timer svg{ width:16px; height:16px; }
+  .timer b{ font-size:20px; font-weight:700; color:var(--text-primary); font-variant-numeric:tabular-nums; letter-spacing:-.3px; }
+  .timer.low{ background:var(--warning-subtle); border-color:var(--warning-border); color:#854d0e; }
+  .timer.low b{ color:#854d0e; }
+  .prog-row{ display:flex; justify-content:space-between; align-items:baseline; font-size:14px; color:var(--text-secondary); margin-bottom:8px; }
+  .prog-row b{ font-size:16px; color:var(--text-primary); font-variant-numeric:tabular-nums; }
+  /* Progress bar — library */
+  .progress-bar-bg{ height:8px; background:var(--surface-overlay); border-radius:var(--radius-full); overflow:hidden; }
+  .progress-bar-fill{ height:100%; background:var(--action-primary); border-radius:var(--radius-full); transition:width .25s ease; }
+  /* Question navigator (hand-built, approved 2026-10-31) */
+  .qnav{ display:grid; grid-template-columns:repeat(auto-fill, minmax(40px, 1fr)); gap:6px; margin:18px 0 12px; }
+  .qn{ height:40px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; font-weight:600; color:var(--text-secondary); font-variant-numeric:tabular-nums; transition:background-color .15s ease, border-color .15s ease; }
+  .qn:hover{ background:var(--surface-raised); }
+  .qn.done{ background:var(--action-primary-subtle); border-color:var(--action-primary-soft); color:var(--action-primary); }
+  .qn.cur{ border-color:var(--action-primary); box-shadow:inset 0 0 0 1px var(--action-primary); }
+  .legend{ display:flex; flex-wrap:wrap; gap:6px 14px; font-size:12px; color:var(--text-tertiary); }
+  .legend span{ display:inline-flex; align-items:center; gap:6px; }
+  .legend i{ width:12px; height:12px; border-radius:3px; border:1px solid var(--border-default); background:#fff; }
+  .legend i.done{ background:var(--action-primary-subtle); border-color:var(--action-primary-soft); }
+  .legend i.cur{ border-color:var(--action-primary); box-shadow:inset 0 0 0 1px var(--action-primary); }
+  .saved{ display:flex; align-items:center; gap:8px; margin-top:16px; padding-top:14px; border-top:1px solid var(--border-subtle); font-size:14px; color:var(--text-secondary); }
+  .saved svg{ width:16px; height:16px; color:var(--success); }
+  .panel .btn-block{ margin-top:16px; }
+
+  /* Review list */
+  .r-intro{ margin:-6px 0 16px; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .rlist{ list-style:none; margin:0; padding:0; border:1px solid var(--border-default); border-radius:var(--radius-lg); }
+  .alert + .rlist{ margin-top:16px; }
+  .rlist li + li{ border-top:1px solid var(--border-default); }
+  .rlist button{ width:100%; display:flex; align-items:center; gap:14px; padding:12px 14px; border:0; background:transparent; text-align:left; font-size:14px; color:var(--text-strong); }
+  .rlist button:hover{ background:var(--surface-canvas); }
+  .rlist .n{ width:24px; color:var(--text-tertiary); font-weight:600; font-variant-numeric:tabular-nums; flex-shrink:0; }
+  .rlist .p{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .rlist .st{ display:inline-flex; align-items:center; gap:6px; font-weight:600; white-space:nowrap; }
+  .rlist .st svg{ width:16px; height:16px; }
+  .rlist .st.ok{ color:var(--success); }
+  .rlist .st.no{ color:#854d0e; }
+  .r-foot{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-top:22px; padding-top:18px; border-top:1px solid var(--border-subtle); }
+  .r-foot .hint{ font-size:14px; color:var(--text-secondary); }
+  .r-foot .acts{ display:flex; gap:8px; margin-left:auto; }
+
+  /* Result */
+  .grade{ display:flex; align-items:flex-end; gap:12px 28px; flex-wrap:wrap; }
+  .score{ font-size:40px; font-weight:700; letter-spacing:-1.2px; line-height:1; font-variant-numeric:tabular-nums; }
+  .score small{ font-size:20px; font-weight:600; color:var(--text-tertiary); letter-spacing:-.3px; }
+  .grade-meta{ font-size:14px; color:var(--text-secondary); line-height:1.6; padding-bottom:2px; }
+  .grade-meta b{ color:var(--success); font-weight:600; }
+  .grade-meta b.fail{ color:var(--error); }
+  .waiting{ display:flex; gap:14px; align-items:flex-start; }
+  .waiting .ic{ width:40px; height:40px; border-radius:50%; background:var(--surface-raised); color:var(--text-secondary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .waiting .ic svg{ width:20px; height:20px; }
+  .waiting b{ display:block; font-size:16px; }
+  .waiting span{ display:block; font-size:14px; color:var(--text-secondary); margin-top:3px; line-height:1.5; }
+  .muted{ margin:0; font-size:14px; color:var(--text-tertiary); }
+  .bd{ list-style:none; margin:0; padding:0; }
+  .bq{ padding:18px 0; border-top:1px solid var(--border-subtle); }
+  .bq:first-child{ border-top:0; padding-top:4px; }
+  .bq-h{ display:flex; gap:10px; font-size:16px; font-weight:600; line-height:1.5; margin-bottom:12px; }
+  .bq-h .n{ color:var(--text-tertiary); font-variant-numeric:tabular-nums; }
+  .bq-h .pts{ margin-left:auto; font-size:14px; white-space:nowrap; font-variant-numeric:tabular-nums; }
+  .bq-h .pts.right{ color:var(--success); } .bq-h .pts.wrong{ color:var(--error); }
+  .bq .opts{ gap:6px; }
+  .bq .opt{ cursor:default; font-size:14px; padding:10px 12px; }
+  .bq .opt:hover{ background:#fff; }
+  .bq .opt svg, .bq .opt .mk{ width:16px; height:16px; }
+  .bq .opt em{ margin-left:auto; font-style:normal; font-size:12px; font-weight:600; white-space:nowrap; }
+  .bq .opt.right{ border-color:var(--success-border); background:var(--success-subtle); }
+  .bq .opt.right svg, .bq .opt.right em{ color:var(--success); }
+  .bq .opt.wrong{ border-color:var(--error-border); background:var(--error-subtle); }
+  .bq .opt.wrong svg, .bq .opt.wrong em{ color:var(--error); }
+  .bq .q-fig{ width:min(280px, 100%); }
+  .ans-line{ display:flex; gap:12px; font-size:14px; padding:4px 0; }
+  .ans-line span{ width:110px; flex-shrink:0; color:var(--text-tertiary); }
+  .ans-line b{ font-weight:600; }
+  .ans-line b.right{ color:var(--success); } .ans-line b.wrong{ color:var(--error); }
+
+  /* Empty state (hand-built, approved) */
+  .empty{ padding:24px 16px; text-align:center; border:1px dashed var(--border-default); border-radius:var(--radius-lg); }
+  .empty b{ display:block; font-size:16px; }
+  .empty span{ display:block; margin-top:3px; font-size:14px; color:var(--text-tertiary); }
+  .empty .btn{ margin-top:14px; }
+
+  /* Modal — library (white, r12, 24 padding, heading 18 bold, actions right) */
+  .overlay{ position:fixed; inset:0; z-index:80; background:rgba(10,10,10,.5); display:flex; align-items:center; justify-content:center; padding:16px; animation:popIn .18s ease both; }
+  .modal{ width:min(440px, 100%); background:#fff; border-radius:var(--radius-xl); padding:24px; box-shadow:0 24px 48px rgba(10,10,10,.18); }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .modal .acts{ display:flex; justify-content:flex-end; gap:8px; margin-top:22px; }
+  @keyframes popIn{ from{ opacity:0; transform:translateY(4px); } to{ opacity:1; transform:none; } }
+
+  /* Toast — library (Success / Warning: #f5f5f5, r8, round icon) */
+  .toast{ position:fixed; right:24px; bottom:24px; z-index:90; display:flex; align-items:center; gap:12px; padding:10px 14px 10px 10px; min-width:260px; max-width:min(440px, calc(100vw - 32px)); background:var(--surface-raised); border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; font-weight:500; line-height:1.4; color:var(--text-primary); box-shadow:0 8px 24px rgba(23,23,17,.08); animation:popIn .2s ease both; }
+  .toast .ic{ width:32px; height:32px; border-radius:50%; background:var(--success-soft); color:var(--success); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .toast .ic.warn{ background:var(--warning-subtle); color:var(--warning); }
+  .toast .ic svg{ width:15px; height:15px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+
+  @media (max-width:1100px){
+    .layout{ grid-template-columns:1fr; }
+    .side{ position:static; order:-1; }
+    .qnav{ grid-template-columns:repeat(auto-fill, 40px); }
+  }
+  @media (max-width:640px){
+    .section, .qcard, .panel, .summary{ padding:18px 16px; }
+    .q-prompt{ font-size:18px; }
+    .q-foot .btn{ flex:1; padding:0 10px; }
+    .r-foot .acts{ width:100%; }
+    .r-foot .acts .btn{ flex:1; padding:0 10px; }
+    .toast{ left:16px; right:16px; bottom:16px; }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .main-inner{ padding:20px 16px 40px; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=assessments" title="Learner navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?current=Assignments" title="Top bar"></iframe>
+
+  <main class="main"><div class="main-inner">
+    <nav class="crumbs" aria-label="Breadcrumb">
+      <a href="assignments.html">Assignments</a>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+      <span id="crumb" aria-current="page"></span>
+    </nav>
+    <div id="root"></div>
+  </div></main>
+</div>
+
+<div id="toast" class="toast" role="status" hidden></div>
+<div id="modal" hidden></div>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Data (list fields mirror assignments.html) ---------------- */
+  var NOW = new Date('2026-09-23T14:00:00'); // ponytail: fixed mock "now", same as assignments.html
+  var TREE = '<svg viewBox="0 0 320 184" role="img" aria-label="Binary tree. Root 8. 8 has left child 3 and right child 10. 3 has left child 1 and right child 6. 10 has right child 14." font-family="DM Sans, sans-serif" font-size="15" font-weight="600" text-anchor="middle">' +
+    '<g stroke="#a3a3a3" stroke-width="1.5"><path d="M160 32 90 92M160 32l70 60M90 92l-40 60M90 92l40 60M230 92l40 60"/></g>' +
+    [[160,32,8],[90,92,3],[230,92,10],[50,152,1],[130,152,6],[270,152,14]].map(function(n){ return '<circle cx="' + n[0] + '" cy="' + n[1] + '" r="19" fill="#fff" stroke="#4f46e5" stroke-width="1.5"/><text x="' + n[0] + '" y="' + (n[1] + 5) + '" fill="#171717">' + n[2] + '</text>'; }).join('') + '</svg>';
+  var TF = [['t','True'], ['f','False']];
+
+  var QUIZZES = {
+    q1:{ title:'Binary Trees Quiz', course:'Advanced Data Structures', courseId:'CS-301', module:'Module 4 · Binary Trees', due:'2026-09-25T23:59', closes:'2026-09-25T23:59', timeLimit:15, passMark:70, maxAttempts:1, visibility:'answers',
+      instructions:'<p>Six questions on traversals and tree properties from Module 4.</p><ul><li>Answer every question — you can’t submit until all are answered.</li><li>Move between questions freely; your answers save as you go.</li><li>The 15-minute timer starts when you press Start and keeps running if you leave the page.</li></ul>',
+      questions:[
+        { id:'1', kind:'mcq', points:1, prompt:'Which traversal visits the keys of a binary search tree in sorted order?', options:[['a','Pre-order'], ['b','In-order'], ['c','Post-order'], ['d','Level-order']], answer:['b'] },
+        { id:'2', kind:'tf', points:1, prompt:'A complete binary tree with n nodes has height ⌊log₂ n⌋.', answer:['t'] },
+        { id:'3', kind:'multi', points:2, prompt:'Which of these can implement in-order traversal?', options:[['a','Recursion'], ['b','An explicit stack'], ['c','Morris (threaded) traversal'], ['d','A min-heap']], answer:['a','b','c'] },
+        { id:'4', kind:'image', format:'fill', points:2, prompt:'Write the pre-order traversal of this tree, separated by commas.', figure:TREE, answer:['8, 3, 1, 6, 10, 14'] },
+        { id:'5', kind:'mcq', points:1, prompt:'What is the worst-case search time in an unbalanced binary search tree with n nodes?', options:[['a','O(1)'], ['b','O(log n)'], ['c','O(n)'], ['d','O(n log n)']], answer:['c'] },
+        { id:'6', kind:'fill', points:1, prompt:'A node with no children is called a ____ node.', answer:['leaf'] }
+      ], submissions:[] },
+    q2:{ title:'Chart Selection Quiz', course:'Data Visualization Techniques', courseId:'DS-210', module:'Module 3 · Dashboards', due:'2026-09-27T23:59', closes:'2026-09-27T23:59', timeLimit:0, passMark:60, maxAttempts:1, visibility:'score',
+      instructions:'<p>Five questions on picking the right chart for the question you’re answering. There’s no time limit — answer every question, then submit.</p>',
+      questions:[
+        { id:'1', kind:'mcq', points:1, prompt:'Which chart best shows how monthly revenue changed over a year?', options:[['a','Pie chart'], ['b','Line chart'], ['c','Scatter plot'], ['d','Treemap']], answer:['b'] },
+        { id:'2', kind:'tf', points:1, prompt:'Pie charts work well for comparing more than seven categories.', answer:['f'] },
+        { id:'3', kind:'multi', points:1, prompt:'Which visual encodings let people compare values most accurately?', options:[['a','Position on a common scale'], ['b','Length'], ['c','Area'], ['d','Color hue']], answer:['a','b'] },
+        { id:'4', kind:'mcq', points:1, prompt:'You need to show one KPI against its target on a dashboard. Which is clearest?', options:[['a','Gauge with five color bands'], ['b','Bullet chart'], ['c','3D column chart'], ['d','Donut chart']], answer:['b'] },
+        { id:'5', kind:'fill', points:1, prompt:'A chart with two y-axes is called a ____-axis chart.', answer:['dual'] }
+      ], submissions:[], seed:{ '1':['b'], '2':['f'] } },
+    q3:{ title:'Model Evaluation Quiz', course:'Intro to Machine Learning', courseId:'AI-101', module:'Module 2 · Supervised Learning', due:'2026-09-16T23:59', closes:'2026-09-16T23:59', timeLimit:10, passMark:60, maxAttempts:1, visibility:'answers',
+      instructions:'<p>Five questions on evaluating classifiers.</p>',
+      questions:[
+        { id:'1', kind:'mcq', points:1, prompt:'Precision is calculated as…', options:[['a','TP / (TP + FN)'], ['b','TP / (TP + FP)'], ['c','TN / (TN + FP)'], ['d','(TP + TN) / total']], answer:['b'] },
+        { id:'2', kind:'mcq', points:1, prompt:'A model has high recall but low precision. What does that tell you?', options:[['a','It misses many positives'], ['b','It flags many false positives'], ['c','It is overfitting'], ['d','The dataset is balanced']], answer:['b'] },
+        { id:'3', kind:'tf', points:1, prompt:'Accuracy is a reliable metric on heavily imbalanced data.', answer:['f'] },
+        { id:'4', kind:'multi', points:2, prompt:'Which of these help you detect overfitting?', options:[['a','A held-out validation set'], ['b','k-fold cross-validation'], ['c','Training accuracy alone'], ['d','Training for more epochs']], answer:['a','b'] },
+        { id:'5', kind:'fill', points:1, prompt:'The ____ curve plots true positive rate against false positive rate.', answer:['ROC'] }
+      ],
+      submissions:[{ at:'2026-09-15T20:14', spent:412, answers:{ '1':['b'], '2':['a'], '3':['f'], '4':['a','b'], '5':'roc' }, grade:{ score:5, released:true } }] }
+  };
+
+  /* ---------------- Helpers ---------------- */
+  var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  function d(s){ return new Date(s); }
+  function md(s){ var x = d(s); return MONTHS[x.getMonth()] + ' ' + x.getDate(); }
+  function time(s){ return d(s).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }); }
+  function days(s){ var a = d(s); a.setHours(0,0,0,0); var b = new Date(NOW); b.setHours(0,0,0,0); return Math.round((a - b) / 86400000); }
+  function esc(s){ return String(s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function load(k){ try{ return JSON.parse(localStorage.getItem(k)); }catch(e){ return null; } }
+  function save(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); return true; }catch(e){ return false; } }
+  function mmss(s){ return Math.floor(s / 60) + ':' + ('0' + s % 60).slice(-2); }
+  function dur(s){ return s < 60 ? s + 's' : Math.floor(s / 60) + 'm ' + (s % 60) + 's'; }
+  function plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
+  var $ = function(i){ return document.getElementById(i); };
+
+  var I = {
+    clock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>',
+    lock:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="16" height="11" x="4" y="11" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>',
+    cloud:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/><path d="m9 14 2 2 4-4"/></svg>',
+    left:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="m12 19-7-7 7-7"/></svg>',
+    right:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>',
+    dot:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="8"/></svg>'
+  };
+
+  /* ---------------- State ---------------- */
+  var id = new URLSearchParams(location.search).get('id') || 'q1';
+  var Q = QUIZZES[id], KEY = 'upspace-quiz-' + id;
+  var local = load(KEY) || {};
+  var st, view, tick, warned = false;
+  if (Q){
+    st = { answers:local.answers || JSON.parse(JSON.stringify(Q.seed || {})), startedAt:local.startedAt || null, cur:local.cur || 0, subs:Q.submissions.concat(local.submissions || []) };
+    view = st.subs.length ? 'result' : 'intro';
+  }
+
+  function fmt(q){ return q.kind === 'image' ? q.format : q.kind; } // image-based = figure + answer format (ASM-002-FR-02)
+  function opts(q){ return fmt(q) === 'tf' ? TF : q.options; }
+  function answered(q, a){ a = a === undefined ? st.answers[q.id] : a; return Array.isArray(a) ? a.length > 0 : !!String(a || '').trim(); }
+  function unanswered(){ return Q.questions.filter(function(q){ return !answered(q); }); }
+  function norm(s){ return String(s || '').toLowerCase().replace(/\s+/g, ''); }
+  // ponytail: all-or-nothing per question, partial credit for multiple select isn't specified
+  function correct(q, a){
+    if (fmt(q) === 'fill') return norm(a) === norm(q.answer[0]);
+    return (a || []).slice().sort().join() === q.answer.slice().sort().join();
+  }
+  function total(){ return Q.questions.reduce(function(t, q){ return t + q.points; }, 0); }
+  function scoreOf(answers){ return Q.questions.reduce(function(t, q){ return t + (correct(q, answers[q.id]) ? q.points : 0); }, 0); }
+  function remaining(){ return Math.max(0, Math.round(Q.timeLimit * 60 - (Date.now() - st.startedAt) / 1000)); }
+  function last(){ return st.subs[st.subs.length - 1]; }
+
+  // Same derivation as assignments.html (quiz rows); objective quizzes are graded on submit (ASM-005-FR-07)
+  function statusOf(){
+    if (last()) return Q.visibility === 'hidden' ? 'submitted' : 'graded';
+    if (NOW > d(Q.closes)) return 'closed';
+    if (NOW > d(Q.due)) return 'overdue';
+    return st.startedAt || Q.questions.some(function(q){ return answered(q); }) ? 'in-progress' : 'todo';
+  }
+  var LABEL = { 'todo':'To do', 'in-progress':'In progress', 'submitted':'Submitted', 'graded':'Graded', 'overdue':'Overdue', 'closed':'Overdue' };
+
+  var savedAt = null;
+  function persist(){
+    local.answers = st.answers; local.startedAt = st.startedAt; local.cur = st.cur;
+    if (save(KEY, local)) savedAt = new Date();
+    if ($('saved')) $('saved').innerHTML = savedLine();
+  }
+  function savedLine(){
+    return I.cloud + '<span>' + (savedAt ? 'All answers saved · ' + savedAt.toLocaleTimeString([], { hour:'numeric', minute:'2-digit' }) : 'Your answers save automatically.') + '</span>';
+  }
+
+  /* ---------------- Render ---------------- */
+  function render(){
+    document.title = Q.title + ' — Assignments';
+    $('crumb').textContent = Q.title;
+    var taking = view === 'take' || view === 'review';
+    var main = view === 'take' ? question() : view === 'review' ? review() : view === 'result' ? result() : intro();
+    $('root').innerHTML =
+      '<header class="head"><div class="eyebrow"><a href="course-overview.html?id=' + Q.courseId + '">' + esc(Q.course) + '</a> · ' + esc(Q.module) + '</div><h1>' + esc(Q.title) + '</h1></header>' +
+      '<div class="layout"><div class="stack">' + main + '</div><aside class="side" aria-label="' + (taking ? 'Quiz progress' : 'Quiz summary') + '">' + (taking ? panel() : summary()) + '</aside></div>';
+    if (taking) paintTimer();
+  }
+
+  function summary(){
+    var s = statusOf(), n = days(Q.due), sub = last();
+    var rows = [
+      ['Due', md(Q.due) + ', ' + time(Q.due), s === 'overdue' || s === 'closed' ? plural(-n, 'day') + ' overdue' : (s === 'todo' || s === 'in-progress') ? (n === 0 ? 'Today' : n === 1 ? 'Tomorrow' : 'In ' + n + ' days') : '', s === 'overdue' || s === 'closed'],
+      ['Questions', Q.questions.length],
+      ['Time limit', Q.timeLimit ? Q.timeLimit + ' min' : 'None'],
+      ['Points', total()],
+      ['Pass mark', Q.passMark + '%'],
+      ['Attempts', Q.maxAttempts === 1 ? '1 allowed' : st.subs.length + ' of ' + Q.maxAttempts + ' used']
+    ];
+    var acts, note = '';
+    if (sub) acts = '<a class="btn btn-secondary btn-lg btn-block" href="assignments.html">Back to assignments</a>';
+    else if (s === 'closed') acts = '<span class="btn btn-lg btn-block" aria-disabled="true">' + I.lock + 'Quiz closed</span>';
+    else {
+      var done = Q.questions.length - unanswered().length;
+      acts = '<button class="btn btn-primary btn-lg btn-block" type="button" data-act="start">' + (s === 'in-progress' ? 'Resume quiz' : 'Start quiz') + I.right + '</button>';
+      if (s === 'in-progress') note = done + ' of ' + Q.questions.length + ' answered. ' + (Q.timeLimit && st.startedAt ? 'Your timer is still running.' : 'Pick up where you left off.');
+      else if (Q.timeLimit) note = 'The ' + Q.timeLimit + '-minute timer starts when you press Start.';
+    }
+    return '<div class="card summary"><span class="status ' + s + '"><i></i>' + LABEL[s] + '</span>' +
+      '<dl>' + rows.map(function(r){ return '<dt>' + r[0] + '</dt><dd' + (r[3] ? ' class="late"' : '') + '>' + r[1] + (r[2] ? '<small>' + r[2] + '</small>' : '') + '</dd>'; }).join('') + '</dl>' +
+      '<div class="actions">' + acts + '</div>' + (note ? '<p class="note">' + note + '</p>' : '') + '</div>';
+  }
+
+  function intro(){
+    var s = statusOf(), alert = '';
+    if (s === 'closed') alert = '<div class="alert error">' + I.lock + '<div><b>Quiz closed</b>This quiz was due ' + md(Q.due) + '. It can no longer be taken.</div></div>';
+    if (s === 'overdue') alert = '<div class="alert error" role="alert">' + I.alert + '<div><b>Overdue — due ' + md(Q.due) + '</b>You can still take it until ' + md(Q.closes) + ', ' + time(Q.closes) + '.</div></div>';
+    return alert + '<section class="card section" aria-labelledby="insTitle"><h2 id="insTitle">Before you start</h2><div class="prose">' + Q.instructions + '</div></section>';
+  }
+
+  function panel(){
+    var done = Q.questions.length - unanswered().length, n = Q.questions.length;
+    return '<div class="card panel">' +
+      (Q.timeLimit ? '<div class="timer" id="timerBox"><span>' + I.clock + 'Time left</span><b id="timer" role="timer" aria-live="off">' + mmss(remaining()) + '</b></div>' : '') +
+      '<div class="prog-row"><span>Answered</span><b id="pcount">' + done + ' of ' + n + '</b></div>' +
+      '<div class="progress-bar-bg" id="pbar" role="progressbar" aria-label="Questions answered" aria-valuemin="0" aria-valuemax="' + n + '" aria-valuenow="' + done + '"><div class="progress-bar-fill" style="width:' + (done / n * 100) + '%"></div></div>' +
+      '<nav class="qnav" id="qnav" aria-label="Questions">' + navItems() + '</nav>' +
+      '<div class="legend" aria-hidden="true"><span><i class="done"></i>Answered</span><span><i></i>Not answered</span>' + (view === 'take' ? '<span><i class="cur"></i>Current</span>' : '') + '</div>' +
+      (view === 'take' ? '<button class="btn btn-secondary btn-block" type="button" data-act="review">Review &amp; submit</button>' : '') +
+      '<div class="saved" id="saved" aria-live="polite">' + savedLine() + '</div></div>';
+  }
+  function navItems(){
+    return Q.questions.map(function(q, i){
+      var done = answered(q), cur = view === 'take' && i === st.cur;
+      return '<button type="button" class="qn' + (done ? ' done' : '') + (cur ? ' cur' : '') + '" data-goto="' + i + '" aria-label="Question ' + (i + 1) + ', ' + (done ? 'answered' : 'not answered') + '"' + (cur ? ' aria-current="step"' : '') + '>' + (i + 1) + '</button>';
+    }).join('');
+  }
+  // Answer changes repaint only the panel so focus stays in the question
+  function paintPanel(){
+    var done = Q.questions.length - unanswered().length, n = Q.questions.length;
+    $('pcount').textContent = done + ' of ' + n;
+    $('pbar').setAttribute('aria-valuenow', done);
+    $('pbar').firstChild.style.width = (done / n * 100) + '%';
+    $('qnav').innerHTML = navItems();
+  }
+
+  var HINT = { mcq:'Choose one answer', tf:'True or false', multi:'Select all that apply', fill:'Type your answer' };
+  function question(){
+    var q = Q.questions[st.cur], k = fmt(q), a = st.answers[q.id], n = Q.questions.length, input;
+    if (k === 'fill') input = '<input class="input" id="ans" type="text" autocomplete="off" spellcheck="false" placeholder="Type your answer" aria-labelledby="qPrompt" value="' + esc(a || '') + '">';
+    else {
+      var type = k === 'multi' ? 'checkbox' : 'radio';
+      input = '<div class="opts" role="' + (type === 'radio' ? 'radiogroup' : 'group') + '" aria-labelledby="qPrompt">' + opts(q).map(function(o){
+        return '<label class="opt"><input type="' + type + '" name="ans" value="' + o[0] + '"' + ((a || []).indexOf(o[0]) > -1 ? ' checked' : '') + '><span>' + esc(o[1]) + '</span></label>';
+      }).join('') + '</div>';
+    }
+    return '<section class="card qcard" aria-labelledby="qPrompt">' +
+      '<div class="q-meta"><b>Question ' + (st.cur + 1) + ' of ' + n + '</b><span>' + plural(q.points, 'point') + '</span><span>' + HINT[k] + '</span></div>' +
+      '<h2 class="q-prompt" id="qPrompt" tabindex="-1">' + esc(q.prompt) + '</h2>' +
+      (q.figure ? '<figure class="q-fig">' + q.figure + '</figure>' : '') + input +
+      '<div class="q-foot"><button class="btn btn-secondary" type="button" data-act="prev"' + (st.cur ? '' : ' disabled') + '>' + I.left + 'Previous</button>' +
+        (st.cur === n - 1 ? '<button class="btn btn-primary" type="button" data-act="review">Review answers' + I.right + '</button>'
+                          : '<button class="btn btn-primary" type="button" data-act="next">Next' + I.right + '</button>') + '</div>' +
+    '</section>';
+  }
+
+  function review(){
+    var left = unanswered(), n = Q.questions.length, block = left.length > 0, first = block ? Q.questions.indexOf(left[0]) : -1;
+    var gate = block ? '<div class="alert warning" role="alert">' + I.alert + '<div><b>' + plural(left.length, 'question') + ' not answered</b>Answer every question before you submit. Still to answer: ' +
+      left.map(function(q){ return Q.questions.indexOf(q) + 1; }).join(', ') + '.</div>' +
+      '<button class="btn btn-secondary act" type="button" data-goto="' + first + '">Go to question ' + (first + 1) + '</button></div>' : '';
+    return '<section class="card section" aria-labelledby="revTitle"><h2 id="revTitle" tabindex="-1">Review your answers</h2>' +
+      '<p class="r-intro">Check your answers before you submit. You can’t change them afterwards.</p>' + gate +
+      '<ul class="rlist">' + Q.questions.map(function(q, i){
+        var ok = answered(q);
+        return '<li><button type="button" data-goto="' + i + '"><span class="n">' + (i + 1) + '</span><span class="p">' + esc(q.prompt) + '</span>' +
+          '<span class="st ' + (ok ? 'ok' : 'no') + '">' + (ok ? I.check + 'Answered' : I.dot + 'Not answered') + '</span></button></li>';
+      }).join('') + '</ul>' +
+      '<div class="r-foot"><span class="hint" id="submitHint">' + (block ? 'Submit unlocks when all ' + n + ' questions are answered.' : 'All ' + n + ' questions answered.') + '</span>' +
+        '<div class="acts"><button class="btn btn-secondary" type="button" data-act="back">' + I.left + 'Back to questions</button>' +
+        '<button class="btn btn-primary" type="button" data-act="submit" aria-describedby="submitHint"' + (block ? ' disabled' : '') + '>Submit quiz</button></div></div>' +
+    '</section>';
+  }
+
+  function result(){
+    var sub = last(), pts = total();
+    if (Q.visibility === 'hidden') return '<section class="card section"><div class="waiting"><span class="ic">' + I.clock + '</span><div><b>Results not released yet</b><span>Results will be available once released by your instructor.</span></div></div></section>';
+    var score = sub.grade.score, pct = Math.round(score / pts * 100), pass = pct >= Q.passMark;
+    var html = '<section class="card section" aria-labelledby="resTitle"><h2 id="resTitle" tabindex="-1">Your result</h2>' +
+      '<div class="grade"><div class="score">' + score + '<small> / ' + pts + '</small></div>' +
+      '<div class="grade-meta"><b' + (pass ? '' : ' class="fail"') + '>' + pct + '% · ' + (pass ? 'Passed' : 'Not passed') + '</b> (pass mark ' + Q.passMark + '%)<br>' +
+        'Submitted ' + md(sub.at) + ' at ' + time(sub.at) + ' · Time taken ' + dur(sub.spent) + ' · Attempt ' + st.subs.length + ' of ' + Q.maxAttempts +
+        (sub.auto ? '<br>Submitted automatically when time ran out.' : '') + '</div></div></section>';
+    if (Q.visibility !== 'answers') return html + '<section class="card section"><h2>Answers</h2><p class="muted">Correct answers aren’t shown for this quiz.</p></section>';
+    return html + '<section class="card section" aria-labelledby="bdTitle"><h2 id="bdTitle">Answer breakdown</h2><ol class="bd">' + Q.questions.map(function(q, i){
+      var a = sub.answers[q.id], ok = correct(q, a), body;
+      if (fmt(q) === 'fill') body = '<div class="ans-line"><span>Your answer</span><b class="' + (ok ? 'right' : 'wrong') + '">' + (answered(q, a) ? esc(a) : 'No answer') + '</b></div>' +
+        (ok ? '' : '<div class="ans-line"><span>Correct answer</span><b>' + esc(q.answer[0]) + '</b></div>');
+      else body = '<div class="opts">' + opts(q).map(function(o){
+        var right = q.answer.indexOf(o[0]) > -1, picked = (a || []).indexOf(o[0]) > -1;
+        var tag = picked && right ? 'Your answer · Correct' : picked ? 'Your answer' : right ? 'Correct answer' : '';
+        return '<div class="opt' + (right ? ' right' : picked ? ' wrong' : '') + '">' + (right ? I.check : picked ? I.x : '<span class="mk"></span>') + '<span>' + esc(o[1]) + '</span>' + (tag ? '<em>' + tag + '</em>' : '') + '</div>';
+      }).join('') + '</div>';
+      return '<li class="bq"><div class="bq-h"><span class="n">' + (i + 1) + '.</span><span>' + esc(q.prompt) + '</span><span class="pts ' + (ok ? 'right' : 'wrong') + '">' + (ok ? q.points : 0) + ' / ' + q.points + '</span></div>' +
+        (q.figure ? '<figure class="q-fig">' + q.figure + '</figure>' : '') + body + '</li>';
+    }).join('') + '</ol></section>';
+  }
+
+  /* ---------------- Timer — display only; the server owns the clock (ASM-005-NFR-02) ---------------- */
+  function paintTimer(){
+    if (!Q.timeLimit) return;
+    var r = remaining();
+    $('timer').textContent = mmss(r);
+    $('timerBox').classList.toggle('low', r <= 120);
+    if (r <= 120 && r > 0 && !warned){ warned = true; toast('2 minutes left. The quiz submits automatically when time runs out.', true); }
+  }
+  function startTimer(){
+    clearInterval(tick);
+    if (!Q.timeLimit) return;
+    if (!remaining()) return submit(true);
+    tick = setInterval(function(){
+      if (!remaining()) submit(true); // FR-03; also dismisses the review screen (edge case)
+      else if ($('timer')) paintTimer();
+    }, 1000);
+  }
+
+  /* ---------------- Actions ---------------- */
+  function go(i){
+    st.cur = i; view = 'take'; persist(); render();
+    $('qPrompt').focus();
+  }
+  function record(){
+    var q = Q.questions[st.cur];
+    st.answers[q.id] = fmt(q) === 'fill' ? $('ans').value
+      : Array.prototype.map.call(document.querySelectorAll('input[name="ans"]:checked'), function(i){ return i.value; });
+    persist(); paintPanel();
+  }
+  var typing;
+  $('root').addEventListener('change', function(e){ if (e.target.name === 'ans') record(); });
+  $('root').addEventListener('input', function(e){ if (e.target.id === 'ans'){ clearTimeout(typing); typing = setTimeout(record, 300); } });
+  $('root').addEventListener('keydown', function(e){
+    if (e.target.id === 'ans' && e.key === 'Enter'){ clearTimeout(typing); record(); act(st.cur === Q.questions.length - 1 ? 'review' : 'next'); }
+  });
+  $('root').addEventListener('click', function(e){
+    var g = e.target.closest('[data-goto]');
+    if (g) return go(+g.dataset.goto);
+    var b = e.target.closest('[data-act]');
+    if (b && !b.disabled) act(b.dataset.act);
+  });
+
+  function act(a){
+    if (a === 'start'){
+      if (!st.startedAt){ st.startedAt = Date.now(); persist(); }
+      startTimer();
+      if (view !== 'result') go(st.cur); // already 'result' if the timer ran out while away
+    }
+    else if (a === 'prev') go(st.cur - 1);
+    else if (a === 'next') go(st.cur + 1);
+    else if (a === 'back') go(st.cur);
+    else if (a === 'review'){ view = 'review'; persist(); render(); $('revTitle').focus(); }
+    else if (a === 'submit') openConfirm();
+  }
+
+  /* ---------------- Submit confirm — Modal (library) ---------------- */
+  var modalKey = null, modalReturn = null;
+  function closeModal(){
+    var m = $('modal'); m.hidden = true; m.innerHTML = '';
+    if (modalKey) document.removeEventListener('keydown', modalKey);
+    modalKey = null;
+  }
+  function openConfirm(){
+    if (unanswered().length) return; // user decision: every question must be answered first
+    var m = $('modal');
+    modalReturn = document.activeElement;
+    m.hidden = false;
+    m.innerHTML = '<div class="overlay"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mTitle" aria-describedby="mBody">' +
+      '<h3 id="mTitle">Submit quiz?</h3><p id="mBody">You’ve answered all ' + Q.questions.length + ' questions. You can’t change your answers after submitting' + (Q.maxAttempts === 1 ? ', and this is your only attempt.' : '.') + '</p>' +
+      '<div class="acts"><button class="btn btn-secondary" type="button" id="mCancel">Keep reviewing</button><button class="btn btn-primary" type="button" id="mOk">Submit quiz</button></div></div></div>';
+    var ok = $('mOk'), cancel = $('mCancel');
+    function dismiss(){ closeModal(); if (modalReturn) modalReturn.focus(); }
+    modalKey = function(e){
+      if (e.key === 'Escape') dismiss();
+      if (e.key === 'Tab'){ e.preventDefault(); (document.activeElement === ok ? cancel : ok).focus(); }
+    };
+    document.addEventListener('keydown', modalKey);
+    cancel.onclick = dismiss;
+    m.firstChild.onclick = function(e){ if (e.target === this) dismiss(); };
+    ok.onclick = function(){
+      ok.disabled = cancel.disabled = true; ok.classList.add('busy'); ok.innerHTML = '<span class="spin"></span>Submitting…';
+      setTimeout(function(){ submit(false); }, 600);
+    };
+    ok.focus();
+  }
+
+  // Records answers, timestamp and time spent; objective questions are graded on submit (ASM-005-FR-07)
+  function submit(auto){
+    clearInterval(tick);
+    closeModal();
+    if (view === 'result') return;
+    var spent = st.startedAt ? Math.round((Date.now() - st.startedAt) / 1000) : 0;
+    if (Q.timeLimit) spent = Math.min(spent, Q.timeLimit * 60);
+    var sub = { at:new Date().toISOString(), spent:spent, auto:auto, answers:st.answers, grade:{ score:scoreOf(st.answers), released:Q.visibility !== 'hidden' } };
+    st.subs.push(sub);
+    local = { submissions:(local.submissions || []).concat(sub) };
+    save(KEY, local);
+    view = 'result'; render();
+    if ($('resTitle')) $('resTitle').focus();
+    toast(auto ? 'Time’s up — your quiz was submitted with your saved answers.' : 'Quiz submitted.');
+  }
+
+  var toastTimer;
+  function toast(msg, warn){
+    var t = $('toast');
+    t.innerHTML = '<span class="ic' + (warn ? ' warn' : '') + '">' + (warn ? I.clock : I.check) + '</span><span>' + esc(msg) + '</span>';
+    t.hidden = false;
+    clearTimeout(toastTimer); toastTimer = setTimeout(function(){ t.hidden = true; }, 4000);
+  }
+
+  /* ---------------- Boot ---------------- */
+  if (!Q){
+    $('crumb').textContent = 'Quiz not found';
+    $('root').innerHTML = '<div class="empty"><b>Quiz not found.</b><span>It may have been removed or the link is wrong.</span><a class="btn btn-secondary" href="assignments.html">Back to assignments</a></div>';
+  } else {
+    render();
+    // Timer keeps running server-side across reloads (edge case: browser crash → resume, lost time not restored)
+    if (view === 'intro' && Q.timeLimit && st.startedAt && !remaining()) submit(true);
+  }
+</script>
+</body>
+</html>

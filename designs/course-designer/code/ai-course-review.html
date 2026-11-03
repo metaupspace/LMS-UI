@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UpSpace Course Designer — Review AI course</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<style>
+  /* ---------------------------------------------------------------
+     Course Designer — Review an AI-generated course (AI course builder flow,
+     FigJam "LMS UI" node 7:1906, steps after "Generate Course"):
+       "Does the user want to continue with the generated course?" NO →
+       user goes to any module / chapter → uses AI (prompts the changes) or
+       makes the changes by hand → satisfied? → Save as draft, or
+       Publish / Send for approval.
+     Layout ref: mood board node 48:901 (outline left, lesson centre,
+     AI editor right).
+     Entry: ai-course-generate.html "Make changes" / ready toast → ?id=<course>.
+     AI edits: scope = whole course, a module, or a lesson. Quick prompts
+     follow AI-001-FR-05 ("Make shorter", "Add more examples", "Focus on…").
+     Every AI change is a proposal the author Applies or Discards
+     (AI-001-FR-04), with Undo after applying. AI-generated marks stay
+     visible to the author and approvers (AI-001-FR-06).
+     By hand: "Edit manually" opens the same lesson in course-builder.html.
+     No AI service exists in this repo: proposals are local stand-ins (see
+     ponytail comments). Replace with the API.
+     Library: Buttons, Badge, Select, Message, Textarea, Modal, Toast,
+     Alerts, Video player (native controls), Tooltip.
+     Approved hand-built: Chat composer, Course structure tree, Lesson list
+     item, Flashcard (two-sided flip card), Callout / Quote / Image figure /
+     Audio / Document / Assessment summary block renders.
+     New (approved 2026-11-02): AI change proposal card.
+     Demo states: Preview control or ?state=blocked | noapproval.
+  ----------------------------------------------------------------*/
+  :root{
+    --text-primary:#171717; --text-strong:#404040; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
+    --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-strong:#a3a3a3;
+    --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --action-primary-soft:#e0e7ff; --focus-ring:#6366f1;
+    --error:#dc2626; --error-subtle:#fef2f2; --error-border:#fecaca;
+    --warning:#ca8a04; --warning-subtle:#fefce8; --warning-border:#fef08a;
+    --success:#15803d; --success-subtle:#f0fdf4;
+    --info:#2563eb; --info-subtle:#eff6ff; --info-border:#bfdbfe;
+    --radius-sm:2px; --radius-md:4px; --radius-lg:8px; --radius-xl:12px; --radius-2xl:16px; --radius-full:999px;
+    --shadow-md:0 12px 16px -4px rgba(23,23,23,.08), 0 4px 6px -2px rgba(23,23,23,.03);
+    --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html,body{ height:100%; }
+  body{ margin:0; background:var(--surface-canvas); color:var(--text-primary); font-family:var(--font); -webkit-font-smoothing:antialiased; }
+  a{ color:inherit; text-decoration:none; }
+  button,input,select,textarea{ font-family:var(--font); }
+  button{ cursor:pointer; }
+  :focus-visible{ outline:2px solid var(--focus-ring); outline-offset:2px; }
+  [hidden]{ display:none !important; }
+  .sr{ position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+
+  .shell{ display:grid; grid-template-columns:232px 1fr; grid-template-rows:80px 1fr; height:100vh; }
+  .shell.sidebar-collapsed{ grid-template-columns:0 1fr; }
+  .shell.sidebar-collapsed .sidebar-frame{ border-right:none; }
+  .sidebar-frame{ grid-column:1; grid-row:1/-1; width:100%; height:100%; border:0; display:block; border-right:1px solid var(--border-default); }
+  .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
+  .main{ grid-column:2; grid-row:2; min-width:0; min-height:0; display:flex; flex-direction:column; }
+
+  /* Buttons (library) */
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; border:1px solid transparent; white-space:nowrap; transition:background-color .15s ease, border-color .15s ease; }
+  .btn svg{ width:16px; height:16px; flex-shrink:0; }
+  .btn-primary{ background:var(--action-primary); color:#fff; }
+  .btn-primary:hover{ background:var(--action-primary-hover); }
+  .btn-primary:disabled{ opacity:.45; cursor:default; background:var(--action-primary); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border-color:#d4d4d4; }
+  .btn-secondary:hover{ background:var(--surface-raised); }
+  .btn-secondary:disabled{ color:var(--text-tertiary); cursor:default; background:#fff; }
+  .btn.sm{ height:32px; padding:0 12px; }
+  .ib{ width:32px; height:32px; display:inline-flex; align-items:center; justify-content:center; border:0; border-radius:var(--radius-md); background:transparent; color:var(--text-tertiary); flex-shrink:0; }
+  .ib:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .ib svg{ width:16px; height:16px; }
+
+  /* Badge (library) */
+  .badge{ display:inline-flex; align-items:center; gap:5px; height:24px; padding:0 9px; border-radius:var(--radius-full); font-size:12px; font-weight:500; white-space:nowrap; }
+  .badge i{ width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .badge svg{ width:12px; height:12px; }
+  .badge.sm{ height:20px; padding:0 7px; }
+  .badge.gray{ background:var(--surface-raised); color:var(--text-secondary); }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .badge.warning{ background:var(--warning-subtle); color:#a16207; }
+  .badge.success{ background:var(--success-subtle); color:var(--success); }
+
+  /* Alerts (library) */
+  .alert{ display:flex; gap:12px; padding:12px 14px; border-radius:var(--radius-lg); border:1px solid var(--border-default); background:#fff; font-size:14px; line-height:1.5; color:var(--text-strong); }
+  .alert svg{ width:18px; height:18px; flex-shrink:0; margin-top:2px; }
+  .alert b{ display:block; color:var(--text-primary); }
+  .alert.warning{ background:var(--warning-subtle); border-color:var(--warning-border); } .alert.warning svg{ color:var(--warning); }
+  .alert.info{ background:var(--info-subtle); border-color:var(--info-border); } .alert.info svg{ color:var(--info); }
+
+  .ai-mark{ width:24px; height:24px; border-radius:var(--radius-md); background:linear-gradient(135deg, #6366f1, #4338ca); color:#fff; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .ai-mark svg{ width:13px; height:13px; }
+
+  /* Bar (same pattern as course-builder.html .bar) */
+  .bar{ display:flex; align-items:center; gap:12px; padding:10px clamp(14px, 1.8vw, 24px); background:#fff; border-bottom:1px solid var(--border-default); flex-wrap:wrap; }
+  .bar-title{ display:flex; align-items:center; gap:10px; min-width:0; flex:1; }
+  .bar-title h1{ margin:0; font-size:18px; font-weight:700; letter-spacing:-.3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .bar-acts{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+
+  .rv{ flex:1; min-height:0; display:grid; grid-template-columns:clamp(240px, 19vw, 300px) minmax(0,1fr) clamp(320px, 26vw, 400px); }
+
+  /* Course structure tree / Lesson list item (hand-built, approved) */
+  .nav{ min-height:0; overflow-y:auto; background:#fff; border-right:1px solid var(--border-default); padding:14px 10px 24px; }
+  .nav-h{ padding:2px 8px 12px; }
+  .nav-h b{ display:block; font-size:14px; }
+  .nav-h small{ font-size:12px; color:var(--text-tertiary); }
+  .nmod + .nmod{ margin-top:8px; }
+  .nmod-h{ width:100%; display:flex; align-items:center; gap:8px; padding:8px; border:0; border-radius:var(--radius-lg); background:transparent; text-align:left; font-size:14px; font-weight:600; color:var(--text-primary); }
+  .nmod-h:hover{ background:var(--surface-raised); }
+  .nmod-h .num{ width:22px; height:22px; border-radius:var(--radius-md); background:var(--surface-raised); font-size:12px; font-weight:700; color:var(--text-strong); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .nmod-h span:last-child{ min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .nmod.scoped > .nmod-h{ box-shadow:inset 0 0 0 1.5px var(--action-primary-soft); }
+  .nles{ list-style:none; margin:2px 0 0; padding:0 0 0 18px; }
+  .nles button{ width:100%; display:flex; align-items:center; gap:8px; min-height:36px; padding:6px 8px; border:0; border-radius:var(--radius-md); background:transparent; text-align:left; font-size:14px; color:var(--text-secondary); }
+  .nles button:hover{ background:var(--surface-raised); color:var(--text-primary); }
+  .nles button[aria-current="true"]{ background:var(--action-primary-subtle); color:var(--action-primary); font-weight:600; }
+  .nles button > span:first-child{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .changed{ width:7px; height:7px; border-radius:50%; background:var(--action-primary); flex-shrink:0; }
+
+  /* Lesson */
+  .lesson{ min-height:0; overflow-y:auto; }
+  .lesson-in{ max-width:780px; margin:0 auto; padding:24px clamp(16px, 3vw, 44px) 56px; }
+  .crumb{ font-size:12px; color:var(--text-tertiary); font-weight:500; }
+  .lesson-in h2{ margin:4px 0 8px; font-size:clamp(22px, 2vw, 28px); font-weight:700; letter-spacing:-.5px; }
+  .lmeta{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; font-size:12px; color:var(--text-tertiary); }
+  .lacts{ display:flex; gap:8px; flex-wrap:wrap; margin:14px 0 22px; padding-bottom:18px; border-bottom:1px solid var(--border-default); }
+  .lesson .alert{ margin-bottom:16px; }
+
+  .blk{ position:relative; padding:12px 14px; margin:0 -14px 10px; border-radius:var(--radius-lg); transition:background-color .3s ease, box-shadow .3s ease; }
+  .blk:hover{ background:#fff; box-shadow:0 0 0 1px var(--border-default); }
+  .blk.flash{ animation:flashb 1.6s ease; }
+  @keyframes flashb{ 0%{ background:var(--action-primary-soft); } 100%{ background:transparent; } }
+  .blk-tag{ position:absolute; top:8px; right:8px; opacity:0; transition:opacity .15s ease; z-index:1; }
+  .blk:hover .blk-tag, .blk:focus-within .blk-tag{ opacity:1; }
+  .prose{ font-size:16px; line-height:1.7; color:var(--text-primary); }
+  .prose p{ margin:0 0 12px; } .prose p:last-child{ margin-bottom:0; }
+  .prose ul, .prose ol{ margin:0 0 12px; padding-left:22px; } .prose li{ margin-bottom:4px; }
+  .prose h3{ margin:8px 0 6px; font-size:18px; }
+  .callout{ padding:12px 16px; border-radius:var(--radius-lg); background:var(--info-subtle); border:1px solid var(--info-border); }
+  .callout b{ display:block; margin-bottom:2px; }
+  .quote{ padding:12px 16px; border-left:3px solid var(--action-primary-soft); background:#fff; border-radius:0 var(--radius-lg) var(--radius-lg) 0; }
+  .quote small{ display:block; font-size:12px; font-weight:600; color:var(--action-primary); margin-bottom:4px; }
+  figure{ margin:0; }
+  figure img, figure video{ display:block; width:100%; max-height:420px; object-fit:cover; border-radius:var(--radius-lg); background:var(--surface-raised); }
+  figcaption{ margin-top:6px; font-size:12px; color:var(--text-tertiary); }
+  .media-ph{ display:flex; align-items:center; justify-content:center; gap:8px; height:200px; border-radius:var(--radius-lg); background:var(--surface-raised); color:var(--text-tertiary); font-size:14px; }
+  .media-ph svg{ width:20px; height:20px; }
+  .aud{ display:flex; flex-direction:column; gap:8px; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .aud b{ font-size:14px; }
+  .aud audio{ width:100%; }
+  .card{ display:flex; align-items:center; gap:12px; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; }
+  .card .ic{ width:36px; height:36px; border-radius:var(--radius-md); background:var(--action-primary-subtle); color:var(--action-primary); display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .card .ic svg{ width:18px; height:18px; }
+  .card div{ flex:1; min-width:0; }
+  .card b{ display:block; font-size:14px; }
+  .card small{ font-size:12px; color:var(--text-tertiary); }
+  .card.empty{ border-style:dashed; background:var(--warning-subtle); border-color:var(--warning-border); }
+  .card.empty .ic{ background:#fff; color:var(--warning); }
+  /* Flashcard (approved hand-built) */
+  .fc-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(180px, 1fr)); gap:10px; margin-top:8px; }
+  .fc{ perspective:800px; height:132px; border:0; padding:0; background:none; text-align:left; font:inherit; color:inherit; }
+  .fc-in{ position:relative; display:block; width:100%; height:100%; transition:transform .45s ease; transform-style:preserve-3d; }
+  .fc.flipped .fc-in{ transform:rotateY(180deg); }
+  .fc-f, .fc-b{ position:absolute; inset:0; backface-visibility:hidden; display:flex; flex-direction:column; justify-content:space-between; padding:12px 14px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; line-height:1.45; }
+  .fc-b{ transform:rotateY(180deg); background:var(--action-primary-subtle); border-color:var(--action-primary-soft); }
+  .fc small{ font-size:12px; color:var(--text-tertiary); }
+
+  /* AI editor (Aside) */
+  .ed{ min-height:0; display:flex; flex-direction:column; background:#fff; border-left:1px solid var(--border-default); }
+  .ed-h{ padding:14px 16px 12px; border-bottom:1px solid var(--border-subtle); }
+  .ed-h > div{ display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .ed-h b{ font-size:14px; }
+  .ed-h label{ display:block; font-size:12px; font-weight:500; color:var(--text-secondary); margin-bottom:4px; }
+  .ed-h select{ width:100%; height:38px; padding:0 12px; border:1px solid #d4d4d4; border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); }
+  .thread{ flex:1; overflow-y:auto; display:flex; flex-direction:column; gap:16px; padding:16px; }
+  .empty-ed{ margin:auto 0; text-align:center; padding:12px; color:var(--text-secondary); font-size:14px; line-height:1.55; }
+  .empty-ed .ai-mark{ margin:0 auto 10px; width:32px; height:32px; border-radius:var(--radius-lg); }
+  .empty-ed .ai-mark svg{ width:16px; height:16px; }
+  .empty-ed b{ display:block; color:var(--text-primary); font-size:16px; margin-bottom:2px; }
+  /* Message (library) */
+  .you{ align-self:flex-end; max-width:88%; padding:9px 13px; background:var(--action-primary-soft); border-radius:var(--radius-lg) 0 var(--radius-lg) var(--radius-lg); font-size:14px; line-height:1.55; white-space:pre-wrap; overflow-wrap:anywhere; animation:rise .25s ease both; }
+  .you small{ display:block; font-size:12px; color:var(--text-secondary); font-weight:600; margin-bottom:2px; }
+  .ai{ display:grid; grid-template-columns:24px minmax(0,1fr); gap:10px; animation:rise .25s ease both; }
+  .ai-body{ min-width:0; padding-top:2px; font-size:14px; line-height:1.6; }
+  .ai-body > p{ margin:0 0 8px; } .ai-body > :last-child{ margin-bottom:0; }
+  .writing{ display:inline-flex; gap:4px; padding:10px 12px; background:var(--surface-raised); border-radius:0 var(--radius-lg) var(--radius-lg) var(--radius-lg); }
+  .writing i{ width:6px; height:6px; border-radius:50%; background:var(--text-tertiary); animation:blink 1.2s infinite ease-in-out; }
+  .writing i:nth-child(2){ animation-delay:.15s; } .writing i:nth-child(3){ animation-delay:.3s; }
+  @keyframes blink{ 0%, 80%, 100%{ opacity:.3; } 40%{ opacity:1; } }
+  @keyframes rise{ from{ opacity:0; transform:translateY(6px); } to{ opacity:1; transform:none; } }
+
+  /* AI change proposal card (new, approved 2026-11-02) */
+  .prop{ border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; overflow:hidden; }
+  .prop-h{ display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 12px; border-bottom:1px solid var(--border-subtle); font-size:12px; color:var(--text-secondary); }
+  .prop ul{ list-style:none; margin:0; padding:10px 12px; display:grid; gap:6px; font-size:14px; line-height:1.45; }
+  .prop li{ display:flex; gap:8px; }
+  .prop li svg{ width:14px; height:14px; flex-shrink:0; margin-top:3px; color:var(--action-primary); }
+  .prop li span{ min-width:0; }
+  .prop li small{ color:var(--text-tertiary); }
+  .diff{ display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--border-subtle); }
+  .diff div{ padding:10px 12px; font-size:12px; line-height:1.5; color:var(--text-strong); max-height:150px; overflow:hidden; }
+  .diff div + div{ border-left:1px solid var(--border-subtle); background:var(--success-subtle); }
+  .diff div:first-child{ background:var(--surface-canvas); color:var(--text-secondary); }
+  .diff b{ display:block; font-size:12px; font-weight:600; color:var(--text-tertiary); margin-bottom:2px; }
+  .prop-foot{ display:flex; align-items:center; justify-content:flex-end; gap:8px; padding:10px 12px; border-top:1px solid var(--border-subtle); background:var(--surface-canvas); }
+  .prop-foot .st{ margin-right:auto; display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--text-secondary); }
+  .prop-foot .st svg{ width:14px; height:14px; }
+  .prop.applied .prop-foot .st{ color:var(--success); }
+  .prop.done ul, .prop.done .diff{ opacity:.6; }
+
+  .quick{ display:flex; gap:6px; flex-wrap:wrap; padding:10px 14px 0; border-top:1px solid var(--border-subtle); }
+  .quick button{ display:inline-flex; align-items:center; gap:6px; height:30px; padding:0 10px; border:1px solid var(--border-default); border-radius:var(--radius-full); background:#fff; font-size:12px; font-weight:500; color:var(--text-strong); }
+  .quick button:hover{ border-color:var(--action-primary-soft); background:var(--action-primary-subtle); color:var(--action-primary); }
+  .quick button:disabled{ opacity:.5; cursor:default; }
+  .quick svg{ width:13px; height:13px; }
+  .dock{ padding:10px 14px 14px; }
+  /* Chat composer (hand-built, approved) */
+  .composer-box{ display:flex; align-items:flex-end; gap:8px; padding:6px 6px 6px 14px; border:1px solid var(--border-default); border-radius:var(--radius-xl); background:#fff; transition:border-color .15s ease, box-shadow .15s ease; }
+  .composer-box:focus-within{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .composer textarea{ flex:1; border:0; outline:none; resize:none; font-size:14px; line-height:1.5; padding:8px 0; max-height:140px; color:var(--text-primary); background:transparent; }
+  .composer textarea::placeholder{ color:var(--text-tertiary); }
+  .send{ width:34px; height:34px; border:0; border-radius:var(--radius-lg); background:var(--action-primary); color:#fff; display:inline-flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .send:hover{ background:var(--action-primary-hover); }
+  .send:disabled{ opacity:.35; cursor:default; }
+  .send svg{ width:16px; height:16px; }
+  .composer small{ display:block; margin-top:6px; font-size:12px; color:var(--text-tertiary); text-align:center; }
+
+  /* Modal (library) */
+  .overlay{ position:fixed; inset:0; background:rgba(23,23,23,.32); display:none; align-items:center; justify-content:center; z-index:50; padding:20px; }
+  .overlay.open{ display:flex; }
+  .modal{ background:#fff; border-radius:var(--radius-xl); width:480px; max-width:100%; max-height:calc(100vh - 40px); overflow-y:auto; box-shadow:0 24px 64px -12px rgba(23,23,23,.28); padding:24px; }
+  .modal h3{ margin:0; font-size:18px; font-weight:700; }
+  .modal > p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  .modal-foot{ display:flex; justify-content:flex-end; gap:10px; margin-top:22px; }
+
+  /* Toast (library) */
+  .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:10px 12px 10px 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; box-shadow:0 12px 32px -8px rgba(23,23,23,.4); display:flex; align-items:center; gap:12px; transform:translateY(12px); opacity:0; pointer-events:none; transition:transform .2s ease, opacity .2s ease; z-index:60; max-width:calc(100vw - 48px); }
+  .toast.show{ transform:translateY(0); opacity:1; pointer-events:auto; }
+  .toast button{ height:28px; padding:0 10px; border:0; border-radius:var(--radius-md); background:rgba(255,255,255,.14); color:#fff; font-size:14px; font-weight:500; flex-shrink:0; }
+  .toast button:hover{ background:rgba(255,255,255,.24); }
+
+  .preview{ position:fixed; left:12px; bottom:12px; z-index:45; display:flex; align-items:center; gap:6px; padding:4px 4px 4px 10px; border:1px dashed #a3a3a3; border-radius:var(--radius-md); background:rgba(250,250,250,.92); font:500 12px/1 ui-monospace, SFMono-Regular, Menlo, monospace; color:#737373; }
+  @media (min-width:901px){ .preview{ left:244px; } }
+  .preview select{ font:inherit; color:#404040; border:1px solid #d4d4d4; border-radius:var(--radius-lg, 8px); background:#fff; padding:3px 4px; }
+
+  @media (prefers-reduced-motion:reduce){ *{ transition:none !important; animation:none !important; } }
+  @media (max-width:1200px){
+    .rv{ grid-template-columns:minmax(0,1fr) clamp(300px, 34vw, 380px); }
+    .nav{ display:none; }
+  }
+  @media (max-width:900px){
+    .main{ overflow-y:auto; display:block; }
+    .rv{ display:block; }
+    .lesson{ overflow:visible; }
+    .ed{ border-left:0; border-top:1px solid var(--border-default); min-height:520px; }
+    .diff{ grid-template-columns:1fr; } .diff div + div{ border-left:0; border-top:1px solid var(--border-subtle); }
+  }
+
+  .sidebar-backdrop{ display:none; position:fixed; inset:0; background:rgba(15,23,42,.45); z-index:25; }
+  @media (max-width:900px){
+    .shell{ grid-template-columns:0 1fr; }
+    .topbar-frame{ grid-column:1/-1; }
+    .main{ grid-column:1/-1; }
+    .sidebar-frame{ position:fixed; top:0; left:0; width:260px; height:100vh; z-index:30; transform:translateX(-100%); transition:transform .25s ease; box-shadow:4px 0 24px rgba(0,0,0,.12); }
+    .shell.sidebar-collapsed .sidebar-frame{ transform:translateX(0); }
+    .shell.sidebar-collapsed .sidebar-backdrop{ display:block; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="sidebar-backdrop" onclick="document.querySelector('.shell').classList.remove('sidebar-collapsed')"></div>
+  <iframe class="sidebar-frame" src="../component/sidebar.html?active=courses" title="Course Designer navigation"></iframe>
+  <iframe class="topbar-frame" src="../component/topnavbar.html?parent=My+Courses&amp;parentHref=../code/my-courses.html&amp;current=Review+AI+course" title="Top bar"></iframe>
+
+  <main class="main">
+    <div class="bar">
+      <a class="ib" href="my-courses.html" aria-label="Back to My Courses" data-i="back"></a>
+      <div class="bar-title"><h1 id="cTitle">Course</h1><span class="badge gray" id="cStatus"><i></i>Draft</span><span class="badge brand" id="cAi" hidden><span data-i="spark"></span>AI-generated</span></div>
+      <div class="bar-acts">
+        <a class="btn btn-secondary" id="previewLink" href="#"><span data-i="eye"></span>Preview</a>
+        <button class="btn btn-secondary" type="button" id="draftBtn"><span data-i="save"></span>Save as draft</button>
+        <button class="btn btn-primary" type="button" id="submitBtn"><span data-i="send"></span><span id="submitLabel">Send for approval</span></button>
+      </div>
+    </div>
+    <div class="rv">
+      <nav class="nav" aria-label="Course outline"><div class="nav-h"><b>Course outline</b><small id="navMeta"></small></div><div id="tree"></div></nav>
+      <section class="lesson" aria-live="polite"><div class="lesson-in" id="lesson"></div></section>
+      <aside class="ed" aria-label="AI editor">
+        <div class="ed-h">
+          <div><span class="ai-mark" data-i="spark"></span><b>AI editor</b></div>
+          <label for="scope">What should AI change?</label>
+          <select id="scope"></select>
+        </div>
+        <div class="thread" id="thread">
+          <div class="empty-ed" id="edEmpty"><span class="ai-mark" data-i="spark"></span><b>Change it with AI</b>Pick a quick action or describe the change. You’ll see what changes before anything is applied.</div>
+        </div>
+        <div class="quick" id="quick" aria-label="Quick actions">
+          <button type="button" data-q="Make it shorter"><span data-i="minus"></span>Make it shorter</button>
+          <button type="button" data-q="Add more examples"><span data-i="plus"></span>Add more examples</button>
+          <button type="button" data-q="Simplify the language"><span data-i="text"></span>Simplify the language</button>
+          <button type="button" data-q="Add a quiz"><span data-i="quiz"></span>Add a quiz</button>
+          <button type="button" data-q="Add flash cards"><span data-i="flashcards"></span>Add flash cards</button>
+          <button type="button" data-q="Regenerate"><span data-i="refresh"></span>Regenerate</button>
+        </div>
+        <div class="dock">
+          <form class="composer" id="chatForm">
+            <div class="composer-box">
+              <label for="chatInput" class="sr">Describe the change</label>
+              <textarea id="chatInput" rows="1" maxlength="2000" placeholder="e.g. Focus more on data security"></textarea>
+              <button class="send" id="chatSend" type="submit" aria-label="Send" disabled><span data-i="up"></span></button>
+            </div>
+            <small>AI can make mistakes. Check changes before you apply them.</small>
+          </form>
+        </div>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="overlay" id="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><div class="modal" id="modalBody"></div></div>
+<div class="toast" id="toast" role="status"><span id="toastText"></span><button type="button" id="toastAct" hidden></button></div>
+
+<label class="preview" title="Design-only: preview other states. Not shown to users.">Preview
+  <select id="previewState">
+    <option value="normal">Normal</option>
+    <option value="blocked">Policy block</option>
+    <option value="noapproval">No approval</option>
+  </select>
+</label>
+
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data === 'toggle-sidebar') document.querySelector('.shell').classList.toggle('sidebar-collapsed');
+  });
+
+  /* ---------------- Store (same key + seed as my-courses.html) ---------------- */
+  var KEY = 'upspace.cd.courses.v1', ME = 'Maya Reed';
+  var H = 3600e3, D = 24 * H;
+  function ago(ms){ return new Date(Date.now() - ms).toISOString(); }
+  function uid(p){ return p + Math.random().toString(36).slice(2, 9); }
+  function L(title, html, ai){ return { id:uid('l'), title:title, content:html || '', ai:!!ai, edited:false }; }
+  function M(title, lessons){ return { id:uid('m'), title:title, lessons:lessons }; }
+  function P(t){ return '<p>' + t + '</p>'; }
+  function SEED(){
+    return [
+      { id:'c-sales', title:'Sales Fundamentals', category:'Sales', description:'Core selling skills for new account executives.', status:'draft', rel:'assigned', owner:'Daniel Kim', updated:ago(2 * H), created:ago(3 * D), modules:[] },
+      { id:'c-onboard', title:'Customer Onboarding Playbook', category:'Customer Success', description:'Run a smooth first 90 days for new customers.', status:'draft', rel:'owned', owner:ME, updated:ago(26 * H), created:ago(9 * D), modules:[
+        M('Kickoff', [ L('Why onboarding matters', P('Customers decide in their first weeks whether a product is worth the effort. A structured onboarding reduces early churn.'), true), L('Running the kickoff call', P('Set goals, confirm stakeholders and agree on a success plan before the call ends.'), true) ]),
+        M('First 30 days', [ L('Building the success plan', P('Translate the customer’s goals into three measurable milestones.')), L('Weekly check-ins', '') ]),
+        M('Handover', [ L('Handing over to account management', '') ]) ] },
+      { id:'c-privacy', title:'Data Privacy Essentials', category:'Compliance', description:'GDPR basics every employee needs to know.', status:'review', rel:'owned', owner:ME, approval:{ step:2, of:3, approver:'Priya Shah' }, updated:ago(3 * D), created:ago(20 * D), modules:[ M('Foundations', [ L('What counts as personal data', P('Any information that identifies a person directly or indirectly.')) ]) ] },
+      { id:'c-lead', title:'Leadership Communication', category:'Leadership', description:'Give feedback and run 1:1s that build trust.', status:'changes', rel:'owned', owner:ME, feedback:'Module 2 needs a practical example.', updated:ago(5 * D), created:ago(30 * D), modules:[ M('Feedback', [ L('The SBI model', P('Situation, Behavior, Impact: a simple structure for specific feedback.')) ]) ] },
+      { id:'c-atlas', title:'Product Knowledge: Atlas Platform', category:'Product', description:'Everything customer-facing teams need to know about Atlas.', status:'published', rel:'owned', owner:ME, updated:ago(14 * D), created:ago(60 * D), modules:[ M('Overview', [ L('What Atlas does', P('Atlas centralises reporting for operations teams.')) ]) ] },
+      { id:'c-safety', title:'Workplace Safety Refresher', category:'Safety', description:'Annual refresher on hazards, reporting and first aid.', status:'published', rel:'assigned', owner:'Daniel Kim', updated:ago(32 * D), created:ago(90 * D), modules:[ M('Hazards', [ L('Spotting hazards', P('Walk the space with fresh eyes once a month.')) ]) ] },
+      { id:'c-negotiate', title:'Negotiation Skills', category:'Sales', description:'Prepare, anchor and close with confidence.', status:'approved', rel:'delegated-to', owner:'Aisha Rahman', permission:'Edit + Submit', updated:ago(6 * D), created:ago(40 * D), modules:[ M('Preparation', [ L('Know your BATNA', P('Your best alternative sets your walk-away point.')) ]) ] },
+      { id:'c-finance', title:'Intro to Financial Planning', category:'Finance', description:'Budgets, forecasts and reading a P&L.', status:'draft', rel:'delegated-by', owner:ME, delegate:'Tom Becker', permission:'Edit', delegateActive:ago(20 * H), updated:ago(4 * D), created:ago(15 * D), modules:[ M('Budgets', [ L('Building a simple budget', '') ]) ] },
+      { id:'c-managers', title:'Onboarding for New Managers', category:'Management', description:'The first 100 days as a people manager.', status:'review', rel:'assigned', owner:'Daniel Kim', approval:{ step:1, of:2, approver:'Maria Lopez' }, updated:ago(2 * D), created:ago(25 * D), modules:[ M('Getting started', [ L('Your first week', P('Meet every direct report one-on-one.')) ]) ] },
+      { id:'c-excel', title:'Legacy Excel Training', category:'Productivity', description:'Replaced by the Sheets course in 2026.', status:'archived', rel:'owned', owner:ME, updated:ago(240 * D), created:ago(400 * D), modules:[] }
+    ];
+  }
+  var MEM = null;
+  function load(){
+    try { var s = JSON.parse(localStorage.getItem(KEY)); if (Array.isArray(s)) return s; } catch (e) {}
+    if (MEM) return MEM;
+    var seed = SEED(); save(seed); return seed;
+  }
+  function save(list){ MEM = list; try { localStorage.setItem(KEY, JSON.stringify(list)); } catch (e) {} }
+
+  function $(id){ return document.getElementById(id); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(ch){ return { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]; }); }
+  function readJSON(k){ try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } }
+  function writeJSON(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+  function clone(o){ return JSON.parse(JSON.stringify(o)); }
+  function plural(n, w){ return n + ' ' + w + (n === 1 ? '' : 's'); }
+  function textOf(html){ var d = document.createElement('div'); d.innerHTML = (html || '').replace(/<\/(p|li|h[1-6])>/gi, ' </$1>'); return (d.textContent || '').replace(/\s+/g, ' ').trim(); }
+  function words(html){ var t = textOf(html); return t ? t.split(/\s+/).length : 0; }
+
+  var IC = {
+    spark:'<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/>',
+    back:'<path d="m15 18-6-6 6-6"/>', up:'<path d="m5 12 7-7 7 7"/><path d="M12 19V5"/>',
+    x:'<path d="M18 6 6 18M6 6l12 12"/>', check:'<path d="M20 6 9 17l-5-5"/>',
+    info:'<circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/>',
+    warn:'<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4M12 17h.01"/>',
+    eye:'<path d="M2.062 12.348a1 1 0 0 1 0-.696 10.75 10.75 0 0 1 19.876 0 1 1 0 0 1 0 .696 10.75 10.75 0 0 1-19.876 0"/><circle cx="12" cy="12" r="3"/>',
+    save:'<path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7M7 3v4a1 1 0 0 0 1 1h7"/>',
+    send:'<path d="M14.536 21.686a.5.5 0 0 0 .937-.024l6.5-19a.496.496 0 0 0-.635-.635l-19 6.5a.5.5 0 0 0-.024.937l7.93 3.18a2 2 0 0 1 1.112 1.11z"/><path d="m21.854 2.147-10.94 10.939"/>',
+    pencil:'<path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z"/>',
+    minus:'<path d="M5 12h14"/>', plus:'<path d="M5 12h14M12 5v14"/>',
+    text:'<path d="M17 6.1H3"/><path d="M21 12.1H3"/><path d="M15.1 18H3"/>',
+    quiz:'<path d="m3 17 2 2 4-4"/><path d="m3 7 2 2 4-4"/><path d="M13 6h8M13 12h8M13 18h8"/>',
+    flashcards:'<rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+    refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/>',
+    doc:'<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M10 9H8M16 13H8M16 17H8"/>',
+    slides:'<path d="M2 3h20"/><path d="M21 3v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V3"/><path d="m7 21 5-5 5 5"/>',
+    image:'<rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',
+    video:'<path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/>',
+    library:'<rect width="8" height="18" x="3" y="3" rx="1"/><path d="M7 3v18"/><path d="M20.4 18.9c.2.5-.1 1.1-.6 1.3l-1.9.7c-.5.2-1.1-.1-1.3-.6L11.1 5.1c-.2-.5.1-1.1.6-1.3l1.9-.7c.5-.2 1.1.1 1.3.6Z"/>',
+    undo:'<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>'
+  };
+  function sv(k, w){ return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="' + (w || 2) + '" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + IC[k] + '</svg>'; }
+  document.querySelectorAll('[data-i]').forEach(function(el){ el.innerHTML = sv(el.dataset.i); el.removeAttribute('data-i'); });
+
+  var toastT;
+  function toast(msg, act, fn){
+    $('toastText').textContent = msg;
+    var b = $('toastAct'); b.hidden = !act; b.textContent = act || ''; b.onclick = function(){ $('toast').classList.remove('show'); fn && fn(); };
+    $('toast').classList.add('show'); clearTimeout(toastT); toastT = setTimeout(function(){ $('toast').classList.remove('show'); }, act ? 7000 : 3500);
+  }
+
+  /* Shared stores (course-builder.html). ponytail: library fallback mirrors course-builder LIB_SEED ids + urls
+     so media renders before the builder has seeded the real store. */
+  var LIB = readJSON('upspace.cd.library.v1') || [
+    { id:'a-vid-flower', name:'Flower timelapse.mp4', kind:'video', url:'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4' },
+    { id:'a-aud-sample', name:'Sound sample.mp3', kind:'audio', url:'https://interactive-examples.mdn.mozilla.net/media/cc0-audio/t-rex-roar.mp3' },
+    { id:'a-img-team', name:'Team workshop.jpg', kind:'image', url:'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?auto=format&fit=crop&w=1400&q=70' },
+    { id:'a-img-desk', name:'Desk setup.jpg', kind:'image', url:'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=1400&q=70' },
+    { id:'a-img-chart', name:'Dashboard chart.jpg', kind:'image', url:'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=1400&q=70' },
+    { id:'a-doc-guide', name:'Onboarding guide.pdf', kind:'document', url:null }
+  ];
+  var ASM_KEY = 'upspace.cd.assessments.v1';
+  function asset(id){ return LIB.find(function(a){ return a.id === id; }); }
+
+  var params = new URLSearchParams(location.search), ps = $('previewState');
+  ps.value = params.get('state') || 'normal';
+  var course = load().find(function(c){ return c.id === params.get('id'); });
+  if (!course) location.replace('my-courses.html');
+  var editable = !!course && (course.status === 'draft' || course.status === 'changes');
+  var cur = null, scope = 'course'; // cur = lesson id; scope = 'course' | 'm:<id>' | 'l:<id>'
+
+  function persist(){ course.updated = new Date().toISOString(); var l = load(), i = l.findIndex(function(c){ return c.id === course.id; }); if (i > -1){ l[i] = course; save(l); } }
+  function allLessons(){ var out = []; course.modules.forEach(function(m, mi){ m.lessons.forEach(function(l, li){ out.push({ m:m, l:l, mi:mi, li:li }); }); }); return out; }
+  function findL(id){ return allLessons().find(function(x){ return x.l.id === id; }); }
+  function lessonLabel(id){ var x = findL(id); return x ? 'Lesson ' + (x.mi + 1) + '.' + (x.li + 1) : 'Lesson'; }
+
+  /* ---------------- Header ---------------- */
+  var STATUS = { draft:['Draft', 'gray'], changes:['Changes requested', 'warning'], review:['In review', 'brand'], approved:['Approved', 'brand'], published:['Published', 'success'], archived:['Archived', 'gray'] };
+  function renderBar(){
+    $('cTitle').textContent = course.title;
+    var st = STATUS[course.status] || STATUS.draft;
+    $('cStatus').className = 'badge ' + st[1]; $('cStatus').innerHTML = '<i></i>' + st[0];
+    $('cAi').hidden = !allLessons().some(function(x){ return x.l.ai; });
+    $('previewLink').href = 'course-preview.html?id=' + encodeURIComponent(course.id) + (cur ? '&lesson=' + encodeURIComponent(cur) : '');
+    $('submitLabel').textContent = ps.value === 'noapproval' ? 'Publish' : 'Send for approval';
+    $('draftBtn').disabled = $('submitBtn').disabled = !editable;
+  }
+
+  /* ---------------- Outline ---------------- */
+  function renderTree(){
+    $('navMeta').textContent = plural(course.modules.length, 'module') + ' · ' + plural(allLessons().length, 'lesson');
+    $('tree').innerHTML = course.modules.map(function(m, mi){
+      return '<div class="nmod' + (scope === 'm:' + m.id ? ' scoped' : '') + '"><button class="nmod-h" type="button" data-mod="' + m.id + '" title="Change this module with AI"><span class="num">' + (mi + 1) + '</span><span>' + esc(m.title) + '</span></button>' +
+        '<ul class="nles">' + m.lessons.map(function(l){
+          return '<li><button type="button" data-les="' + l.id + '" aria-current="' + (l.id === cur) + '"><span>' + esc(l.title) + '</span>' +
+            (l.aiChanged ? '<span class="changed" title="Changed with AI"></span><span class="sr">Changed with AI</span>' : '') +
+            (l.ai ? '<span class="badge sm brand" title="AI-generated">' + sv('spark') + 'AI</span>' : '') + '</button></li>';
+        }).join('') + '</ul></div>';
+    }).join('');
+  }
+  $('tree').addEventListener('click', function(e){
+    var b = e.target.closest('[data-les]'); if (b) return openLesson(b.dataset.les, true);
+    var m = e.target.closest('[data-mod]');
+    if (m){ var mod = course.modules.find(function(x){ return x.id === m.dataset.mod; }); if (mod.lessons[0]) openLesson(mod.lessons[0].id, false); setScope('m:' + mod.id); if (editable) $('chatInput').focus(); }
+  });
+
+  /* ---------------- Lesson (read-only render of builder v2 blocks) ---------------- */
+  function builderHref(lessonId){ return 'course-builder.html?id=' + encodeURIComponent(course.id) + '&lesson=' + encodeURIComponent(lessonId); }
+  function renderBlock(b){
+    var d = b.data || {}, k = (b.meta && b.meta.kind) || b.type, a, body = '';
+    switch (b.type){
+      case 'text':
+        if (k === 'flashcards' && d.cards){ body = '<div class="prose"><p><strong>Flash cards</strong> <span style="font-size:12px;color:var(--text-tertiary)">· select a card to flip it</span></p></div><div class="fc-grid">' + d.cards.map(function(c){ return '<button class="fc" type="button" aria-label="Flash card: ' + esc(c[0]) + '. Select to flip."><span class="fc-in"><span class="fc-f">' + esc(c[0]) + '<small>Front</small></span><span class="fc-b">' + esc(c[1]) + '<small>Back</small></span></span></button>'; }).join('') + '</div>'; break; }
+        body = '<div class="prose">' + (d.html || '') + '</div>'; break;
+      case 'heading': body = '<div class="prose"><h3>' + esc(d.text) + '</h3></div>'; break;
+      case 'callout': body = '<div class="callout prose">' + (d.title ? '<b>' + esc(d.title) + '</b>' : '') + (d.html || '') + '</div>'; break;
+      case 'quote': body = '<div class="quote prose"><small>' + esc({ example:'Example', takeaway:'Key takeaway', case:'Case study' }[d.variant] || 'Quote') + '</small>' + (d.html || '') + '</div>'; break;
+      case 'image': a = asset(d.assetId); body = '<figure>' + (a && a.url ? '<img src="' + esc(a.url) + '" alt="' + esc(d.alt || '') + '" loading="lazy">' : '<div class="media-ph">' + sv('image') + 'Image</div>') + (d.caption ? '<figcaption>' + esc(d.caption) + '</figcaption>' : '') + '</figure>'; break;
+      case 'video': a = asset(d.assetId); body = '<figure>' + (a && a.url ? '<video controls preload="metadata" src="' + esc(a.url) + '"></video>' : '<div class="media-ph">' + sv('video') + 'Video</div>') + (d.caption ? '<figcaption>' + esc(d.caption) + '</figcaption>' : '') + '</figure>'; break;
+      case 'audio': a = asset(d.assetId); body = '<div class="aud"><b>' + esc(d.title || 'Audio') + '</b>' + (a && a.url ? '<audio controls preload="none" src="' + esc(a.url) + '"></audio>' : '') + '</div>'; break;
+      case 'document': a = asset(d.assetId);
+        body = a ? '<div class="card"><span class="ic">' + sv(k === 'slides' ? 'slides' : 'doc') + '</span><div><b>' + esc(d.title || a.name) + '</b><small>' + esc(a.name) + '</small></div></div>'
+                 : '<div class="card empty"><span class="ic">' + sv(k === 'slides' ? 'slides' : 'doc') + '</span><div><b>' + esc(d.title || 'Document') + '</b><small>' + (k === 'slides' ? 'Slides are still being prepared. Add a PPTX by hand if you need it now.' : 'Needs a file from your Content Library.') + '</small></div><a class="btn btn-secondary sm" href="' + builderHref(cur) + '">Add file</a></div>';
+        break;
+      case 'assessment':
+        var as = (readJSON(ASM_KEY) || []).find(function(x){ return x.id === d.assessmentId; });
+        body = '<div class="card"><span class="ic">' + sv('quiz') + '</span><div><b>' + esc(as ? as.title : 'Quiz') + '</b><small>' + (as ? plural(as.questions.length, 'question') + ' · pass mark ' + as.passMark + '%' : 'Set up the questions in the Course Builder') + '</small></div><a class="btn btn-secondary sm" href="' + builderHref(cur) + '">' + (as ? 'Review' : 'Set up') + '</a></div>';
+        break;
+    }
+    var m = b.meta || {}, src = m.source === 'lib' ? '<span class="badge sm gray">' + sv('library') + 'From library</span>' : m.ai ? '<span class="badge sm brand">' + sv('spark') + (m.aiRevised ? 'AI-edited' : 'AI-generated') + '</span>' : '';
+    return '<div class="blk" data-b="' + b.id + '">' + (src ? '<span class="blk-tag">' + src + '</span>' : '') + body + '</div>';
+  }
+  function openLesson(id, scopeIt, flash){
+    var x = findL(id); if (!x) return;
+    cur = id;
+    var l = x.l, blocks = l.blocks || [], aiCount = blocks.filter(function(b){ return b.meta && b.meta.ai; }).length;
+    $('lesson').innerHTML = (!editable ? '<div class="alert info">' + sv('info') + '<div><b>This course is ' + esc((STATUS[course.status] || STATUS.draft)[0].toLowerCase()) + '</b>You can look through it. Changes are locked until it’s back in draft.</div></div>' : '') +
+      '<span class="crumb">Module ' + (x.mi + 1) + ' · ' + esc(x.m.title) + ' · Lesson ' + (x.li + 1) + '</span><h2>' + esc(l.title) + '</h2>' +
+      '<div class="lmeta">' + (l.ai ? '<span class="badge sm brand">' + sv('spark') + 'AI-generated</span>' : '') + (l.aiChanged ? '<span class="badge sm brand">Changed with AI</span>' : '') + '<span>' + plural(blocks.length, 'block') + (aiCount ? ' · ' + aiCount + ' by AI' : '') + '</span></div>' +
+      '<div class="lacts"><button class="btn btn-secondary sm" type="button" id="askLesson"' + (editable ? '' : ' disabled') + '>' + sv('spark') + 'Change with AI</button><a class="btn btn-secondary sm" href="' + builderHref(id) + '">' + sv('pencil') + 'Edit manually</a></div>' +
+      (blocks.length ? blocks.map(renderBlock).join('') : '<p style="color:var(--text-tertiary)">This lesson is empty.</p>');
+    $('askLesson').onclick = function(){ setScope('l:' + id); $('chatInput').focus(); };
+    if (scopeIt) setScope('l:' + id); else renderTree();
+    renderBar();
+    var firstFlash = null;
+    (flash || []).forEach(function(bid){ var el = document.querySelector('[data-b="' + bid + '"]'); if (el){ el.classList.add('flash'); firstFlash = firstFlash || el; } });
+    if (firstFlash) firstFlash.scrollIntoView({ block:'center', behavior:'smooth' }); else document.querySelector('.lesson').scrollTop = 0;
+    try { history.replaceState(null, '', '?id=' + encodeURIComponent(course.id) + '&lesson=' + encodeURIComponent(id) + (ps.value !== 'normal' ? '&state=' + ps.value : '')); } catch (e) {}
+  }
+  $('lesson').addEventListener('click', function(e){ var f = e.target.closest('.fc'); if (f) f.classList.toggle('flipped'); });
+
+  /* ---------------- Scope (Select) ---------------- */
+  function renderScope(){
+    $('scope').innerHTML = '<option value="course">Whole course</option>' + course.modules.map(function(m, mi){
+      return '<optgroup label="Module ' + (mi + 1) + '"><option value="m:' + m.id + '">Module ' + (mi + 1) + ': ' + esc(m.title) + '</option>' +
+        m.lessons.map(function(l, li){ return '<option value="l:' + l.id + '">Lesson ' + (mi + 1) + '.' + (li + 1) + ': ' + esc(l.title) + '</option>'; }).join('') + '</optgroup>';
+    }).join('');
+    $('scope').value = scope;
+  }
+  function scopeName(){
+    if (scope === 'course') return 'Whole course';
+    var id = scope.slice(2), mi = course.modules.findIndex(function(m){ return m.id === id; });
+    if (mi > -1) return 'Module ' + (mi + 1) + ': ' + course.modules[mi].title;
+    var x = findL(id); return x ? lessonLabel(id) + ': ' + x.l.title : 'Whole course';
+  }
+  function setScope(v){
+    scope = v; $('scope').value = v; renderTree();
+    $('chatInput').placeholder = scope === 'course' ? 'Describe a change to the whole course' : 'Describe a change to ' + (scope.charAt(0) === 'm' ? 'this module' : 'this lesson');
+  }
+  $('scope').addEventListener('change', function(){ setScope(this.value); if (scope.charAt(0) === 'l' && scope.slice(2) !== cur) openLesson(scope.slice(2), false); });
+  function scopeLessons(c){
+    if (scope === 'course') return [].concat.apply([], c.modules.map(function(m){ return m.lessons; }));
+    var id = scope.slice(2), m = c.modules.find(function(x){ return x.id === id; });
+    if (m) return m.lessons;
+    for (var i = 0; i < c.modules.length; i++){ var l = c.modules[i].lessons.find(function(x){ return x.id === id; }); if (l) return [l]; }
+    return [];
+  }
+
+  /* ---------------- AI edits ----------------
+     ponytail: local stand-ins for the AI editing service (AI-001-FR-04/05). Each builds a proposed copy of the
+     course + a change list; nothing touches the saved course until the author applies it. */
+  function firstSentences(html){
+    var d = document.createElement('div'), out = ''; d.innerHTML = html || '';
+    d.querySelectorAll('p').forEach(function(p, i){ if (i < 1){ out += '<p>' + esc((p.textContent.match(/[^.!?]+[.!?]/) || [p.textContent])[0].trim()) + '</p>'; } });
+    var ul = d.querySelector('ul,ol'); if (ul){ var tag = ul.tagName.toLowerCase(); out += '<' + tag + '>' + Array.prototype.slice.call(ul.children, 0, 2).map(function(li){ return '<li>' + esc(li.textContent) + '</li>'; }).join('') + '</' + tag + '>'; }
+    return out || html;
+  }
+  function nb(type, data, kind){ return { id:uid('b'), type:type, data:data, meta:{ ai:true, edited:false, kind:kind || type, source:'gen', aiRevised:true } }; }
+  function isText(b){ return b.type === 'text' && !(b.meta && b.meta.kind === 'flashcards'); }
+  function intent(q){
+    var s = q.toLowerCase();
+    if (/short|concise|trim|cut|brief/.test(s)) return 'shorter';
+    if (/example|case|scenario/.test(s)) return 'examples';
+    if (/simpl|plain|easier|clearer/.test(s)) return 'simplify';
+    if (/flash/.test(s)) return 'flashcards';
+    if (/quiz|question|test/.test(s)) return 'quiz';
+    if (/^(regenerate|rewrite|redo|start over)/.test(s)) return 'regen';
+    return 'focus';
+  }
+  function propose(q){
+    var c = clone(course), kind = intent(q), changes = [], changed = [], sample = null;
+    var focus = q.replace(/^(please\s+)?(focus (more )?on|cover|talk (more )?about|add more about|more about)\s+/i, '').replace(/[.!]$/, '').toLowerCase();
+    function mark(b){ b.meta = b.meta || {}; b.meta.ai = true; b.meta.aiRevised = true; changed.push(b.id); }
+    scopeLessons(c).forEach(function(l){
+      var blocks = l.blocks || (l.blocks = []), hit = 0, w0 = 0, w1 = 0, n0 = changed.length;
+      switch (kind){
+        case 'shorter':
+          blocks.forEach(function(b){ if (!isText(b)) return; var h = firstSentences(b.data.html), a = words(b.data.html), z = words(h); if (z < a){ if (!sample) sample = [b.data.html, h]; w0 += a; w1 += z; b.data.html = h; mark(b); hit++; } });
+          if (hit) changes.push([lessonLabel(l.id), 'Shortened ' + plural(hit, 'text block'), w0 + ' → ' + w1 + ' words']); break;
+        case 'simplify':
+          blocks.forEach(function(b){ if (!isText(b)) return; var h0 = b.data.html, h = h0.replace(/in day-to-day work/g, 'every day').replace(/\bexplains\b/g, 'shows').replace(/core part of/g, 'big part of').replace(/real situations/g, 'real work'); if (h !== h0){ if (!sample) sample = [h0, h]; b.data.html = h; mark(b); hit++; } });
+          if (hit) changes.push([lessonLabel(l.id), 'Rewrote ' + plural(hit, 'text block') + ' in plain language', '']); break;
+        case 'examples':
+          var at = blocks.findIndex(isText), ex = nb('quote', { variant:'example', html:'<p>A new starter is asked to share a customer file through a personal messaging app to save time. Using what this lesson covers, they check the official guidance first and use the approved tool instead.</p>', attribution:'' });
+          blocks.splice(at < 0 ? blocks.length : at + 1, 0, ex); changed.push(ex.id); if (!sample) sample = ['', ex.data.html];
+          changes.push([lessonLabel(l.id), 'Added a worked example', '']); break;
+        case 'flashcards':
+          if (blocks.some(function(b){ return b.meta && b.meta.kind === 'flashcards'; })) break;
+          var t = l.title.toLowerCase(), cards = [['What does “' + t + '” cover?', 'The key idea of this lesson in one line.'], ['Why does it matter?', 'It shapes decisions you make every week.'], ['What should you avoid?', 'Guessing instead of checking the source.']];
+          var fb = nb('text', { html:'<p><strong>Flash cards</strong></p><ul>' + cards.map(function(x){ return '<li><strong>' + esc(x[0]) + '</strong> ' + esc(x[1]) + '</li>'; }).join('') + '</ul>', cards:cards }, 'flashcards');
+          blocks.push(fb); changed.push(fb.id); changes.push([lessonLabel(l.id), 'Added 3 flash cards', '']); break;
+        case 'quiz':
+          if (blocks.some(function(b){ return b.type === 'assessment'; })) break;
+          var qb = nb('assessment', { assessmentId:null, pending:'Quiz: ' + l.title }, 'quiz'); blocks.push(qb); changed.push(qb.id);
+          changes.push([lessonLabel(l.id), 'Added a 2-question quiz', '']); break;
+        case 'regen': case 'focus':
+          var tb = blocks.find(isText); if (!tb) break;
+          var lt = l.title.toLowerCase(), nh = kind === 'focus'
+            ? '<p>This lesson now puts the emphasis on ' + esc(focus) + ': how it connects to ' + esc(lt) + ' and what to do in practice.</p><ul><li>What ' + esc(focus) + ' means here.</li><li>A realistic situation where it matters.</li><li>The first step to take.</li></ul>'
+            : '<p>' + esc(l.title) + ' in a nutshell: what it is, when it applies and how to act on it. Learners finish with one action they can take this week.</p><ul><li>The idea in one sentence.</li><li>A situation where it applies.</li><li>One thing to try this week.</li></ul>';
+          if (!sample) sample = [tb.data.html, nh]; tb.data.html = nh; mark(tb);
+          changes.push([lessonLabel(l.id), kind === 'focus' ? 'Refocused the main text on “' + focus + '”' : 'Regenerated the main text', '']); break;
+      }
+      if (changed.length > n0) l.aiChanged = true;
+    });
+    return { course:c, changes:changes, changed:changed, sample:sample, kind:kind };
+  }
+
+  var thread = $('thread'), busy = false;
+  function push(cls, html){ $('edEmpty').hidden = true; var d = document.createElement('div'); d.className = cls; d.innerHTML = html; thread.appendChild(d); thread.scrollTop = thread.scrollHeight; return d; }
+  function you(html){ return push('you', html); }
+  function ai(html){ return push('ai', '<span class="ai-mark">' + sv('spark') + '</span><div class="ai-body">' + html + '</div>'); }
+  function lock(on){
+    busy = on;
+    $('quick').querySelectorAll('button').forEach(function(b){ b.disabled = on || !editable; });
+    $('chatInput').disabled = on || !editable; $('scope').disabled = !editable;
+    $('chatSend').disabled = on || !editable || !$('chatInput').value.trim();
+  }
+
+  function ask(q){
+    if (busy || !editable) return;
+    var where = scopeName();
+    you('<small>' + esc(where) + '</small>' + esc(q));
+    var w = ai('<span class="writing" aria-label="AI is writing"><i></i><i></i><i></i></span>'); lock(true);
+    setTimeout(function(){
+      w.remove(); lock(false);
+      if (ps.value === 'blocked') return ai('<div class="alert warning" role="alert">' + sv('warn') + '<div><b>I can’t make that change</b>It asks for content your organization’s AI policy doesn’t allow.</div></div>');
+      var p = propose(q);
+      if (!p.changes.length) return ai('<p>Nothing to change there. ' + ({ quiz:'It already has a quiz.', flashcards:'It already has flash cards.', shorter:'The text is already as short as it can be.' }[p.kind] || 'Try another scope, or describe the change in more detail.') + '</p>');
+      card(p, where);
+    }, 1200);
+  }
+  function card(p, where){
+    var n = p.changes.length, shown = p.changes.slice(0, 4);
+    var node = ai('<p>Here’s what I’d change. Nothing is applied until you say so.</p><div class="prop"><div class="prop-h"><span class="badge sm brand">' + sv('spark') + 'Proposed change</span><span>' + esc(where) + '</span></div>' +
+      '<ul>' + shown.map(function(c){ return '<li>' + sv('check') + '<span><b>' + esc(c[0]) + '</b> ' + esc(c[1]) + (c[2] ? ' <small>· ' + esc(c[2]) + '</small>' : '') + '</span></li>'; }).join('') + (n > 4 ? '<li>' + sv('plus') + '<span>' + plural(n - 4, 'more lesson') + '</span></li>' : '') + '</ul>' +
+      (p.sample ? '<div class="diff"><div><b>Before</b>' + (p.sample[0] ? esc(textOf(p.sample[0])) : 'Nothing here') + '</div><div><b>After</b>' + esc(textOf(p.sample[1])) + '</div></div>' : '') +
+      '<div class="prop-foot"><span class="st"></span><button class="btn btn-secondary sm" type="button" data-x>Discard</button><button class="btn btn-primary sm" type="button" data-ok>Apply</button></div></div>');
+    var prop = node.querySelector('.prop'), foot = prop.querySelector('.prop-foot'), snapshot = null;
+    function settle(applied){
+      prop.classList.add('done'); prop.classList.toggle('applied', applied);
+      foot.innerHTML = '<span class="st">' + sv(applied ? 'check' : 'x') + (applied ? 'Applied' : 'Discarded') + '</span>' + (applied ? '<button class="btn btn-secondary sm" type="button" data-undo>' + sv('undo') + 'Undo</button>' : '');
+      var u = foot.querySelector('[data-undo]');
+      if (u) u.onclick = function(){ course = snapshot; persist(); renderScope(); openLesson(findL(cur) ? cur : allLessons()[0].l.id, false); prop.classList.remove('applied'); foot.innerHTML = '<span class="st">' + sv('undo') + 'Undone</span>'; toast('Change undone'); };
+    }
+    foot.querySelector('[data-x]').onclick = function(){ settle(false); };
+    foot.querySelector('[data-ok]').onclick = function(){
+      snapshot = clone(course);
+      materializeQuizzes(p.course);
+      course = p.course; persist(); renderScope();
+      var inCur = (findL(cur).l.blocks || []).some(function(b){ return p.changed.indexOf(b.id) > -1; });
+      var hit = inCur ? null : allLessons().find(function(x){ return (x.l.blocks || []).some(function(b){ return p.changed.indexOf(b.id) > -1; }); });
+      openLesson(hit ? hit.l.id : cur, false, p.changed);
+      settle(true); toast(plural(n, 'lesson') + ' updated');
+    };
+  }
+  // AI-added quizzes become real draft assessments only when applied (shared store with course-builder.html).
+  function materializeQuizzes(c){
+    var asms = readJSON(ASM_KEY);
+    c.modules.forEach(function(m){ m.lessons.forEach(function(l){ (l.blocks || []).forEach(function(b){
+      if (b.type !== 'assessment' || !b.data.pending) return;
+      if (Array.isArray(asms)){ // ponytail: only append to an existing store so the builder's own seed isn't replaced
+        var id = 'as-' + uid('');
+        asms.push({ id:id, title:b.data.pending, type:'quiz', status:'draft', passMark:70, timeLimit:null, attempts:2, instructions:'', submission:'text', courseId:c.id, questions:[
+          { id:uid('q'), kind:'mcq', prompt:'What is the main point of “' + l.title + '”?', options:[{ id:uid('o'), text:'Knowing where the official guidance is and using it', correct:true }, { id:uid('o'), text:'Memorising every rule on day one', correct:false }, { id:uid('o'), text:'Doing what colleagues usually do', correct:false }], answer:'', points:1, ai:true, fromBank:false },
+          { id:uid('q'), kind:'tf', prompt:'If you’re unsure, check the official source before acting.', options:[{ id:uid('o'), text:'True', correct:true }, { id:uid('o'), text:'False', correct:false }], answer:'', points:1, ai:true, fromBank:false } ] });
+        b.data.assessmentId = id;
+      }
+      delete b.data.pending;
+    }); }); });
+    if (Array.isArray(asms)) writeJSON(ASM_KEY, asms);
+  }
+
+  $('quick').addEventListener('click', function(e){ var b = e.target.closest('[data-q]'); if (b) ask(b.dataset.q); });
+  $('chatInput').addEventListener('input', function(){ $('chatSend').disabled = busy || !this.value.trim(); this.style.height = 'auto'; this.style.height = Math.min(this.scrollHeight, 140) + 'px'; });
+  $('chatInput').addEventListener('keydown', function(e){ if (e.key === 'Enter' && !e.shiftKey && !e.isComposing){ e.preventDefault(); $('chatForm').requestSubmit(); } });
+  $('chatForm').addEventListener('submit', function(e){ e.preventDefault(); var v = $('chatInput').value.trim(); if (!v) return; $('chatInput').value = ''; $('chatInput').style.height = ''; $('chatSend').disabled = true; ask(v); });
+
+  /* ---------------- Save / submit ---------------- */
+  var lastFocus = null;
+  function openModal(html){ lastFocus = document.activeElement; $('modalBody').innerHTML = html; $('modal').classList.add('open'); var f = $('modalBody').querySelector('.modal-foot .btn-primary'); f && f.focus(); }
+  function closeModal(){ $('modal').classList.remove('open'); lastFocus && lastFocus.focus && lastFocus.focus(); }
+  $('modal').addEventListener('click', function(e){ if (e.target === this || e.target.closest('[data-close]')) closeModal(); });
+  document.addEventListener('keydown', function(e){ if (e.key === 'Escape' && $('modal').classList.contains('open')) closeModal(); });
+  $('draftBtn').onclick = function(){ persist(); toast('Saved as draft', 'Go to My Courses', function(){ location.href = 'my-courses.html'; }); };
+  $('submitBtn').onclick = function(){
+    var approval = ps.value !== 'noapproval', label = approval ? 'Send for approval' : 'Publish';
+    var pending = allLessons().reduce(function(s, x){ return s + (x.l.blocks || []).filter(function(b){ return (b.type === 'document' && !b.data.assetId) || (b.type === 'assessment' && !b.data.assessmentId); }).length; }, 0);
+    openModal('<h3 id="modalTitle">' + label + '?</h3><p>' + (approval ? 'Your organization’s approvers review “' + esc(course.title) + '” before learners can see it. You can’t edit it while it’s in review.' : 'No approval workflow is set up for your team, so “' + esc(course.title) + '” goes live for assigned learners.') + '</p>' +
+      (pending ? '<div class="alert warning" style="margin-top:12px">' + sv('warn') + '<div>' + plural(pending, 'block') + ' still need a file or questions. Learners will see them as empty.</div></div>' : '') +
+      '<div class="modal-foot"><button class="btn btn-secondary" type="button" data-close>Cancel</button><button class="btn btn-primary" type="button" id="finGo">' + label + '</button></div>');
+    $('finGo').onclick = function(){
+      if (approval){ course.status = 'review'; course.approval = { step:1, of:2, approver:'Priya Shah' }; } else course.status = 'published';
+      persist(); closeModal(); toast(approval ? 'Sent for approval' : 'Published');
+      setTimeout(function(){ location.href = 'my-courses.html'; }, 1200);
+    };
+  };
+  ps.addEventListener('change', renderBar);
+
+  /* ---------------- Init ---------------- */
+  if (course){
+    var all = allLessons(), startL = params.get('lesson') && findL(params.get('lesson')) ? params.get('lesson') : (all[0] && all[0].l.id);
+    renderScope(); renderBar(); lock(false);
+    if (startL) openLesson(startL, true);
+    else { renderTree(); $('lesson').innerHTML = '<p>This course has no lessons yet.</p>'; }
+  }
+</script>
+
+<!-- DS Select menu (UpSpace library: Select / _Select menu / _Select menu item). Enhances every native <select> on the page:
+     opens a DS-styled listbox instead of the OS menu and writes the choice back to the <select> (fires input + change),
+     so existing page logic, styling and form values keep working. -->
+<style>
+  .ds-select-menu{ position:fixed; z-index:10000; box-sizing:border-box; max-height:320px; overflow-y:auto; padding:4px 0; margin:0; list-style:none;
+    background:#fff; border:1px solid #e5e5e5; border-radius:8px; box-shadow:0 12px 16px -4px rgba(23,23,23,.08), 0 4px 6px -2px rgba(23,23,23,.03);
+    font-family:"DM Sans", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  .ds-select-menu[hidden]{ display:none; }
+  .ds-select-search{ position:sticky; top:-4px; margin:-4px 0 4px; padding:8px; background:#fff; border-bottom:1px solid #f5f5f5; }
+  .ds-select-search input{ box-sizing:border-box; width:100%; height:36px; padding:0 10px; border:1px solid #d4d4d4; border-radius:8px; font:inherit; font-size:14px; color:#171717; outline:none; }
+  .ds-select-search input:focus{ border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .ds-select-group{ padding:8px 14px 4px; font-size:12px; font-weight:500; color:#737373; }
+  .ds-select-opt{ display:flex; align-items:center; gap:8px; margin:1px 6px; padding:8px; border-radius:4px; cursor:pointer;
+    font-size:inherit; line-height:1.45; font-weight:500; color:#171717; white-space:nowrap; }
+  .ds-select-opt span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .ds-select-opt svg{ width:1.15em; height:1.15em; flex-shrink:0; visibility:hidden; }
+  .ds-select-opt[aria-selected="true"] svg{ visibility:visible; }
+  .ds-select-opt.is-active{ background:#fafafa; }
+  .ds-select-opt[aria-disabled="true"]{ color:#a3a3a3; cursor:not-allowed; }
+  .ds-select-empty{ padding:10px 14px; font-size:14px; color:#737373; }
+  /* DS Select value weight; zero specificity, so only selects that would otherwise inherit a heading weight pick it up */
+  :where(select){ font-weight:500; }
+  select.ds-select-open{ border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.15) !important; }
+  select.ds-select-native{ -webkit-appearance:none !important; appearance:none !important; padding-right:36px !important; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23737373' stroke-width='1.67' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat:no-repeat !important; background-position:right 12px center !important; background-size:16px 16px !important; }
+</style>
+<script>
+(function(){
+  if (window.__dsSelect) return; window.__dsSelect = true;
+  // ponytail: touch devices keep the native picker (better on mobile); upgrade with a bottom sheet if the design calls for one.
+  var CHECK = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.67 5 7.5 14.17 3.33 10" stroke="#4f46e5" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var menu, sel, opts = [], active = -1, typed = '', typedAt = 0, uid = 0;
+
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  function eligible(s){ return !coarse && s && s.tagName === 'SELECT' && !s.multiple && !(s.size > 1) && !s.disabled; }
+  function build(filter){
+    menu.innerHTML = ''; opts = [];
+    var q = (filter || '').trim().toLowerCase(), many = sel.options.length > 10;
+    if (many) {
+      var box = document.createElement('div'); box.className = 'ds-select-search';
+      box.innerHTML = '<input type="text" placeholder="Search" aria-label="Search options">';
+      menu.appendChild(box);
+      var inp = box.firstChild; inp.value = filter || '';
+      inp.addEventListener('input', function(){ build(inp.value); var i = menu.querySelector('input'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+      inp.addEventListener('keydown', onKey);
+    }
+    var lastGroup = null;
+    Array.prototype.forEach.call(sel.options, function(o, i){
+      if (o.hidden || (q && o.text.toLowerCase().indexOf(q) < 0)) return;
+      var g = o.parentNode.tagName === 'OPTGROUP' ? o.parentNode : null;
+      if (g && g !== lastGroup) { var h = document.createElement('li'); h.className = 'ds-select-group'; h.setAttribute('role', 'presentation'); h.textContent = g.label; menu.appendChild(h); }
+      lastGroup = g;
+      var li = document.createElement('li');
+      li.className = 'ds-select-opt'; li.id = menu.id + '-o' + i; li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', i === sel.selectedIndex ? 'true' : 'false');
+      if (o.disabled || (g && g.disabled)) li.setAttribute('aria-disabled', 'true');
+      li.innerHTML = '<span></span>' + CHECK; li.firstChild.textContent = o.text; li.dataset.index = i;
+      menu.appendChild(li); opts.push(li);
+    });
+    if (!opts.length) { var e = document.createElement('li'); e.className = 'ds-select-empty'; e.textContent = 'No matches'; menu.appendChild(e); }
+    var cur = opts.findIndex(function(li){ return +li.dataset.index === sel.selectedIndex; });
+    setActive(cur >= 0 ? cur : 0, true);
+  }
+  function place(){
+    var r = sel.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    menu.style.minWidth = Math.max(r.width, 160) + 'px'; menu.style.maxWidth = Math.max(r.width, 320) + 'px';
+    var h = Math.min(menu.scrollHeight, 320), below = vh - r.bottom - 8, up = below < h && r.top > below;
+    menu.style.top = (up ? Math.max(8, r.top - 4 - h) : r.bottom + 4) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, vw - menu.offsetWidth - 8)) + 'px';
+  }
+  function setActive(i, scroll){
+    if (active >= 0 && opts[active]) opts[active].classList.remove('is-active');
+    active = Math.max(0, Math.min(i, opts.length - 1));
+    var li = opts[active]; if (!li) return;
+    li.classList.add('is-active'); sel.setAttribute('aria-activedescendant', li.id);
+    if (scroll) li.scrollIntoView({ block: 'nearest' });
+  }
+  function move(d){ for (var i = active + d; i >= 0 && i < opts.length; i += d) if (opts[i].getAttribute('aria-disabled') !== 'true') return setActive(i, true); }
+  function open(s){
+    close(); sel = s;
+    if (!menu) {
+      menu = document.createElement('ul'); menu.className = 'ds-select-menu'; menu.setAttribute('role', 'listbox'); menu.hidden = true;
+      menu.addEventListener('mousedown', function(e){ e.stopPropagation(); if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+      menu.addEventListener('click', function(e){ e.stopPropagation(); var li = e.target.closest('.ds-select-opt'); if (li && li.getAttribute('aria-disabled') !== 'true') choose(+li.dataset.index); });
+      menu.addEventListener('mousemove', function(e){ var li = e.target.closest('.ds-select-opt'); if (li) setActive(opts.indexOf(li)); });
+      document.body.appendChild(menu);
+    }
+    menu.id = 'ds-select-menu-' + (++uid);
+    var label = s.getAttribute('aria-label') || (s.labels && s.labels[0] && s.labels[0].textContent.trim()) || s.name || 'Options';
+    menu.setAttribute('aria-label', label);
+    // menu text follows its trigger so the open list never looks bigger than the field (DS 14 px floor for legibility)
+    menu.style.fontSize = Math.max(14, parseFloat(getComputedStyle(s).fontSize) || 14) + 'px';
+    build(''); menu.hidden = false; place();
+    s.classList.add('ds-select-open'); s.setAttribute('aria-expanded', 'true'); s.setAttribute('aria-controls', menu.id);
+    var search = menu.querySelector('.ds-select-search input'); if (search) search.focus();
+  }
+  function close(){
+    if (!sel) return;
+    sel.classList.remove('ds-select-open'); sel.setAttribute('aria-expanded', 'false'); sel.removeAttribute('aria-activedescendant');
+    if (menu) menu.hidden = true; var s = sel; sel = null; active = -1; return s;
+  }
+  function choose(i){
+    var s = sel, changed = s.selectedIndex !== i;
+    close(); s.focus();
+    if (changed) { s.selectedIndex = i; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+  function onKey(e){
+    if (!sel) return;
+    var k = e.key;
+    if (k === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (k === 'ArrowUp') { e.preventDefault(); move(-1); }
+    else if (k === 'Home') { e.preventDefault(); setActive(0, true); }
+    else if (k === 'End') { e.preventDefault(); setActive(opts.length - 1, true); }
+    else if (k === 'Enter' || (k === ' ' && e.target.tagName !== 'INPUT')) { e.preventDefault(); if (opts[active] && opts[active].getAttribute('aria-disabled') !== 'true') choose(+opts[active].dataset.index); }
+    else if (k === 'Escape') { e.preventDefault(); var s = close(); s && s.focus(); }
+    else if (k === 'Tab') { close(); }
+    else if (k.length === 1 && e.target.tagName !== 'INPUT') {
+      var now = Date.now(); typed = (now - typedAt > 700 ? '' : typed) + k.toLowerCase(); typedAt = now;
+      var hit = opts.findIndex(function(li){ return li.textContent.trim().toLowerCase().indexOf(typed) === 0; });
+      if (hit >= 0) setActive(hit, true);
+    }
+  }
+  document.addEventListener('mousedown', function(e){
+    var s = e.target.closest && e.target.closest('select');
+    if (eligible(s) && e.button === 0) { e.preventDefault(); s.focus(); if (sel === s) close(); else open(s); return; }
+    if (sel && !(menu && menu.contains(e.target))) close();
+  }, true);
+  document.addEventListener('keydown', function(e){
+    var s = e.target;
+    if (!sel && eligible(s) && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ' || (e.altKey && e.key === 'ArrowDown'))) { e.preventDefault(); open(s); return; }
+    if (sel && (s === sel || (menu && menu.contains(s)))) onKey(e);
+  }, true);
+  // swap the OS chevron for the DS one, only on selects the page hasn't already custom-styled
+  function skin(){ document.querySelectorAll('select:not(.ds-select-native)').forEach(function(s){
+    if (!s.multiple && !(s.size > 1) && getComputedStyle(s).appearance !== 'none') s.classList.add('ds-select-native'); }); }
+  // auto-width selects: make room for the longest option in the real (web) font, since the DS chevron needs 36px on the right
+  var ruler;
+  function fit(){ document.querySelectorAll('select.ds-select-native').forEach(function(s){
+    if (!s.offsetParent) return;
+    var w0 = s.offsetWidth, keep = s.style.width; s.style.width = 'auto'; var auto = s.offsetWidth === w0; s.style.width = keep;
+    if (!auto) return;
+    var c = getComputedStyle(s); if (!ruler) { ruler = document.createElement('span'); ruler.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;left:-9999px;top:0'; document.body.appendChild(ruler); }
+    ruler.style.font = c.font; ruler.style.letterSpacing = c.letterSpacing; var longest = 0;
+    Array.prototype.forEach.call(s.options, function(o){ ruler.textContent = o.text; longest = Math.max(longest, ruler.offsetWidth); });
+    var need = Math.ceil(longest + parseFloat(c.paddingLeft) + parseFloat(c.paddingRight) + parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth) + 20); // ponytail: +20 = Chrome's internal menulist text inset, invisible to the DOM
+    if (need > s.offsetWidth) s.style.minWidth = need + 'px'; }); }
+  function skinFit(){ skin(); fit(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', skinFit); else skinFit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  new MutationObserver(function(m){ if (m.every(function(r){ return menu && (r.target === menu || menu.contains(r.target)); })) return; clearTimeout(skin.t); skin.t = setTimeout(skinFit, 50); }).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener('resize', close);
+  document.addEventListener('scroll', function(e){ if (sel && !(menu && menu.contains(e.target))) place(); }, true);
+})();
+</script>
+</body>
+</html>

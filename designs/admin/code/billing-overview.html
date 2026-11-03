@@ -18,7 +18,7 @@
     --surface-raised: #f5f5f5;
     --surface-overlay: #e5e5e5;
     --border-default: #e5e5e5;
-    --border-subtle: #f0f0f0;
+    --border-subtle: #f5f5f5;
     --border-strong: #a3a3a3;
     --icon-muted: #a3a3a3;
     --icon-primary: #404040;
@@ -41,8 +41,8 @@
     --brand-subtle: #eef2ff;
     --brand-border: #c7d2fe;
 
-    --radius-sm: 4px;
-    --radius-md: 6px;
+    --radius-sm: 2px;
+    --radius-md: 4px;
     --radius-lg: 8px;
     --radius-xl: 12px;
     --radius-2xl: 16px;
@@ -92,10 +92,10 @@
     border-radius: var(--radius-lg); color: var(--text-secondary);
     transition: background-color .15s ease, color .15s ease;
   }
-  .nav-item span { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .nav-item span { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .nav-item svg { width: 19px; height: 19px; flex-shrink: 0; }
   .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
-  .nav-item.active { background: var(--info-subtle); color: var(--info); font-weight: 700; }
+  .nav-item.active { background: #eef2ff; color: #4f46e5; font-weight: 700; }
   .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
   .nav-item.danger:hover { background: var(--error-subtle); color: var(--error); }
 
@@ -106,11 +106,11 @@
     padding: 0 32px 0 20px; background: #ffffff; border-bottom: 1px solid var(--border-default); z-index: 10;
   }
   .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; overflow: hidden; }
-  .breadcrumb a { color: var(--text-tertiary); font-weight: 600; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 14px; min-width: 0; overflow: hidden; }
+  .breadcrumb a { color:var(--text-secondary); font-weight:500; }
   .breadcrumb a:hover { color: var(--text-primary); }
   .breadcrumb .breadcrumb-sep { color: var(--text-disabled); }
-  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight:500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .brand-link { display: flex; align-items: center; }
   .brand-logo { height: 20px; width: auto; color: var(--text-primary); transition: opacity .15s ease; flex-shrink: 0; }
   .brand-link:hover .brand-logo { opacity: .8; }
@@ -126,7 +126,7 @@
   .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--icon-muted); pointer-events: none; }
   .search-input-wrap input {
     width: 100%; height: 36px; padding: 0 12px 0 34px; border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default); background: var(--surface-raised); font-size: 13px; color: var(--text-primary); outline: none;
+    border: 1px solid #d4d4d4; background: var(--surface-raised); font-size: 14px; color: var(--text-primary); outline: none;
   }
   .search-input-wrap input::placeholder { color: var(--text-tertiary); }
   .search-input-wrap input:focus { border-color: var(--focus-ring); }
@@ -141,7 +141,7 @@
     overflow: hidden;
     background: linear-gradient(135deg, #4f46e5, #0ea5e9);
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -150,10 +150,10 @@
   .profile-dropdown {
     position: absolute; top: 44px; right: 0; width: 200px; background: #ffffff;
     border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 1000;
   }
   .profile-dropdown.show { display: block; }
-  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 4px; font-size: 14px; color: var(--text-primary); }
   .profile-dropdown a:hover { background: var(--surface-raised); }
   .profile-dropdown hr { border: none; border-top: 1px solid var(--border-subtle); margin: 6px 2px; }
   .profile-dropdown a.danger { color: var(--error); }
@@ -175,9 +175,9 @@
     margin-bottom: 24px;
   }
   .page-head h1 { margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; color:var(--text-primary); line-height:1.2; }
-  .page-head .sub { margin:0; font-size:14.5px; color:var(--text-secondary); }
+  .page-head .sub { margin:0; font-size:14px; color:var(--text-secondary); }
 
-  .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 600 12px var(--font); white-space: nowrap; flex-shrink: 0; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: 999px; font: 500 12px var(--font); white-space: nowrap; flex-shrink: 0; }
   .pill.up { background: var(--success-subtle); color: var(--success); }
   .pill.warn { background: var(--warning-subtle); color: var(--warning); }
   .pill.danger { background: var(--error-subtle); color: var(--error); }
@@ -205,7 +205,7 @@
   .suggestion-banner {
     display: flex; align-items: center; gap: 10px; padding: 12px 16px;
     background: var(--brand-subtle); border: 1px solid var(--brand-border);
-    border-radius: var(--radius-lg); font-size: 13px; color: var(--text-primary); margin-bottom: 20px;
+    border-radius: var(--radius-lg); font-size: 14px; color: var(--text-primary); margin-bottom: 20px;
   }
   .suggestion-banner svg { width: 18px; height: 18px; color: var(--action-primary); flex-shrink: 0; }
 
@@ -214,24 +214,24 @@
     background: #ffffff; border: 1px solid var(--border-default);
     border-radius: var(--radius-xl); padding: 24px; margin-bottom: 24px;
   }
-  .card-box-title { font-size: 17px; letter-spacing: -.2px; font-weight: 700; color: var(--text-primary); margin: 0; }
+  .card-box-title { font-size: 16px; letter-spacing: -.2px; font-weight: 700; color: var(--text-primary); margin: 0; }
 
   /* Billing hero — "what am I subscribed to" + "how much am I using", the page's focal point */
   .billing-hero { background: #ffffff; border: 1px solid var(--border-default); border-radius: var(--radius-2xl); padding: 32px; margin-bottom: 20px; }
   .hero-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
-  .hero-plan-name { display: flex; align-items: center; gap: 10px; font-size: 26px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
+  .hero-plan-name { display: flex; align-items: center; gap: 10px; font-size: 28px; font-weight: 800; letter-spacing: -0.5px; color: var(--text-primary); }
   .hero-plan-price { font-size: 14px; color: var(--text-secondary); margin-top: 8px; }
-  .hero-plan-renew { font-size: 13px; color: var(--text-tertiary); margin-top: 3px; }
+  .hero-plan-renew { font-size: 14px; color: var(--text-tertiary); margin-top: 3px; }
   .hero-actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .hero-divider { border-top: 1px solid var(--border-subtle); margin: 28px 0 22px; }
   .usage-row { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 8px; }
-  .usage-row span:first-child { font-size: 13px; font-weight: 700; color: var(--text-primary); }
-  .usage-count { font-size: 13px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
+  .usage-row span:first-child { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+  .usage-count { font-size: 14px; font-weight: 600; color: var(--text-primary); font-variant-numeric: tabular-nums; }
   .usage-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; flex-wrap: wrap; gap: 8px; }
-  .usage-foot > span:first-child { font-size: 13px; color: var(--text-tertiary); }
+  .usage-foot > span:first-child { font-size: 14px; color: var(--text-tertiary); }
 
   /* Contextual inline alerts — live inside the section they affect, not a generic top banner */
-  .inline-alert { display: flex; align-items: center; gap: 8px; font-size: 12.5px; font-weight: 600; padding: 9px 12px; border-radius: var(--radius-lg); margin-top: 12px; }
+  .inline-alert { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; padding: 9px 12px; border-radius: var(--radius-lg); margin-top: 12px; }
   .inline-alert svg { width: 15px; height: 15px; flex-shrink: 0; }
   .inline-alert.warn { background: var(--warning-subtle); color: #92400e; }
   .inline-alert.danger { background: var(--error-subtle); color: #991b1b; }
@@ -244,7 +244,7 @@
   .card { background: #ffffff; border: 1px solid var(--border-default); border-radius: var(--radius-xl); padding: 22px 24px; margin-bottom: 20px; }
   .panel-label { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-tertiary); }
   .panel-amount { font-size: 28px; font-weight: 700; letter-spacing: -.4px; color: var(--text-primary); margin-top: 10px; font-variant-numeric: tabular-nums; }
-  .panel-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
+  .panel-sub { font-size: 14px; color: var(--text-secondary); margin-top: 4px; }
   .panel-foot { margin-top: 18px; display: flex; gap: 8px; flex-wrap: wrap; }
 
   /* Billing details — quiet, de-emphasized; read-only reference info, not a control surface */
@@ -252,9 +252,9 @@
   .billing-details-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 8px; }
   .billing-details-title { font-size: 12px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: .06em; }
   .billing-details-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
-  .billing-details-label { display: block; font-size: 11.5px; color: var(--text-tertiary); margin-bottom: 3px; }
-  .billing-details-grid > div > div { font-size: 13px; color: var(--text-secondary); word-break: break-word; overflow-wrap: anywhere; }
-  .btn-link { background: none; border: none; padding: 0; color: var(--action-primary); font-size: 13px; font-weight: 600; cursor: pointer; }
+  .billing-details-label { display: block; font-size: 12px; color: var(--text-tertiary); margin-bottom: 3px; }
+  .billing-details-grid > div > div { font-size: 14px; color: var(--text-secondary); word-break: break-word; overflow-wrap: anywhere; }
+  .btn-link { background: none; border: none; padding: 0; color: var(--action-primary); font-size: 14px; font-weight: 600; cursor: pointer; }
   .btn-link:hover { text-decoration: underline; }
 
   /* Subscription options ("···") menu — keeps Pause/Cancel out of the primary action row */
@@ -262,10 +262,10 @@
   .options-dropdown {
     position: absolute; top: 44px; right: 0; min-width: 190px; background: #ffffff;
     border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 1000;
   }
   .options-dropdown.show { display: block; }
-  .options-dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; font-weight: 600; color: var(--text-primary); cursor: pointer; }
+  .options-dropdown button { display: block; width: 100%; text-align: left; background: none; border: none; padding: 9px 10px; border-radius: 4px; font-size: 14px; font-weight: 600; color: var(--text-primary); cursor: pointer; }
   .options-dropdown button:hover { background: var(--surface-raised); }
   .options-dropdown button.danger { color: var(--error); }
 
@@ -277,7 +277,7 @@
 
   /* Feature Checklist Grid */
   .feature-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 16px; }
-  .feature-item { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+  .feature-item { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--text-secondary); }
   .feature-item svg { width: 16px; height: 16px; color: var(--success); flex-shrink: 0; }
 
   /* Plan Comparison Matrix */
@@ -294,11 +294,11 @@
   .plan-matrix.drawer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .plan-name { font-size: 16px; font-weight: 700; color: var(--text-primary); margin: 0 0 4px 0; }
   .plan-price { font-size: 28px; font-weight: 700; letter-spacing: -.4px; color: var(--text-primary); margin: 12px 0 4px 0; font-variant-numeric: tabular-nums; }
-  .plan-price span { font-size: 13px; font-weight: 500; color: var(--text-tertiary); }
-  .plan-desc { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; }
+  .plan-price span { font-size: 14px; font-weight: 500; color: var(--text-tertiary); }
+  .plan-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 16px; line-height: 1.4; }
   
   .plan-features { list-style: none; padding: 0; margin: 0 0 20px 0; display: flex; flex-direction: column; gap: 8px; }
-  .plan-features li { font-size: 12.5px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .plan-features li { font-size: 12px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
   .plan-features li svg { width: 14px; height: 14px; color: var(--success); flex-shrink: 0; }
 
   /* Buttons */
@@ -311,7 +311,7 @@
     padding: 0 16px;
     border-radius: var(--radius-lg);
     font-size: 14px;
-    font-weight: 600;
+    font-weight:500;
     cursor: pointer;
     border: none;
     transition: background-color .15s ease, border-color .15s ease, transform .1s ease;
@@ -320,7 +320,7 @@
   }
   .btn-primary { background: var(--action-primary); color: #ffffff; }
   .btn-primary:hover { background: var(--action-primary-hover); }
-  .btn-secondary { background:#ffffff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary { background:#ffffff; color:var(--text-strong); border:1px solid #d4d4d4; }
   .btn-secondary:hover { background: var(--surface-raised); }
   .btn-danger { background:var(--error); color:#fff; border:1px solid transparent; }
   .btn-danger:hover { background:#b91c1c; }
@@ -330,7 +330,7 @@
 
   /* Toggle Switch */
   .billing-toggle-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 24px; }
-  .toggle-label { font-size: 13.5px; font-weight: 600; color: var(--text-secondary); }
+  .toggle-label { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
   .toggle-label.active { color: var(--text-primary); }
   .badge-discount { display: inline-flex; align-items: center; height: 24px; padding: 0 10px; border-radius: 999px; background: var(--success-subtle); color: var(--success); font: 600 12px var(--font); white-space: nowrap; }
 
@@ -341,7 +341,7 @@
   }
   .slider-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
   .slider-val { font-size: 18px; font-weight: 700; color: var(--focus-ring); }
-  .range-input { width: 100%; height: 6px; border-radius: 3px; background: var(--border-default); outline: none; appearance: none; cursor: pointer; }
+  .range-input { width: 100%; height: 6px; border-radius: 4px; background: var(--border-default); outline: none; appearance: none; cursor: pointer; }
   .range-input::-webkit-slider-thumb { appearance: none; width: 20px; height: 20px; border-radius: 50%; background: var(--focus-ring); cursor: pointer; border: 2px solid #ffffff; box-shadow: 0 2px 6px rgba(0,0,0,0.15); }
 
   /* Invoice Table */
@@ -350,13 +350,13 @@
     display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
   }
   .table-wrap { width: 100%; border-collapse: collapse; text-align: left; min-width: 640px; }
-  .table-wrap th { padding: 11px 20px; font: 600 12.5px var(--font); color: #525252; text-transform: none; letter-spacing: 0; border-bottom: 1px solid #e5e5e5; background: #f5f5f5; white-space: nowrap; }
-  .table-wrap td { padding: 16px 20px; font-size: 14px; color: var(--text-secondary); border-bottom: 1px solid #e5e5e5; white-space: nowrap; vertical-align: middle; font-variant-numeric: tabular-nums; }
+  .table-wrap th { padding: 11px 20px; font: 500 12px var(--font); color: #525252; text-transform: none; letter-spacing: 0; border-bottom: 1px solid #e5e5e5; background: #fafafa; white-space: nowrap; }
+  .table-wrap td { padding: 16px 20px; font-size: 12px; color: var(--text-secondary); border-bottom: 1px solid #e5e5e5; white-space: nowrap; vertical-align: middle; font-variant-numeric: tabular-nums; }
   .table-wrap th:nth-child(3), .table-wrap td:nth-child(3) { white-space: normal; min-width: 150px; }
   .table-wrap tr:last-child td { border-bottom: none; }
   .table-wrap tbody tr:hover td { background: #fafafa; }
   /* C48 status dot label for invoice status column (keeps .pill.up/.danger classes) */
-  .table-wrap td .pill { height: auto; padding: 0; background: none; border: 0; gap: 7px; font: 500 13.5px var(--font); color: #404040; }
+  .table-wrap td .pill { height: auto; padding: 0; background: none; border: 0; gap: 7px; font: 500 14px var(--font); color: #404040; }
   .table-wrap td .pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: #a3a3a3; flex-shrink: 0; }
   .table-wrap td .pill.up::before { background: #15803d; }
   .table-wrap td .pill.danger { color: #dc2626; }
@@ -365,14 +365,14 @@
   .table-empty-row td { text-align: center; white-space: normal; padding: 56px 20px !important; }
   .table-empty-row:hover td { background: none; }
   .table-empty-row svg { display: block; box-sizing: content-box; width: 24px; height: 24px; padding: 12px; margin: 0 auto 12px; border-radius: 50%; background: #f5f5f5; color: #a3a3a3; }
-  .table-empty-title { font-size: 15px; font-weight: 600; color: #171717; }
-  .table-empty-row p { margin: 6px auto 0; max-width: 420px; font-size: 13.5px; color: #a3a3a3; }
+  .table-empty-title { font-size: 16px; font-weight: 600; color: #171717; }
+  .table-empty-row p { margin: 6px auto 0; max-width: 420px; font-size: 14px; color: #a3a3a3; }
 
   /* Payment Card Summary */
   .card-info { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .card-brand-icon {
     width: 44px; height: 30px; border-radius: 4px; background: #0f172a; color: #fff;
-    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 11px; letter-spacing: 0.5px;
+    display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; letter-spacing: 0.5px;
   }
 
   /* Modals */
@@ -389,7 +389,7 @@
   .modal-head h3 { margin: 0; font-size:  16px; font-weight:700; color: var(--text-primary); }
   .modal-close { background: none; border: none; color: var(--icon-muted); cursor: pointer; padding: 4px; border-radius: var(--radius-sm); }
   .modal-close:hover { color: var(--text-primary); }
-  .modal-body { padding: 20px 24px; font-size: 13.5px; color: var(--text-secondary); line-height: 1.5; overflow-y: auto; flex: 1; }
+  .modal-body { padding: 20px 24px; font-size: 14px; color: var(--text-secondary); line-height: 1.5; overflow-y: auto; flex: 1; }
   .modal-foot { padding: 16px 24px; background: var(--bg-app); border-top: 1px solid var(--border-default); display: flex; justify-content: flex-end; gap: 10px; flex-shrink: 0; flex-wrap: wrap; }
 
   .radio-option {
@@ -399,19 +399,19 @@
   }
   .radio-option:hover { border-color: var(--border-strong); background: var(--surface-raised); }
   .radio-option input { margin-top: 3px; }
-  .radio-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .radio-label { font-size: 14px; font-weight: 600; color: var(--text-primary); }
   .radio-desc { font-size: 12px; color: var(--text-tertiary); margin-top: 2px; }
 
   .form-group { margin-bottom: 14px; }
-  .form-label { font-size: 12.5px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: block; }
-  .form-control { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius-lg); border: 1px solid var(--border-default); font-size: 13px; outline: none; }
+  .form-label { font-size: 12px; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; display: block; }
+  .form-control { width: 100%; height: 36px; padding: 0 12px; border-radius: var(--radius-lg); border: 1px solid #d4d4d4; font-size: 14px; outline: none; }
   .form-control:focus { border-color: var(--focus-ring); }
 
   /* Toasts */
   .toast-stack { position: fixed; bottom: 20px; right: 20px; display: flex; flex-direction: column; gap: 8px; z-index: 200; max-width: 340px; }
   .toast {
     background: var(--text-primary); color: #fff; padding: 12px 16px; border-radius: var(--radius-lg);
-    font-size: 13px; font-weight: 500; line-height: 1.4; box-shadow: 0 8px 24px rgba(23,23,23,.22);
+    font-size: 14px; font-weight: 500; line-height: 1.4; box-shadow: 0 8px 24px rgba(23,23,23,.22);
     opacity: 0; transform: translateY(8px); transition: opacity .2s ease, transform .2s ease;
   }
   .toast.show { opacity: 1; transform: translateY(0); }
@@ -433,7 +433,7 @@
       left: 0;
       height: 100vh;
       width: 260px;
-      z-index: 30;
+      z-index: 1000;
       transform: translateX(-100%);
       transition: transform 0.25s ease;
       box-shadow: 4px 0 24px rgba(0,0,0,0.12);
@@ -483,7 +483,7 @@
     .billing-hero { padding: 16px; border-radius: var(--radius-xl); }
     .hero-actions .btn { flex: 1 1 100%; }
     .card { padding: 16px; }
-    .panel-amount { font-size: 22px; word-break: break-all; }
+    .panel-amount { font-size: 24px; word-break: break-all; }
     .panel-foot .btn { flex: 1 1 100%; justify-content: center; }
     .toast-stack { left: 12px; right: 12px; bottom: 12px; max-width: none; }
     .radio-option { padding: 8px 10px; }
@@ -527,7 +527,7 @@
       <div class="profile-menu">
         <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleProfileDropdown()">AR</button>
         <div class="profile-dropdown" id="profile-dropdown" role="menu">
-          <a href="#" role="menuitem">My Profile</a>
+          <a href="profile.html" role="menuitem">My Profile</a>
           <a href="#" role="menuitem">Account Security</a>
           <a href="#" role="menuitem">Preferences</a>
           <hr>
@@ -598,10 +598,6 @@
     </div>
 
     <div class="nav-bottom">
-      <a href="#" class="nav-item" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-        <span>Settings</span>
-      </a>
       <a href="../../Authentication/code/sign-in.html" class="nav-item danger" title="Logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
         <span>Logout</span>
@@ -692,7 +688,7 @@
         <div class="panel-sub">Due <span id="kpiNextBillingDate">Oct 15, 2026</span></div>
         <div class="panel-sub" style="margin-top:2px;">Sep 15 – Oct 15 billing period</div>
 
-        <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle); font-size:12.5px; color:var(--text-secondary);">
+        <div style="margin-top:12px; padding-top:10px; border-top:1px solid var(--border-subtle); font-size:12px; color:var(--text-secondary);">
           <div><strong style="color:var(--text-primary);">Billed to:</strong> <span id="billingLegalNameDisplay">Acme Global Corporation Inc.</span></div>
           <div style="margin-top:2px; font-size:12px; color:var(--text-tertiary);">
             Tax ID: <span id="billingTaxIdDisplay" style="color:var(--text-secondary);">US-984210491-EIN</span> · Email: <span id="billingEmailDisplay" style="color:var(--text-secondary);">finance-billing@acmeglobal.com</span>
@@ -774,7 +770,7 @@
       <div class="billing-toggle-bar">
         <span class="toggle-label" id="lblMonthly">Monthly Billing</span>
         <input type="checkbox" id="billingCycleToggle" style="display:none;" onchange="toggleBillingCycle(this.checked)">
-        <label for="billingCycleToggle" style="width:48px; height:26px; background:var(--focus-ring); border-radius:13px; cursor:pointer; position:relative; display:inline-block;">
+        <label for="billingCycleToggle" style="width:48px; height:26px; background:var(--focus-ring); border-radius:12px; cursor:pointer; position:relative; display:inline-block;">
           <span id="toggleKnob" style="position:absolute; top:3px; right:3px; width:20px; height:20px; background:#fff; border-radius:50%; transition:transform 0.2s ease;"></span>
         </label>
         <span class="toggle-label active" id="lblAnnual">Annual Billing <span class="badge-discount">Save 20%</span></span>
@@ -849,12 +845,12 @@
         <div class="slider-header">
           <div>
             <h4 style="margin:0; font-size:14px; font-weight:700;">Adjust Seat Count (Pro Plan)</h4>
-            <span style="font-size:12.5px; color:var(--text-tertiary);">Minimum seat floor is locked to 85 active users.</span>
+            <span style="font-size:12px; color:var(--text-tertiary);">Minimum seat floor is locked to 85 active users.</span>
           </div>
           <div class="slider-val" id="sliderSeatVal">100 Seats</div>
         </div>
         <input type="range" id="seatRangeSlider" class="range-input" min="85" max="500" value="100" step="5" oninput="updateSeatCostMath(this.value)">
-        <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:13px; align-items:center; flex-wrap:wrap; gap:10px;">
+        <div style="display:flex; justify-content:space-between; margin-top:14px; font-size:14px; align-items:center; flex-wrap:wrap; gap:10px;">
           <span>Est. Monthly Recurring: <strong id="mathMonthlyCost">$99.00 / mo</strong></span>
           <span>Prorated Due Today: <strong id="mathProratedCost">$0.00</strong></span>
         </div>
@@ -904,7 +900,7 @@
       <p>For your security, full card entry happens on Stripe's secure hosted portal. No credit card numbers touch platform servers.</p>
       <div style="border:1px dashed var(--border-strong); border-radius:var(--radius-lg); padding:20px; text-align:center; background:#f8fafc; margin-top:12px;">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:32px; height:32px; color:var(--focus-ring); margin-bottom:8px;"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>
-        <div style="font-size:13.5px; font-weight:600; color:var(--text-primary);">Stripe Customer Portal Launcher</div>
+        <div style="font-size:14px; font-weight:600; color:var(--text-primary);">Stripe Customer Portal Launcher</div>
         <span style="font-size:12px; color:var(--text-tertiary);">You will be securely redirected to update your payment card details.</span>
       </div>
     </div>
@@ -954,7 +950,7 @@
     <div class="modal-body">
       <p>Pausing suspends recurring charges. All courses, student grades, and org data are <strong>100% retained</strong>. Non-admin user access will be restricted during the pause.</p>
       
-      <label style="font-size:13px; font-weight:600; display:block; margin:14px 0 6px;">Select Pause Duration:</label>
+      <label style="font-size:14px; font-weight:600; display:block; margin:14px 0 6px;">Select Pause Duration:</label>
       <label class="radio-option">
         <input type="radio" name="pauseDur" value="30" checked>
         <div>
@@ -994,11 +990,11 @@
     <div class="modal-body">
       <p>We're sorry to see you go. Cancellation takes effect at the end of your billing cycle on <strong>Oct 15, 2026</strong>. Full platform access continues until then.</p>
       
-      <div style="background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); padding:12px; margin-bottom:14px; font-size:12.5px; color:#92400e;">
+      <div style="background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-lg); padding:12px; margin-bottom:14px; font-size:12px; color:#92400e;">
         <strong>30-Day Grace Period:</strong> Following cycle end, you have 30 days to sign in and export your data before the organization is archived.
       </div>
 
-      <label style="font-size:13px; font-weight:600; display:block; margin-bottom:6px;">Please tell us why you're cancelling (required):</label>
+      <label style="font-size:14px; font-weight:600; display:block; margin-bottom:6px;">Please tell us why you're cancelling (required):</label>
       <label class="radio-option">
         <input type="radio" name="cancelReason" value="price" checked>
         <div class="radio-label">Price / Subscription Cost</div>

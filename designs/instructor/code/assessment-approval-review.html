@@ -15,7 +15,7 @@
   :root{
     --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
     --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
-    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-strong:#a3a3a3;
     --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
     --error:#dc2626; --warning:#ca8a04; --success:#15803d; --info:#2563eb;
     --warning-subtle:#fefce8; --warning-border:#fef08a;
@@ -33,11 +33,11 @@
   .topbar-frame{ grid-column:2; grid-row:1; width:100%; height:100%; border:0; display:block; background:#fff; border-bottom:1px solid var(--border-default); }
   .main{ grid-column:2; grid-row:2; overflow-y:auto; padding:32px 32px 48px; }
 
-  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:var(--text-secondary); margin-bottom:16px; cursor:pointer; }
+  .back-link{ display:inline-flex; align-items:center; gap:6px; font-size:14px; font-weight:600; color:var(--text-secondary); margin-bottom:16px; cursor:pointer; }
   .back-link:hover{ color:var(--action-primary); }
 
   /* Locked Review Banner */
-  .locked-banner{ background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-xl); padding:16px 20px; display:flex; align-items:center; gap:14px; color:#854d0e; font-size:13.5px; margin-bottom:24px; }
+  .locked-banner{ background:var(--warning-subtle); border:1px solid var(--warning-border); border-radius:var(--radius-xl); padding:16px 20px; display:flex; align-items:center; gap:14px; color:#854d0e; font-size:14px; margin-bottom:24px; }
   .locked-banner svg{ width:22px; height:22px; flex-shrink:0; color:var(--warning); }
 
   /* Grid Layout */
@@ -49,7 +49,7 @@
   .q-box{ padding:16px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:var(--surface-canvas); margin-bottom:12px; }
   .q-title{ font-weight:600; font-size:14px; margin-bottom:6px; }
 
-  .btn{ height:38px; padding:0 16px; border-radius:var(--radius-lg); font-size:13px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:none; text-decoration:none; }
+  .btn{ height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; gap:8px; border:none; text-decoration:none; }
   .btn-primary{ background:var(--success); color:#fff; }
   .btn-primary:hover{ background:#166534; }
   .btn-warn{ background:var(--warning); color:#fff; }
@@ -76,18 +76,18 @@
       <div>
         <div class="card">
           <h2 style="font-size:20px; font-weight:700; margin:0 0 4px;">Midterm Exam: Algorithms & Complexity</h2>
-          <div style="font-size:13px; color:var(--text-secondary); margin-bottom:16px;">CS-301 • 25 Questions • 200 Total Points</div>
+          <div style="font-size:14px; color:var(--text-secondary); margin-bottom:16px;">CS-301 • 25 Questions • 200 Total Points</div>
 
           <h3 class="card-title">Questions & Answer Key Review</h3>
           <div class="q-box">
             <div class="q-title">Q1. What is the tight bound time complexity of Master Theorem Case 1?</div>
-            <div style="font-size:13px; color:var(--text-secondary);">Answer Options: A) O(N), B) O(N^log_b(a)), C) O(1)</div>
+            <div style="font-size:14px; color:var(--text-secondary);">Answer Options: A) O(N), B) O(N^log_b(a)), C) O(1)</div>
             <div style="font-size:12px; color:var(--success); font-weight:600; margin-top:4px;">✓ Answer Key: B • Point Value: 10 Pts</div>
           </div>
 
           <div class="q-box">
             <div class="q-title">Q2. Prove the lower bound of comparison-based sorting algorithms.</div>
-            <div style="font-size:13px; color:var(--text-secondary);">Short Essay Question</div>
+            <div style="font-size:14px; color:var(--text-secondary);">Short Essay Question</div>
             <div style="font-size:12px; color:var(--info); font-weight:600; margin-top:4px;">Rubric Provided: 20 Pts • Requires explanation of decision tree height log(N!).</div>
           </div>
         </div>
@@ -97,14 +97,14 @@
       <div>
         <div class="card">
           <h3 class="card-title">Approver Action</h3>
-          <div style="font-size:12.5px; color:var(--text-secondary); margin-bottom:14px;">
+          <div style="font-size:12px; color:var(--text-secondary); margin-bottom:14px;">
             <b>Assigned Approver:</b> Dr. Aris (Department Chair)<br>
             <b>Waiting Time:</b> 1 day 4 hours
           </div>
 
           <div style="display:flex; flex-direction:column; gap:6px; margin-bottom:16px;">
-            <label style="font-size:13px; font-weight:600;">Review Comments (Mandatory)</label>
-            <textarea rows="4" id="reviewComment" placeholder="Enter academic feedback or approval comments..." style="padding:10px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:13px; width:100%; outline:none;"></textarea>
+            <label style="font-size:14px; font-weight:600;">Review Comments (Mandatory)</label>
+            <textarea rows="4" id="reviewComment" placeholder="Enter academic feedback or approval comments..." style="padding:10px; border:1px solid var(--border-default); border-radius:var(--radius-lg); font-size:14px; width:100%; outline:none;"></textarea>
           </div>
 
           <div style="display:flex; flex-direction:column; gap:10px;">

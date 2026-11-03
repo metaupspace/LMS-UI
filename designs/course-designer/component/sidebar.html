@@ -12,17 +12,17 @@
      Course Designer — shared Sidebar component. Same runtime-include
      pattern as Learner/instructor sidebars: loaded via
      <iframe src="../component/sidebar.html?active=KEY">.
-     Persona = "Creator" in src/ (CRS-001..016). Only three primary
+     Persona = "Creator" in src/ (CRS-001..016). Only two primary
      destinations (user decision 2026-09-24): Dashboard, My Courses
-     (CRS-002), Question Bank (ASM-003). Course Builder (CRS-003) is
+     (CRS-002). Course Builder (CRS-003) is
      entered from My Courses — never a sidebar item. AI lives inside
      the create/builder flow — no AI item.
-     Dashboard → dashboard.html. Question Bank → question-bank.html.
+     Dashboard → dashboard.html.
   ----------------------------------------------------------------*/
   :root{
     --text-primary:#171717; --text-secondary:#525252; --text-tertiary:#a3a3a3; --text-disabled:#d4d4d4;
     --surface-canvas:#fafafa; --surface-raised:#f5f5f5; --surface-overlay:#e5e5e5;
-    --border-default:#e5e5e5; --border-subtle:#f0f0f0; --border-strong:#a3a3a3;
+    --border-default:#e5e5e5; --border-subtle:#f5f5f5; --border-strong:#a3a3a3;
     --action-primary:#4f46e5; --action-primary-hover:#4338ca; --focus-ring:#6366f1;
     --error:#dc2626; --error-subtle:#fef2f2;
     --warning:#ca8a04; --warning-subtle:#fefce8;
@@ -47,13 +47,13 @@
     border-radius:var(--radius-lg); color:var(--text-secondary);
     transition:background-color .15s ease, color .15s ease;
   }
-  .nav-item span{ font-size:13.5px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
+  .nav-item span{ font-size:14px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0; }
   .nav-item svg{ width:19px; height:19px; flex-shrink:0; transition:transform .15s ease; }
   .nav-item:hover{ background:var(--surface-raised); color:var(--text-primary); }
   .nav-item:hover svg{ transform:translateY(-1px); }
   .nav-item:focus-visible{ outline:2px solid var(--focus-ring); outline-offset:-2px; }
-  .nav-item.active{ background:var(--info-subtle); color:var(--info); font-weight:700; }
-  .nav-item.active:hover{ background:var(--info-subtle); }
+  .nav-item.active{ background:#eef2ff; color:#4f46e5; font-weight:700; }
+  .nav-item.active:hover{ background:#eef2ff; }
   .nav-item.danger:hover{ background:var(--error-subtle); color:var(--error); }
   .nav-bottom{ margin-top:auto; display:flex; flex-direction:column; gap:2px; padding:10px 12px; border-top:1px solid var(--border-subtle); }
 </style>
@@ -83,17 +83,9 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></svg>
       <span>My Courses</span>
     </a>
-    <a href="../code/question-bank.html" target="_parent" class="nav-item" data-key="question-bank" title="Question Bank">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
-      <span>Question Bank</span>
-    </a>
   </div>
 
   <div class="nav-bottom">
-    <a href="#" target="_parent" class="nav-item" data-key="settings" title="Settings">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-      <span>Settings</span>
-    </a>
     <a href="../../Authentication/code/sign-in.html" target="_parent" class="nav-item danger" title="Logout">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
       <span>Logout</span>

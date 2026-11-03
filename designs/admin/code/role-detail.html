@@ -27,7 +27,7 @@
     --surface-raised:#f5f5f5;
     --surface-overlay:#e5e5e5;
     --border-default:#e5e5e5;
-    --border-subtle:#f0f0f0;
+    --border-subtle:#f5f5f5;
     --border-strong:#a3a3a3;
     --icon-muted:#a3a3a3;
     --action-primary:#4f46e5;
@@ -70,14 +70,14 @@
 
   .back-link{
     display:inline-flex; align-items:center; gap:6px; font:600 14px var(--font);
-    color:var(--text-secondary); padding:6px 10px 6px 6px; margin-left:-6px; border-radius:6px; margin-bottom:18px;
+    color:var(--text-secondary); padding:6px 10px 6px 6px; margin-left:-6px; border-radius:4px; margin-bottom:18px;
   }
   .back-link:hover{ background:var(--surface-raised); color:var(--text-primary); }
   .back-link svg{ width:16px; height:16px; }
 
   .page-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
-  .page-head h1{ margin:0 0 4px; font-size:clamp(26px, 2.2vw, 32px); font-weight:700; letter-spacing:-.6px; line-height:1.2; }
-  .page-head .sub{ font-size:14.5px; color:var(--text-secondary); }
+  .page-head h1{ margin:0 0 4px; font-size:24px; font-weight:700; letter-spacing:-.6px; line-height:1.2; }
+  .page-head .sub{ font-size:14px; color:var(--text-secondary); }
   .page-head-actions{ display:flex; align-items:center; gap:10px; flex-shrink:0; }
 
   .btn{
@@ -88,7 +88,7 @@
     padding: 0 16px;
     border-radius: var(--radius-lg);
     font-size: 14px;
-    font-weight: 600;
+    font-weight:500;
     cursor: pointer;
     border: none;
     white-space: nowrap;
@@ -97,7 +97,7 @@
   .btn svg{ width:16px; height:16px; }
   .btn-primary{ background:var(--action-primary); color:#fff; }
   .btn-primary:hover{ background:var(--action-primary-hover); }
-  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid #d4d4d4; }
   .btn-secondary:hover{ background:var(--surface-raised); }
   .btn[disabled]{ opacity:.45; cursor:not-allowed; }
   .btn[disabled]:hover{ background:var(--action-primary); }
@@ -106,15 +106,15 @@
   .preview-banner{
     display:none; align-items:center; justify-content:space-between; gap:12px;
     padding:11px 16px; background:var(--info-subtle); border:1px solid var(--info-border);
-    border-radius:var(--radius-lg); margin-bottom:16px; font-size:13px; font-weight:600; color:var(--info);
+    border-radius:var(--radius-lg); margin-bottom:16px; font-size:14px; font-weight:600; color:var(--info);
   }
   .preview-banner.show{ display:flex; }
-  .preview-banner button{ background:none; border:none; cursor:pointer; font-size:12.5px; font-weight:700; color:var(--info); text-decoration:underline; }
+  .preview-banner button{ background:none; border:none; cursor:pointer; font-size:12px; font-weight:700; color:var(--info); text-decoration:underline; }
 
   .toast{
     position:fixed; top:20px; right:20px; z-index:60; display:none; align-items:center; gap:10px;
     background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg);
-    font-size:13.5px; font-weight:600; box-shadow:0 12px 32px -8px rgba(23,23,23,.4);
+    font-size:14px; font-weight:500; box-shadow:0 12px 32px -8px rgba(23,23,23,.4);
   }
   .toast.show{ display:flex; }
   .toast svg{ width:16px; height:16px; color:var(--success); flex-shrink:0; }
@@ -123,7 +123,7 @@
   .card + .card{ margin-top:16px; }
   @media (max-width:640px){ .card{ padding:18px 16px; } }
   .module-title{ display:flex; align-items:center; gap:10px; margin-bottom:14px; }
-  .module-title h2{ margin:0; font-size:17px; font-weight:700; letter-spacing:-.2px; }
+  .module-title h2{ margin:0; font-size:16px; font-weight:700; letter-spacing:-.2px; }
   .module-icon{
     width:32px; height:32px; border-radius:var(--radius-lg); display:flex; align-items:center; justify-content:center;
     background:var(--surface-raised); color:var(--text-secondary); flex-shrink:0;
@@ -164,7 +164,7 @@
   .modal h3{ margin:0 0 12px; font-size:16px; font-weight:700; }
   .modal-actions{ display:flex; justify-content:flex-end; gap:8px; margin-top:18px; }
   .summary-list{ display:flex; flex-direction:column; gap:8px; margin-bottom:4px; }
-  .summary-row{ display:flex; align-items:center; gap:10px; font-size:13.5px; }
+  .summary-row{ display:flex; align-items:center; gap:10px; font-size:14px; }
   .summary-row .dot{ width:8px; height:8px; border-radius:50%; flex-shrink:0; }
   .summary-row.added .dot{ background:var(--success); }
   .summary-row.removed .dot{ background:var(--error); }
@@ -200,13 +200,13 @@
     border-radius: var(--radius-lg); color: var(--text-secondary);
     transition: background-color .15s ease, color .15s ease;
   }
-  .nav-item span { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .nav-item span { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .nav-item svg { width: 19px; height: 19px; flex-shrink: 0; transition: transform .15s ease; }
   .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
   .nav-item:hover svg { transform: translateY(-1px); }
   .nav-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-  .nav-item.active { background: var(--info-subtle); color: var(--info); font-weight: 700; }
-  .nav-item.active:hover { background: var(--info-subtle); }
+  .nav-item.active { background: #eef2ff; color: #4f46e5; font-weight: 700; }
+  .nav-item.active:hover { background: #eef2ff; }
   .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
   .nav-item.danger:hover { background: var(--error-subtle); color: var(--error); }
 
@@ -217,11 +217,11 @@
     padding: 0 32px 0 20px; background: #ffffff; border-bottom: 1px solid var(--border-default); z-index: 10;
   }
   .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; overflow: hidden; }
-  .breadcrumb a { color: var(--text-tertiary); font-weight: 600; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 14px; min-width: 0; overflow: hidden; }
+  .breadcrumb a { color:var(--text-secondary); font-weight:500; }
   .breadcrumb a:hover { color: var(--text-primary); }
   .breadcrumb .breadcrumb-sep { color: var(--text-disabled); }
-  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight:500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topbar-actions { display: flex; align-items: center; gap: 6px; }
   .icon-btn {
     width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent;
@@ -235,7 +235,7 @@
   .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--icon-muted); pointer-events: none; }
   .search-input-wrap input {
     width: 100%; height: 36px; padding: 0 12px 0 34px; border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default); background: var(--surface-raised); font-size: 13px; color: var(--text-primary); outline: none;
+    border: 1px solid #d4d4d4; background: var(--surface-raised); font-size: 14px; color: var(--text-primary); outline: none;
   }
   .search-input-wrap input::placeholder { color: var(--text-tertiary); }
   .search-input-wrap input:focus { border-color: var(--focus-ring); }
@@ -250,7 +250,7 @@
     overflow: hidden;
     background: linear-gradient(135deg, #4f46e5, #0ea5e9);
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -260,10 +260,10 @@
   .profile-dropdown {
     position: absolute; top: 44px; right: 0; width: 200px; background: #ffffff;
     border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 1000;
   }
   .profile-dropdown.show, .profile-dropdown.open { display: block; }
-  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 4px; font-size: 14px; color: var(--text-primary); }
   .profile-dropdown a:hover { background: var(--surface-raised); }
   .profile-dropdown hr { border: none; border-top: 1px solid var(--border-subtle); margin: 6px 2px; }
   .profile-dropdown a.danger { color: var(--error); }
@@ -278,7 +278,7 @@
       left: 0;
       height: 100vh;
       width: 260px;
-      z-index: 30;
+      z-index: 1000;
       transform: translateX(-100%);
       transition: transform 0.25s ease;
       box-shadow: 4px 0 24px rgba(0,0,0,0.12);
@@ -295,6 +295,15 @@
   .topbar, .topbar-left, .topbar .breadcrumb, .main{ min-width:0; }
   @media (max-width: 640px){ .page-head-actions, .profile-actions, .header-actions, .panel-head-actions{ flex-wrap:wrap; max-width:100%; } .page-head-actions > .btn, .profile-actions > .btn, .header-actions > .btn{ flex:1 1 auto; } }
   .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+
+/* DS _Checkbox base + radio (UpSpace library): 16px, r4, #d4d4d4; selected = brand/subtle + action/primary */
+:where(input[type=checkbox]),:where(input[type=radio]){ appearance:none; -webkit-appearance:none; width:16px; height:16px; margin:0; border:1px solid #d4d4d4; border-radius:4px; background:#fff center/12px no-repeat; cursor:pointer; flex-shrink:0; vertical-align:middle; }
+:where(input[type=radio]){ border-radius:50%; }
+:where(input[type=checkbox]):checked{ background-color:#eef2ff; border-color:#4f46e5; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M2.5 6.2l2.4 2.3 4.6-5' fill='none' stroke='%234f46e5' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E"); }
+:where(input[type=checkbox]):indeterminate{ background-color:#eef2ff; border-color:#4f46e5; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M3 6h6' stroke='%234f46e5' stroke-width='1.6' stroke-linecap='round'/%3E%3C/svg%3E"); }
+:where(input[type=radio]):checked{ background:#eef2ff radial-gradient(circle, #4f46e5 0 3px, transparent 3.5px); border-color:#4f46e5; }
+:where(input[type=checkbox],input[type=radio]):focus-visible{ outline:2px solid #6366f1; outline-offset:2px; }
+:where(input[type=checkbox],input[type=radio]):disabled{ background-color:#f5f5f5; border-color:#e5e5e5; cursor:not-allowed; }
 </style>
 </head>
 <body>
@@ -326,7 +335,7 @@
       <div class="profile-menu">
         <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleProfileDropdown()">AR</button>
         <div class="profile-dropdown" id="profile-dropdown" role="menu">
-          <a href="#" role="menuitem">My Profile</a>
+          <a href="profile.html" role="menuitem">My Profile</a>
           <a href="#" role="menuitem">Account Security</a>
           <a href="#" role="menuitem">Preferences</a>
           <hr>
@@ -395,10 +404,6 @@
     </div>
 
     <div class="nav-bottom">
-      <a href="#" class="nav-item" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-        <span>Settings</span>
-      </a>
       <a href="../../Authentication/code/sign-in.html" class="nav-item danger" title="Logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
         <span>Logout</span>

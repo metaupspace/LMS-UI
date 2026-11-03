@@ -11,12 +11,14 @@
   /* ---------------------------------------------------------------
      Learner — Assignments list (ASM-005 assignment type, ASM-006 results).
      Reached from the learner sidebar "Assessments" item (user decision:
-     reuse that item, no new nav entry). Rows open assignment-detail.html.
+     reuse that item, no new nav entry). Rows open assignment-detail.html;
+     quiz-type rows (user decision: whole assignment is a quiz) open
+     assignment-quiz.html and carry a "Quiz" badge.
      Status is derived from config + submissions (same function as the
      detail page). Overdue rule (user decision, interpretation of a spec
      conflict): past deadline but availability window open → "Overdue",
      still submittable; past window end → "Submission closed".
-     Library: Table, Badge (dot), Input, Buttons. Hand-built (approved,
+     Library: Table, Badge (dot + Brand), Input, Buttons. Hand-built (approved,
      MISSING_COMPONENTS.md): Tabs, Skeleton loader, Empty state.
      Demo states: ?state=loading | error | empty
   ----------------------------------------------------------------*/
@@ -27,7 +29,7 @@
     --action-primary:#4f46e5; --action-primary-hover:#4338ca; --action-primary-subtle:#eef2ff; --focus-ring:#6366f1;
     --error:#dc2626; --error-subtle:#fef2f2;
     --success:#15803d; --success-subtle:#f0fdf4;
-    --radius-md:6px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
+    --radius-md:4px; --radius-lg:8px; --radius-xl:12px; --radius-full:999px;
     --font:"DM Sans", ui-sans-serif, system-ui, sans-serif;
   }
   *{ box-sizing:border-box; }
@@ -48,17 +50,17 @@
   .main{ grid-column:2; grid-row:2; overflow-y:auto; min-width:0; }
   .main-inner{ width:100%; padding:32px clamp(20px, 2.6vw, 48px) 64px; }
 
-  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:600; border:none; white-space:nowrap; transition:background-color .15s ease; }
-  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn{ display:inline-flex; align-items:center; justify-content:center; gap:8px; height:40px; padding:0 16px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; border:none; white-space:nowrap; transition:background-color .15s ease; }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid #d4d4d4; }
   .btn-secondary:hover{ background:var(--surface-raised); }
 
   /* Head */
   .page-head{ display:flex; align-items:flex-end; justify-content:space-between; gap:16px 24px; flex-wrap:wrap; margin-bottom:24px; }
   .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; }
-  .page-head .sub{ font-size:15px; color:var(--text-secondary); }
+  .page-head .sub{ font-size:14px; color:var(--text-secondary); }
   .search{ position:relative; width:min(340px, 100%); }
   .search svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); width:16px; height:16px; color:var(--text-tertiary); pointer-events:none; }
-  .search input{ width:100%; height:42px; padding:0 12px 0 38px; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
+  .search input{ width:100%; height:42px; padding:0 12px 0 38px; border:1px solid #d4d4d4; border-radius:var(--radius-lg); background:#fff; font-size:14px; color:var(--text-primary); outline:none; transition:border-color .15s ease, box-shadow .15s ease; }
   .search input::placeholder{ color:var(--text-tertiary); }
   .search input:focus{ border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
 
@@ -73,17 +75,20 @@
   /* Table — library pattern (Gray header cell, bordered rows) */
   .table-wrap{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); overflow:hidden; }
   table{ width:100%; border-collapse:collapse; table-layout:fixed; }
-  thead th{ background:var(--surface-raised); text-align:left; font-size:12.5px; font-weight:600; color:var(--text-secondary); padding:11px 20px; border-bottom:1px solid var(--border-default); }
+  thead th{ background:#fafafa; text-align:left; font-size:12px; font-weight:500; color:var(--text-secondary); padding:11px 20px; border-bottom:1px solid var(--border-default); }
   col.c-due{ width:17%; } col.c-status{ width:18%; } col.c-grade{ width:11%; } col.c-action{ width:200px; }
   tbody tr{ border-top:1px solid var(--border-default); cursor:pointer; transition:background-color .15s ease; }
   tbody tr:first-child{ border-top:0; }
   tbody tr:hover{ background:var(--surface-canvas); }
   td{ padding:16px 20px; vertical-align:middle; font-size:14px; }
-  .t-title{ display:block; font-size:15px; font-weight:600; color:var(--text-primary); line-height:1.35; }
+  .t-title{ display:block; font-size:16px; font-weight:600; color:var(--text-primary); line-height:1.35; }
   tr:hover .t-title{ color:var(--action-primary); }
-  .t-course{ display:block; font-size:13.5px; color:var(--text-tertiary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  /* Badge — library pattern (sm, Brand) */
+  .badge{ display:inline-flex; align-items:center; height:24px; padding:0 9px; margin-right:8px; border-radius:var(--radius-full); font-size:12px; font-weight:500; white-space:nowrap; vertical-align:middle; }
+  .badge.brand{ background:var(--action-primary-subtle); color:var(--action-primary); }
+  .t-course{ display:block; font-size:14px; color:var(--text-tertiary); margin-top:3px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .t-due{ display:block; font-weight:600; font-variant-numeric:tabular-nums; }
-  .t-rel{ display:block; font-size:13px; color:var(--text-tertiary); margin-top:2px; }
+  .t-rel{ display:block; font-size:14px; color:var(--text-tertiary); margin-top:2px; }
   .t-rel.late{ color:var(--error); font-weight:500; }
   .t-grade{ font-weight:600; font-variant-numeric:tabular-nums; }
   .t-grade.none{ color:var(--text-disabled); font-weight:500; }
@@ -95,7 +100,7 @@
   .row-link.quiet:hover{ background:var(--surface-raised); }
 
   /* Status — Badge (dot) pattern, restrained: color only where it carries meaning */
-  .status{ display:inline-flex; align-items:center; gap:7px; font-size:13.5px; font-weight:500; color:var(--text-strong); white-space:nowrap; }
+  .status{ display:inline-flex; align-items:center; gap:7px; font-size:14px; font-weight:500; color:var(--text-strong); white-space:nowrap; }
   .status i{ width:7px; height:7px; border-radius:50%; background:var(--text-disabled); flex-shrink:0; }
   .status.todo i{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
   .status.in-progress i{ background:var(--action-primary); }
@@ -103,15 +108,15 @@
   .status.graded i{ background:var(--success); }
   .status.overdue, .status.closed{ color:var(--error); }
   .status.overdue i, .status.closed i{ background:var(--error); }
-  .status-sub, .grade-inline{ display:block; font-size:12.5px; color:var(--text-tertiary); margin:3px 0 0 14px; }
+  .status-sub, .grade-inline{ display:block; font-size:12px; color:var(--text-tertiary); margin:3px 0 0 14px; }
   .grade-inline{ display:none; color:var(--text-secondary); font-variant-numeric:tabular-nums; }
 
   /* States (hand-built, approved) */
   .empty{ padding:56px 20px; text-align:center; }
-  .empty b{ display:block; font-size:15px; margin-bottom:4px; }
+  .empty b{ display:block; font-size:16px; margin-bottom:4px; }
   .empty span{ font-size:14px; color:var(--text-tertiary); }
   .empty .btn{ margin-top:16px; }
-  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f0f0f0 25%, #e5e5e5 50%, #f0f0f0 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
+  .sk{ display:block; height:12px; border-radius:4px; background:linear-gradient(90deg, #f5f5f5 25%, #e5e5e5 50%, #f5f5f5 75%); background-size:200% 100%; animation:loading 1.4s infinite; }
   @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
   .sk-row{ cursor:default !important; }
   .sk-row:hover{ background:transparent !important; }
@@ -210,7 +215,11 @@
     { id:'a5', title:'Edge Rendering Write-up', course:'Modern Web Architecture', due:'2026-09-22T23:59', closes:'2026-09-22T23:59', points:40, visibility:'feedback', submissions:[{ at:'2026-09-21T18:42' }] },
     { id:'a6', title:'Heap Sort Analysis', course:'Advanced Data Structures', due:'2026-09-18T23:59', closes:'2026-09-30T23:59', points:100, visibility:'feedback', submissions:[{ at:'2026-09-17T21:05', grade:{ score:84, released:true } }] },
     { id:'a7', title:'Supervised Learning Report', course:'Intro to Machine Learning', due:'2026-09-19T23:59', closes:'2026-09-19T23:59', points:60, visibility:'hidden', submissions:[{ at:'2026-09-19T16:20', grade:{ score:51, released:false } }] },
-    { id:'a8', title:'Component Library Audit', course:'Modern Frontend Frameworks', due:'2026-09-05T23:59', closes:'2026-09-05T23:59', points:50, visibility:'score', submissions:[{ at:'2026-09-04T11:10', grade:{ score:46, released:true } }] }
+    { id:'a8', title:'Component Library Audit', course:'Modern Frontend Frameworks', due:'2026-09-05T23:59', closes:'2026-09-05T23:59', points:50, visibility:'score', submissions:[{ at:'2026-09-04T11:10', grade:{ score:46, released:true } }] },
+    // Quiz assignments (mirror assignment-quiz.html); objective questions are graded on submit
+    { id:'q1', type:'quiz', title:'Binary Trees Quiz', course:'Advanced Data Structures', due:'2026-09-25T23:59', closes:'2026-09-25T23:59', points:8, questions:6, submissions:[] },
+    { id:'q2', type:'quiz', title:'Chart Selection Quiz', course:'Data Visualization Techniques', due:'2026-09-27T23:59', closes:'2026-09-27T23:59', points:5, questions:5, submissions:[], seedDraft:true },
+    { id:'q3', type:'quiz', title:'Model Evaluation Quiz', course:'Intro to Machine Learning', due:'2026-09-16T23:59', closes:'2026-09-16T23:59', points:6, questions:5, submissions:[{ at:'2026-09-15T20:14', grade:{ score:5, released:true } }] }
   ];
 
   var MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
@@ -222,9 +231,9 @@
 
   // Merge what the learner did on the detail page (drafts / submissions kept locally in this mock)
   function withLocal(a){
-    var local = load('upspace-asg-' + a.id) || {};
-    var draft = local.draft;
-    var hasDraft = draft ? !!(draft.text || (draft.files || []).length) : !!a.seedDraft;
+    var quiz = a.type === 'quiz', local = load((quiz ? 'upspace-quiz-' : 'upspace-asg-') + a.id) || {}, hasDraft;
+    if (quiz) hasDraft = local.answers ? !!local.startedAt || Object.keys(local.answers).some(function(k){ var v = local.answers[k]; return Array.isArray(v) ? v.length > 0 : !!String(v || '').trim(); }) : !!a.seedDraft;
+    else hasDraft = local.draft ? !!(local.draft.text || (local.draft.files || []).length) : !!a.seedDraft;
     return Object.assign({}, a, { submissions:a.submissions.concat(local.submissions || []), hasDraft:hasDraft });
   }
   // Same derivation as assignment-detail.html
@@ -250,6 +259,7 @@
   // Needs action first: overdue-but-open → to do / in progress (soonest due) → waiting on grading → graded → closed
   var ORDER = { 'overdue':0, 'in-progress':1, 'todo':1, 'grading':2, 'submitted':2, 'graded':3, 'closed':4 };
   var ACTION = { 'todo':['Open assignment',''], 'overdue':['Submit assignment',''], 'in-progress':['Continue draft',''], 'grading':['View submission','quiet'], 'submitted':['View submission','quiet'], 'graded':['View grade',''], 'closed':['View details','quiet'] };
+  var QUIZ_ACTION = { 'todo':['Start quiz',''], 'overdue':['Start quiz',''], 'in-progress':['Resume quiz',''], 'graded':['View results',''] };
   var ARROW = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></svg>';
 
   function lastSub(a){ return a.submissions[a.submissions.length - 1]; }
@@ -277,10 +287,10 @@
     if (!rows.length){ empty.innerHTML = '<b>No assignments match your filters.</b><span>Try another status or clear the search.</span>'; return; }
 
     document.getElementById('rows').innerHTML = rows.map(function(x){
-      var a = x.a, s = x.s, act = ACTION[s], href = 'assignment-detail.html?id=' + a.id;
+      var a = x.a, s = x.s, quiz = a.type === 'quiz', act = (quiz && QUIZ_ACTION[s]) || ACTION[s], href = (quiz ? 'assignment-quiz.html?id=' : 'assignment-detail.html?id=') + a.id;
       var g = s === 'graded' ? lastSub(a).grade.score + ' / ' + a.points : '';
       return '<tr data-href="' + href + '">' +
-        '<td class="d-title"><a class="t-title" href="' + href + '">' + esc(a.title) + '</a><span class="t-course">' + esc(a.course) + '</span></td>' +
+        '<td class="d-title"><a class="t-title" href="' + href + '">' + esc(a.title) + '</a><span class="t-course">' + (quiz ? '<span class="badge brand">Quiz</span>' : '') + esc(a.course) + (quiz ? ' · ' + a.questions + ' questions' : '') + '</span></td>' +
         '<td class="d-due">' + dueCell(a, s) + '</td>' +
         '<td class="d-status"><span class="status ' + s + '"><i></i>' + LABEL[s] + '</span>' +
           (s === 'closed' ? '<span class="status-sub">Submission closed</span>' : '') +

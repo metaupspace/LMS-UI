@@ -21,7 +21,7 @@
     --surface-raised:#f5f5f5;
     --surface-overlay:#e5e5e5;
     --border-default:#e5e5e5;
-    --border-subtle:#f0f0f0;
+    --border-subtle:#f5f5f5;
     --border-strong:#a3a3a3;
     --icon-muted:#a3a3a3;
     --icon-primary:#404040;
@@ -70,14 +70,14 @@
   /* Page Header */
   .page-head{ margin-bottom:24px; }
   .page-head h1{ margin:0 0 4px; font-size:28px; font-weight:700; letter-spacing:-.6px; line-height:1.2; }
-  .page-head .sub{ font-size:14.5px; color:var(--text-secondary); }
+  .page-head .sub{ font-size:14px; color:var(--text-secondary); }
 
   /* Module Tabs */
   /* Page-level secondary nav (links) — Admin-specific, visual aligned to Learner C35 segmented tabs */
   .tab-nav{ display:flex; gap:4px; padding:4px; background:var(--surface-overlay); border-radius:var(--radius-lg); width:max-content; max-width:100%; overflow-x:auto; scrollbar-width:none; margin-bottom:24px; }
   .tab-nav::-webkit-scrollbar{ display:none; }
   .tab-item{
-    height:34px; padding:0 14px; border:0; border-radius:6px; background:transparent; font:600 14px var(--font); color:var(--text-secondary);
+    height:34px; padding:0 14px; border:0; border-radius:4px; background:transparent; font:600 14px var(--font); color:var(--text-secondary);
     white-space:nowrap; flex-shrink:0; cursor:pointer; text-decoration:none; display:inline-flex; align-items:center; gap:6px;
     transition:background-color .15s ease, color .15s ease;
   }
@@ -94,19 +94,19 @@
   .kpi-title{ display:flex; align-items:center; gap:10px; min-width:0; }
   .kpi-icon{ width:28px; height:28px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
   .kpi-icon svg{ width:14px; height:14px; }
-  .kpi-title span{ font-size:13px; font-weight:600; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .kpi-title span{ font-size:14px; font-weight:600; color:var(--text-secondary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   /* Connection status — Learner C48 status dot label (no fill) */
-  .pill{ display:inline-flex; align-items:center; gap:7px; font:500 13.5px var(--font); color:var(--text-strong); background:none; padding:0; border:0; flex-shrink:0; white-space:nowrap; }
+  .pill{ display:inline-flex; align-items:center; gap:7px; font:500 14px var(--font); color:var(--text-strong); background:none; padding:0; border:0; flex-shrink:0; white-space:nowrap; }
   .pill .dot{ width:7px; height:7px; }
   .pill.up .dot{ background:var(--success); }
   .pill.warn .dot{ background:var(--warning); }
   .pill.neutral .dot{ background:transparent; box-shadow:inset 0 0 0 1.5px var(--text-tertiary); }
   /* Plan/category tag — Learner C49 badge (brand) */
-  .pill.purple{ height:24px; padding:0 10px; border-radius:999px; font:600 12px var(--font); background:var(--brand-subtle); color:var(--action-primary); gap:6px; }
+  .pill.purple{ height:24px; padding:0 10px; border-radius:999px; font:500 12px var(--font); background:var(--brand-subtle); color:var(--action-primary); gap:6px; }
   .pill svg{ width:10px; height:10px; }
   .kpi-value{ font-size:28px; font-weight:700; letter-spacing:-.4px; font-variant-numeric:tabular-nums; }
-  .kpi-value .of{ font-size:15px; font-weight:600; color:var(--text-tertiary); }
-  .kpi-sub{ font-size:12.5px; color:var(--text-tertiary); margin-top:5px; }
+  .kpi-value .of{ font-size:16px; font-weight:600; color:var(--text-tertiary); }
+  .kpi-sub{ font-size:12px; color:var(--text-tertiary); margin-top:5px; }
 
   @media (max-width:1180px){ .kpi-row{ grid-template-columns:1fr; } }
 
@@ -116,7 +116,7 @@
   .main .search-input-wrap svg{ position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--icon-muted); width:16px; height:16px; pointer-events:none; }
   .main .search-input-wrap input{
     width:100%; height:42px; padding:0 12px 0 38px; border-radius:8px;
-    border:1px solid var(--border-default); background:#ffffff; font:14px var(--font); color:var(--text-primary);
+    border:1px solid #d4d4d4; background:#ffffff; font:14px var(--font); color:var(--text-primary);
   }
   .main .search-input-wrap input::placeholder{ color:var(--text-tertiary); }
   .main .search-input-wrap input:focus{ outline:none; border-color:var(--focus-ring); box-shadow:0 0 0 3px rgba(99,102,241,.15); }
@@ -124,7 +124,7 @@
   .filter-group{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; }
   .select-input{
     height:42px; padding:0 32px 0 12px; border-radius:8px;
-    border:1px solid var(--border-default); background-color:#ffffff; font:600 13.5px var(--font);
+    border:1px solid #d4d4d4; background-color:#ffffff; font:500 14px var(--font);
     color:var(--text-strong); cursor:pointer; appearance:none; -webkit-appearance:none;
     background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23525252'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
     background-repeat:no-repeat; background-position:right 11px center; background-size:14px;
@@ -149,19 +149,19 @@
     width:44px; height:44px; border-radius:var(--radius-lg); background:var(--surface-raised);
     border:1px solid var(--border-default); display:flex; align-items:center; justify-content:center; flex-shrink:0;
   }
-  .provider-icon-box svg{ width:28px; height:28px; border-radius:6px; overflow:hidden; }
-  .card-title{ margin:0 0 2px 0; font-size:16px; font-weight:700; line-height:1.3; letter-spacing:-.2px; color:var(--text-primary); }
-  .card-category{ font-size:13px; font-weight:400; color:var(--text-tertiary); }
+  .provider-icon-box svg{ width:28px; height:28px; border-radius:4px; overflow:hidden; }
+  .card-title{ margin:0 0 2px 0; font-size:16px; font-weight:600; line-height:1.3; letter-spacing:-.2px; color:var(--text-primary); }
+  .card-category{ font-size:14px; font-weight:400; color:var(--text-tertiary); }
 
-  .card-body{ font-size:13.5px; color:var(--text-secondary); line-height:1.5; margin-bottom:18px; flex:1; }
+  .card-body{ font-size:14px; color:var(--text-secondary); line-height:1.5; margin-bottom:18px; flex:1; }
 
   .card-footer{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding-top:14px; border-top:1px solid var(--border-subtle); margin-top:auto; }
-  .card-meta{ font-size:13px; color:var(--text-tertiary); }
+  .card-meta{ font-size:14px; color:var(--text-tertiary); }
 
   /* Learner C103 empty state (filtered-empty) */
   .catalog-empty{ grid-column:1 / -1; background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:56px 20px; text-align:center; }
-  .catalog-empty .empty-title{ font-size:15px; font-weight:600; color:var(--text-primary); }
-  .catalog-empty .empty-text{ font-size:13.5px; color:var(--text-tertiary); max-width:420px; margin:4px auto 0; }
+  .catalog-empty .empty-title{ font-size:16px; font-weight:600; color:var(--text-primary); }
+  .catalog-empty .empty-text{ font-size:14px; color:var(--text-tertiary); max-width:420px; margin:4px auto 0; }
 
   /* Buttons */
   .dot{ width:6px; height:6px; border-radius:50%; background:currentColor; display:inline-block; }
@@ -175,7 +175,7 @@
     padding: 0 16px;
     border-radius: var(--radius-lg);
     font-size: 14px;
-    font-weight: 600;
+    font-weight:500;
     cursor: pointer;
     border: none;
     white-space: nowrap;
@@ -183,10 +183,10 @@
   }
   .btn-primary{ background:var(--action-primary); color:#fff; }
   .btn-primary:hover{ background:var(--action-primary-hover); }
-  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid var(--border-default); }
+  .btn-secondary{ background:#fff; color:var(--text-strong); border:1px solid #d4d4d4; }
   .btn-secondary:hover{ background:var(--surface-raised); }
   .btn-ghost{ background:transparent; color:var(--text-secondary); border:none; }
-  .btn-sm{ height:34px; padding:0 12px; font-size:13.5px; }
+  .btn-sm{ height:34px; padding:0 12px; font-size:14px; }
 
   /* Modals — matches Component Library for UpSpace › Modals spec exactly:
      544px card, 12px radius, two-layer elevation shadow, #0a0a0a/50% backdrop (no blur),
@@ -214,7 +214,7 @@
   .modal-btn-primary{ background:var(--action-primary); border:1px solid var(--action-primary); color:#fff; }
   .modal-btn-primary:hover{ background:var(--action-primary-hover); }
   .permissions-list{ list-style:none; padding:0; margin:0; display:flex; flex-direction:column; gap:8px; }
-  .permissions-list li{ display:flex; align-items:center; gap:8px; font-size:13px; color:var(--text-secondary); }
+  .permissions-list li{ display:flex; align-items:center; gap:8px; font-size:14px; color:var(--text-secondary); }
   .permissions-list svg{ width:16px; height:16px; color:var(--success); flex-shrink:0; }
 
   /* Shell Layout — standardized to billing-overview.html */
@@ -247,13 +247,13 @@
     border-radius: var(--radius-lg); color: var(--text-secondary);
     transition: background-color .15s ease, color .15s ease;
   }
-  .nav-item span { font-size: 13.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+  .nav-item span { font-size: 14px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
   .nav-item svg { width: 19px; height: 19px; flex-shrink: 0; transition: transform .15s ease; }
   .nav-item:hover { background: var(--surface-raised); color: var(--text-primary); }
   .nav-item:hover svg { transform: translateY(-1px); }
   .nav-item:focus-visible { outline: 2px solid var(--focus-ring); outline-offset: -2px; }
-  .nav-item.active { background: var(--info-subtle); color: var(--info); font-weight: 700; }
-  .nav-item.active:hover { background: var(--info-subtle); }
+  .nav-item.active { background: #eef2ff; color: #4f46e5; font-weight: 700; }
+  .nav-item.active:hover { background: #eef2ff; }
   .nav-bottom { margin-top: auto; display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-top: 1px solid var(--border-subtle); }
   .nav-item.danger:hover { background: var(--error-subtle); color: var(--error); }
 
@@ -264,11 +264,11 @@
     padding: 0 32px 0 20px; background: #ffffff; border-bottom: 1px solid var(--border-default); z-index: 10;
   }
   .topbar-left { display: flex; align-items: center; gap: 14px; min-width: 0; }
-  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 13px; min-width: 0; overflow: hidden; }
-  .breadcrumb a { color: var(--text-tertiary); font-weight: 600; }
+  .breadcrumb { display: flex; align-items: center; gap: 6px; font-size: 14px; min-width: 0; overflow: hidden; }
+  .breadcrumb a { color:var(--text-secondary); font-weight:500; }
   .breadcrumb a:hover { color: var(--text-primary); }
   .breadcrumb .breadcrumb-sep { color: var(--text-disabled); }
-  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .breadcrumb .breadcrumb-current { color: var(--text-primary); font-weight:500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .topbar-actions { display: flex; align-items: center; gap: 6px; }
   .icon-btn {
     width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent;
@@ -282,7 +282,7 @@
   .search-input-wrap svg { position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--icon-muted); pointer-events: none; }
   .search-input-wrap input {
     width: 100%; height: 36px; padding: 0 12px 0 34px; border-radius: var(--radius-lg);
-    border: 1px solid var(--border-default); background: var(--surface-raised); font-size: 13px; color: var(--text-primary); outline: none;
+    border: 1px solid #d4d4d4; background: var(--surface-raised); font-size: 14px; color: var(--text-primary); outline: none;
   }
   .search-input-wrap input::placeholder { color: var(--text-tertiary); }
   .search-input-wrap input:focus { border-color: var(--focus-ring); }
@@ -297,7 +297,7 @@
     overflow: hidden;
     background: linear-gradient(135deg, #4f46e5, #0ea5e9);
     color: #fff;
-    font-size: 13px;
+    font-size: 14px;
     font-weight: 700;
     display: flex;
     align-items: center;
@@ -307,10 +307,10 @@
   .profile-dropdown {
     position: absolute; top: 44px; right: 0; width: 200px; background: #ffffff;
     border: 1px solid var(--border-default); border-radius: var(--radius-lg);
-    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 20;
+    box-shadow: 0 12px 32px -8px rgba(23,23,23,.18); padding: 6px; display: none; z-index: 1000;
   }
   .profile-dropdown.show, .profile-dropdown.open { display: block; }
-  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 6px; font-size: 13.5px; color: var(--text-primary); }
+  .profile-dropdown a { display: block; padding: 9px 10px; border-radius: 4px; font-size: 14px; color: var(--text-primary); }
   .profile-dropdown a:hover { background: var(--surface-raised); }
   .profile-dropdown hr { border: none; border-top: 1px solid var(--border-subtle); margin: 6px 2px; }
   .profile-dropdown a.danger { color: var(--error); }
@@ -325,7 +325,7 @@
       left: 0;
       height: 100vh;
       width: 260px;
-      z-index: 30;
+      z-index: 1000;
       transform: translateX(-100%);
       transition: transform 0.25s ease;
       box-shadow: 4px 0 24px rgba(0,0,0,0.12);
@@ -373,7 +373,7 @@
       <div class="profile-menu">
         <button class="avatar-btn" id="profile-btn" type="button" aria-haspopup="true" aria-expanded="false" onclick="toggleProfileDropdown()">AR</button>
         <div class="profile-dropdown" id="profile-dropdown" role="menu">
-          <a href="#" role="menuitem">My Profile</a>
+          <a href="profile.html" role="menuitem">My Profile</a>
           <a href="#" role="menuitem">Account Security</a>
           <a href="#" role="menuitem">Preferences</a>
           <hr>
@@ -442,10 +442,6 @@
     </div>
 
     <div class="nav-bottom">
-      <a href="#" class="nav-item" title="Settings">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.671 4.136a2.34 2.34 0 0 1 4.659 0 2.34 2.34 0 0 0 3.319 1.915 2.34 2.34 0 0 1 2.33 4.033 2.34 2.34 0 0 0 0 3.831 2.34 2.34 0 0 1-2.33 4.033 2.34 2.34 0 0 0-3.319 1.915 2.34 2.34 0 0 1-4.659 0 2.34 2.34 0 0 0-3.32-1.915 2.34 2.34 0 0 1-2.33-4.033 2.34 2.34 0 0 0 0-3.831A2.34 2.34 0 0 1 6.35 6.051a2.34 2.34 0 0 0 3.319-1.915"/><circle cx="12" cy="12" r="3"/></svg>
-        <span>Settings</span>
-      </a>
       <a href="../../Authentication/code/sign-in.html" class="nav-item danger" title="Logout">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m16 17 5-5-5-5"/><path d="M21 12H9"/><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/></svg>
         <span>Logout</span>
@@ -555,7 +551,7 @@
         <p class="modal-desc">Requests authorization for <strong id="oauthProviderName">Provider</strong> to connect with UpSpace LMS.</p>
       </div>
       <div>
-        <p style="font-size:13px; font-weight:600; color:var(--text-primary); margin:0 0 8px;">Permissions requested</p>
+        <p style="font-size:14px; font-weight:600; color:var(--text-primary); margin:0 0 8px;">Permissions requested</p>
         <ul class="permissions-list" id="oauthPermissions">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Read account details and organizational profile</li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg> Create and manage event webhooks</li>
@@ -793,6 +789,162 @@
     if (bd) bd.classList.toggle('show');
   }
 
+</script>
+
+<!-- DS Select menu (UpSpace library: Select / _Select menu / _Select menu item). Enhances every native <select> on the page:
+     opens a DS-styled listbox instead of the OS menu and writes the choice back to the <select> (fires input + change),
+     so existing page logic, styling and form values keep working. -->
+<style>
+  .ds-select-menu{ position:fixed; z-index:10000; box-sizing:border-box; max-height:320px; overflow-y:auto; padding:4px 0; margin:0; list-style:none;
+    background:#fff; border:1px solid #e5e5e5; border-radius:8px; box-shadow:0 12px 16px -4px rgba(23,23,23,.08), 0 4px 6px -2px rgba(23,23,23,.03);
+    font-family:"DM Sans", ui-sans-serif, system-ui, sans-serif; -webkit-font-smoothing:antialiased; }
+  .ds-select-menu[hidden]{ display:none; }
+  .ds-select-search{ position:sticky; top:-4px; margin:-4px 0 4px; padding:8px; background:#fff; border-bottom:1px solid #f5f5f5; }
+  .ds-select-search input{ box-sizing:border-box; width:100%; height:36px; padding:0 10px; border:1px solid #d4d4d4; border-radius:8px; font:inherit; font-size:14px; color:#171717; outline:none; }
+  .ds-select-search input:focus{ border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.15); }
+  .ds-select-group{ padding:8px 14px 4px; font-size:12px; font-weight:500; color:#737373; }
+  .ds-select-opt{ display:flex; align-items:center; gap:8px; margin:1px 6px; padding:8px; border-radius:4px; cursor:pointer;
+    font-size:inherit; line-height:1.45; font-weight:500; color:#171717; white-space:nowrap; }
+  .ds-select-opt span{ flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .ds-select-opt svg{ width:1.15em; height:1.15em; flex-shrink:0; visibility:hidden; }
+  .ds-select-opt[aria-selected="true"] svg{ visibility:visible; }
+  .ds-select-opt.is-active{ background:#fafafa; }
+  .ds-select-opt[aria-disabled="true"]{ color:#a3a3a3; cursor:not-allowed; }
+  .ds-select-empty{ padding:10px 14px; font-size:14px; color:#737373; }
+  /* DS Select value weight; zero specificity, so only selects that would otherwise inherit a heading weight pick it up */
+  :where(select){ font-weight:500; }
+  select.ds-select-open{ border-color:#6366f1 !important; box-shadow:0 0 0 3px rgba(99,102,241,.15) !important; }
+  select.ds-select-native{ -webkit-appearance:none !important; appearance:none !important; padding-right:36px !important; cursor:pointer;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='m5 7.5 5 5 5-5' stroke='%23737373' stroke-width='1.67' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    background-repeat:no-repeat !important; background-position:right 12px center !important; background-size:16px 16px !important; }
+</style>
+<script>
+(function(){
+  if (window.__dsSelect) return; window.__dsSelect = true;
+  // ponytail: touch devices keep the native picker (better on mobile); upgrade with a bottom sheet if the design calls for one.
+  var CHECK = '<svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16.67 5 7.5 14.17 3.33 10" stroke="#4f46e5" stroke-width="1.67" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  var menu, sel, opts = [], active = -1, typed = '', typedAt = 0, uid = 0;
+
+  var coarse = window.matchMedia && matchMedia('(pointer: coarse)').matches;
+  function eligible(s){ return !coarse && s && s.tagName === 'SELECT' && !s.multiple && !(s.size > 1) && !s.disabled; }
+  function build(filter){
+    menu.innerHTML = ''; opts = [];
+    var q = (filter || '').trim().toLowerCase(), many = sel.options.length > 10;
+    if (many) {
+      var box = document.createElement('div'); box.className = 'ds-select-search';
+      box.innerHTML = '<input type="text" placeholder="Search" aria-label="Search options">';
+      menu.appendChild(box);
+      var inp = box.firstChild; inp.value = filter || '';
+      inp.addEventListener('input', function(){ build(inp.value); var i = menu.querySelector('input'); i.focus(); i.setSelectionRange(i.value.length, i.value.length); });
+      inp.addEventListener('keydown', onKey);
+    }
+    var lastGroup = null;
+    Array.prototype.forEach.call(sel.options, function(o, i){
+      if (o.hidden || (q && o.text.toLowerCase().indexOf(q) < 0)) return;
+      var g = o.parentNode.tagName === 'OPTGROUP' ? o.parentNode : null;
+      if (g && g !== lastGroup) { var h = document.createElement('li'); h.className = 'ds-select-group'; h.setAttribute('role', 'presentation'); h.textContent = g.label; menu.appendChild(h); }
+      lastGroup = g;
+      var li = document.createElement('li');
+      li.className = 'ds-select-opt'; li.id = menu.id + '-o' + i; li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', i === sel.selectedIndex ? 'true' : 'false');
+      if (o.disabled || (g && g.disabled)) li.setAttribute('aria-disabled', 'true');
+      li.innerHTML = '<span></span>' + CHECK; li.firstChild.textContent = o.text; li.dataset.index = i;
+      menu.appendChild(li); opts.push(li);
+    });
+    if (!opts.length) { var e = document.createElement('li'); e.className = 'ds-select-empty'; e.textContent = 'No matches'; menu.appendChild(e); }
+    var cur = opts.findIndex(function(li){ return +li.dataset.index === sel.selectedIndex; });
+    setActive(cur >= 0 ? cur : 0, true);
+  }
+  function place(){
+    var r = sel.getBoundingClientRect(), vw = document.documentElement.clientWidth, vh = window.innerHeight;
+    menu.style.minWidth = Math.max(r.width, 160) + 'px'; menu.style.maxWidth = Math.max(r.width, 320) + 'px';
+    var h = Math.min(menu.scrollHeight, 320), below = vh - r.bottom - 8, up = below < h && r.top > below;
+    menu.style.top = (up ? Math.max(8, r.top - 4 - h) : r.bottom + 4) + 'px';
+    menu.style.left = Math.max(8, Math.min(r.left, vw - menu.offsetWidth - 8)) + 'px';
+  }
+  function setActive(i, scroll){
+    if (active >= 0 && opts[active]) opts[active].classList.remove('is-active');
+    active = Math.max(0, Math.min(i, opts.length - 1));
+    var li = opts[active]; if (!li) return;
+    li.classList.add('is-active'); sel.setAttribute('aria-activedescendant', li.id);
+    if (scroll) li.scrollIntoView({ block: 'nearest' });
+  }
+  function move(d){ for (var i = active + d; i >= 0 && i < opts.length; i += d) if (opts[i].getAttribute('aria-disabled') !== 'true') return setActive(i, true); }
+  function open(s){
+    close(); sel = s;
+    if (!menu) {
+      menu = document.createElement('ul'); menu.className = 'ds-select-menu'; menu.setAttribute('role', 'listbox'); menu.hidden = true;
+      menu.addEventListener('mousedown', function(e){ e.stopPropagation(); if (e.target.tagName !== 'INPUT') e.preventDefault(); });
+      menu.addEventListener('click', function(e){ e.stopPropagation(); var li = e.target.closest('.ds-select-opt'); if (li && li.getAttribute('aria-disabled') !== 'true') choose(+li.dataset.index); });
+      menu.addEventListener('mousemove', function(e){ var li = e.target.closest('.ds-select-opt'); if (li) setActive(opts.indexOf(li)); });
+      document.body.appendChild(menu);
+    }
+    menu.id = 'ds-select-menu-' + (++uid);
+    var label = s.getAttribute('aria-label') || (s.labels && s.labels[0] && s.labels[0].textContent.trim()) || s.name || 'Options';
+    menu.setAttribute('aria-label', label);
+    // menu text follows its trigger so the open list never looks bigger than the field (DS 14 px floor for legibility)
+    menu.style.fontSize = Math.max(14, parseFloat(getComputedStyle(s).fontSize) || 14) + 'px';
+    build(''); menu.hidden = false; place();
+    s.classList.add('ds-select-open'); s.setAttribute('aria-expanded', 'true'); s.setAttribute('aria-controls', menu.id);
+    var search = menu.querySelector('.ds-select-search input'); if (search) search.focus();
+  }
+  function close(){
+    if (!sel) return;
+    sel.classList.remove('ds-select-open'); sel.setAttribute('aria-expanded', 'false'); sel.removeAttribute('aria-activedescendant');
+    if (menu) menu.hidden = true; var s = sel; sel = null; active = -1; return s;
+  }
+  function choose(i){
+    var s = sel, changed = s.selectedIndex !== i;
+    close(); s.focus();
+    if (changed) { s.selectedIndex = i; s.dispatchEvent(new Event('input', { bubbles: true })); s.dispatchEvent(new Event('change', { bubbles: true })); }
+  }
+  function onKey(e){
+    if (!sel) return;
+    var k = e.key;
+    if (k === 'ArrowDown') { e.preventDefault(); move(1); }
+    else if (k === 'ArrowUp') { e.preventDefault(); move(-1); }
+    else if (k === 'Home') { e.preventDefault(); setActive(0, true); }
+    else if (k === 'End') { e.preventDefault(); setActive(opts.length - 1, true); }
+    else if (k === 'Enter' || (k === ' ' && e.target.tagName !== 'INPUT')) { e.preventDefault(); if (opts[active] && opts[active].getAttribute('aria-disabled') !== 'true') choose(+opts[active].dataset.index); }
+    else if (k === 'Escape') { e.preventDefault(); var s = close(); s && s.focus(); }
+    else if (k === 'Tab') { close(); }
+    else if (k.length === 1 && e.target.tagName !== 'INPUT') {
+      var now = Date.now(); typed = (now - typedAt > 700 ? '' : typed) + k.toLowerCase(); typedAt = now;
+      var hit = opts.findIndex(function(li){ return li.textContent.trim().toLowerCase().indexOf(typed) === 0; });
+      if (hit >= 0) setActive(hit, true);
+    }
+  }
+  document.addEventListener('mousedown', function(e){
+    var s = e.target.closest && e.target.closest('select');
+    if (eligible(s) && e.button === 0) { e.preventDefault(); s.focus(); if (sel === s) close(); else open(s); return; }
+    if (sel && !(menu && menu.contains(e.target))) close();
+  }, true);
+  document.addEventListener('keydown', function(e){
+    var s = e.target;
+    if (!sel && eligible(s) && (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter' || e.key === ' ' || (e.altKey && e.key === 'ArrowDown'))) { e.preventDefault(); open(s); return; }
+    if (sel && (s === sel || (menu && menu.contains(s)))) onKey(e);
+  }, true);
+  // swap the OS chevron for the DS one, only on selects the page hasn't already custom-styled
+  function skin(){ document.querySelectorAll('select:not(.ds-select-native)').forEach(function(s){
+    if (!s.multiple && !(s.size > 1) && getComputedStyle(s).appearance !== 'none') s.classList.add('ds-select-native'); }); }
+  // auto-width selects: make room for the longest option in the real (web) font, since the DS chevron needs 36px on the right
+  var ruler;
+  function fit(){ document.querySelectorAll('select.ds-select-native').forEach(function(s){
+    if (!s.offsetParent) return;
+    var w0 = s.offsetWidth, keep = s.style.width; s.style.width = 'auto'; var auto = s.offsetWidth === w0; s.style.width = keep;
+    if (!auto) return;
+    var c = getComputedStyle(s); if (!ruler) { ruler = document.createElement('span'); ruler.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;left:-9999px;top:0'; document.body.appendChild(ruler); }
+    ruler.style.font = c.font; ruler.style.letterSpacing = c.letterSpacing; var longest = 0;
+    Array.prototype.forEach.call(s.options, function(o){ ruler.textContent = o.text; longest = Math.max(longest, ruler.offsetWidth); });
+    var need = Math.ceil(longest + parseFloat(c.paddingLeft) + parseFloat(c.paddingRight) + parseFloat(c.borderLeftWidth) + parseFloat(c.borderRightWidth) + 20); // ponytail: +20 = Chrome's internal menulist text inset, invisible to the DOM
+    if (need > s.offsetWidth) s.style.minWidth = need + 'px'; }); }
+  function skinFit(){ skin(); fit(); }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', skinFit); else skinFit();
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+  new MutationObserver(function(m){ if (m.every(function(r){ return menu && (r.target === menu || menu.contains(r.target)); })) return; clearTimeout(skin.t); skin.t = setTimeout(skinFit, 50); }).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener('resize', close);
+  document.addEventListener('scroll', function(e){ if (sel && !(menu && menu.contains(e.target))) place(); }, true);
+})();
 </script>
 </body>
 </html>
