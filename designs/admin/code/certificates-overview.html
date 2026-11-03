@@ -201,6 +201,8 @@
   .topbar, .topbar-left, .topbar .breadcrumb, .main{ min-width:0; }
   @media (max-width: 640px){ .page-head-actions, .profile-actions, .header-actions, .panel-head-actions{ flex-wrap:wrap; max-width:100%; } .page-head-actions > .btn, .profile-actions > .btn, .header-actions > .btn{ flex:1 1 auto; } }
   .btn:disabled, .btn[aria-disabled="true"]{ background:var(--surface-overlay); color:var(--text-tertiary); border-color:transparent; cursor:not-allowed; transform:none; }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
 </style>
 <style>
   /* Certificate workspace composition */

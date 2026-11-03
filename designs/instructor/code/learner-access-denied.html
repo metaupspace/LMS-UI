@@ -39,6 +39,8 @@
   .btn{ height:40px; padding:0 20px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; gap:8px; border:none; text-decoration:none; }
   .btn-primary{ background:var(--action-primary); color:#fff; }
   .btn-primary:hover{ background:var(--action-primary-hover); }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

@@ -244,6 +244,10 @@
   /* State Switcher Preview Bar (Bottom Left) */
   .preview-control{ position:fixed; bottom:16px; left:16px; z-index:90; background:#fff; border:1px dashed var(--border-strong); border-radius:var(--radius-lg); padding:8px 12px; display:flex; align-items:center; gap:8px; box-shadow:var(--shadow-md); font-size:12px; font-weight:600; }
   .preview-control select{ font-size:14px; height:26px; border-radius:var(--radius-lg, 8px); border:1px solid #d4d4d4; outline:none; }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

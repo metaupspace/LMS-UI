@@ -123,6 +123,8 @@
     opacity: 0; transform: translateY(12px); transition: all .2s ease; pointer-events: none; z-index: 100;
   }
   .toast.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
 </style>
 </head>
 <body>

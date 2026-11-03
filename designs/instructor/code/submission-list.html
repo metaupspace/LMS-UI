@@ -117,6 +117,10 @@
   .no-results svg{ width:36px; height:36px; color:var(--text-disabled); margin-bottom:10px; }
   .no-results h3{ margin:0 0 6px; font-size:16px; font-weight:700; }
   .no-results p{ margin:0; font-size:14px; color:var(--text-tertiary); }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

@@ -95,6 +95,8 @@
   .insufficient-desc{ font-size:14px; color:var(--text-secondary); max-width:440px; margin:0 auto; line-height:1.55; }
 
   .not-found-card{ background:#fff; border:1px solid var(--border-default); border-radius:var(--radius-xl); padding:48px 32px; text-align:center; }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

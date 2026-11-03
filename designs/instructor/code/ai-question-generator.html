@@ -196,6 +196,10 @@
   .alert-box{ padding:12px 16px; border-radius:var(--radius-lg); font-size:14px; display:flex; align-items:center; gap:10px; margin-bottom:20px; }
   .alert-box.warn{ background:var(--warning-subtle); border:1px solid var(--warning-border); color:#854d0e; }
   .alert-box.error{ background:var(--error-subtle); border:1px solid var(--error-border); color:var(--error); }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

@@ -175,6 +175,8 @@
   .modal-footer{ padding:16px 24px; border-top:1px solid var(--border-default); background:var(--surface-canvas); display:flex; align-items:center; justify-content:flex-end; gap:12px; }
   .textarea-input{ width:100%; min-height:100px; padding:12px; border-radius:var(--radius-lg); border:1px solid #d4d4d4; font-size:14px; color:var(--text-primary); resize:vertical; outline:none; }
   .textarea-input:focus{ border-color:var(--focus-ring); }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

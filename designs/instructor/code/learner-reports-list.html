@@ -121,6 +121,10 @@
   .skeleton-row td{ padding:18px 20px; }
   .skeleton{ height:14px; background:linear-gradient(90deg, #f5f5f5 25%, #e5e5e5 50%, #f5f5f5 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:4px; }
   @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

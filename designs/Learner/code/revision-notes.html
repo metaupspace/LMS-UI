@@ -300,6 +300,8 @@
     .defs{ grid-template-columns:1fr 1fr; }
     .focus-item, .examples li, .defs > div, .takeaways li{ break-inside:avoid; }
   }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
 </style>
 </head>
 <body>

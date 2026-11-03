@@ -64,6 +64,8 @@
   .btn-select:hover{ background:var(--action-primary-hover); }
 
   @media (max-width: 900px){ .type-grid{ grid-template-columns:1fr; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

@@ -383,6 +383,8 @@
   .fc-modal{ width:min(420px, 100%); background:#fff; border-radius:var(--radius-xl); padding:24px; box-shadow:0 24px 48px rgba(10,10,10,.18); }
   .fc-modal h3{ margin:0; font-size:18px; font-weight:700; }
   .fc-modal p{ margin:6px 0 0; font-size:14px; line-height:1.5; color:var(--text-secondary); }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
 </style>
 </head>
 <body>

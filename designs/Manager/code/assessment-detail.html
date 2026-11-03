@@ -150,6 +150,10 @@
   /* Toast Notification */
   .toast{ position:fixed; bottom:24px; right:24px; background:#171717; color:#fff; padding:12px 18px; border-radius:var(--radius-lg); font-size:14px; font-weight:500; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-lg); z-index:300; transform:translateY(100px); opacity:0; transition:all 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
   .toast.active{ transform:translateY(0); opacity:1; }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>

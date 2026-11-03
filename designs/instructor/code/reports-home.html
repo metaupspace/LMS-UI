@@ -52,7 +52,7 @@
   .scope-note svg{ width:15px; height:15px; flex-shrink:0; color:var(--text-tertiary); }
 
   /* Tabs */
-  .tabs{ display:flex; gap:28px; border-bottom:1px solid var(--border-default); margin-bottom:24px; }
+  .tabs{ display:flex; gap:28px; flex-wrap:wrap; border-bottom:1px solid var(--border-default); margin-bottom:24px; }
   .tab-btn{ padding:0 0 12px; font-size:14px; font-weight:600; color:var(--text-secondary); background:none; border:none; border-bottom:2px solid transparent; cursor:pointer; margin-bottom:-1px; }
   .tab-btn:hover{ color:var(--text-primary); }
   .tab-btn.active{ color:var(--action-primary); border-bottom-color:var(--action-primary); }
@@ -62,6 +62,9 @@
   .state-preview{ height:36px; min-width:200px; padding:0 30px 0 12px; font-size:12px; font-weight:600; border:1px solid var(--border-default); border-radius:var(--radius-lg); background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%23525252' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; appearance:none; cursor:pointer; }
   .state-preview:focus{ outline:2px solid var(--focus-ring); }
   .panel-head{ display:flex; align-items:flex-start; justify-content:flex-end; gap:16px; margin-bottom:16px; flex-wrap:wrap; }
+  /* state preview lives in the tab row; show only the active tab's one */
+  .tabs .state-preview{ margin-left:auto; align-self:center; }
+  .tabs:has(#tabBtnLearners.active) #cmStatePreview, .tabs:has(#tabBtnConcepts.active) #lrStatePreview{ display:none; }
 
   /* Weakest-concepts strip */
   .weakest-strip{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:12px 16px; background:var(--error-subtle); border:1px solid var(--error-border); border-radius:var(--radius-lg); margin-bottom:20px; }
@@ -155,6 +158,10 @@
   .skeleton-row td{ padding:18px 20px; }
   .skeleton{ height:14px; background:linear-gradient(90deg, #f5f5f5 25%, #e5e5e5 50%, #f5f5f5 75%); background-size:200% 100%; animation:loading 1.5s infinite; border-radius:4px; }
   @keyframes loading{ 0%{ background-position:200% 0; } 100%{ background-position:-200% 0; } }
+  /* responsive: cap content on large screens (left-aligned in a centred 1440 column; !important beats per-section margins) */
+  @media (min-width:1600px){ main > * { max-width:1440px !important; margin-left:max(0px, (100% - 1440px) / 2) !important; margin-right:0 !important; } }
+  /* mobile: hide sidebar below 768px (same as Manager/dashboard.html) */
+  @media (max-width:768px){ .shell, .shell.sidebar-collapsed{ grid-template-columns:0 1fr; } .sidebar-frame{ display:none; } }
 </style>
 </head>
 <body>
@@ -177,19 +184,23 @@
     <div class="tabs">
       <button class="tab-btn active" id="tabBtnLearners" onclick="showTab('learners')">Learner Reports</button>
       <button class="tab-btn" id="tabBtnConcepts" onclick="showTab('concepts')">Concept Mastery</button>
-    </div>
-
-    <!-- Learner Reports tab -->
-    <div class="tab-panel active" id="lr-panel">
-      <div class="panel-head">
-        <select class="state-preview" id="lrStatePreview" aria-label="Preview list state" onchange="lrSwitchState(this.value)">
+      <select class="state-preview" id="lrStatePreview" aria-label="Preview list state" onchange="lrSwitchState(this.value)">
           <option value="normal">State: Live List</option>
           <option value="empty">State: No Learners</option>
           <option value="no-results">State: No Search Results</option>
           <option value="loading">State: Loading</option>
           <option value="error">State: Error Loading Data</option>
         </select>
-      </div>
+      <select class="state-preview" id="cmStatePreview" aria-label="Preview state" onchange="cmSwitchState(this.value)">
+          <option value="normal">State: Live Data</option>
+          <option value="empty">State: No Concept Data</option>
+          <option value="loading">State: Loading</option>
+          <option value="error">State: Error Loading Data</option>
+        </select>
+    </div>
+
+    <!-- Learner Reports tab -->
+    <div class="tab-panel active" id="lr-panel">
 
       <div class="card">
         <div class="toolbar" id="lrToolbarArea">
@@ -264,14 +275,6 @@
 
     <!-- Concept Mastery tab -->
     <div class="tab-panel" id="cm-panel">
-      <div class="panel-head">
-        <select class="state-preview" id="cmStatePreview" aria-label="Preview state" onchange="cmSwitchState(this.value)">
-          <option value="normal">State: Live Data</option>
-          <option value="empty">State: No Concept Data</option>
-          <option value="loading">State: Loading</option>
-          <option value="error">State: Error Loading Data</option>
-        </select>
-      </div>
 
       <div class="weakest-strip" id="cmWeakestStrip">
         <span class="weakest-strip-label">
