@@ -403,7 +403,10 @@
     var planWords = /(plan|schedule|revis|goal|exam|test |routine|habit|hours|this week|deadline|prepare|catch up|behind|study time)/;
     if (/(stress|anxious|anxiety|depress|lonely|sad |mental health|relationship)/.test(t))
       return say('<p>I can only help with your learning — your courses, goals and study plans. If you\'re having a hard time, please reach out to someone you trust or your organization\'s support team.</p>');
-    var c = findCourse(t), when = parseDate(t);
+    var c = findCourse(t), when = parseDate(t), hits = lookup(t);
+    // ponytail: keyword gate, swap for a real topic classifier when backed by an LLM
+    if (!c && !hits.length && !/(course|lesson|module|chapter|topic|stud|learn|revis|exam|test |quiz|assessment|assignment|flash ?card|notes?|summar|goal|plan|schedule|routine|habit|deadline|progress|catch up|behind|prepare|certificate)/.test(t))
+      return say('<p>I can only help with your courses — questions about your lessons, or planning your study. That one\'s outside what I can answer.</p><div class="chips"><a href="my-courses.html">' + I.book + 'My Courses</a></div>');
     if (/flash ?cards?/.test(t)){
       c = c || COURSES[0];
       return say('<p>Flashcards are made per course, from that course\'s lessons. Open ' + esc(c.title) + ' and use the Flashcards section to generate a set and study it.</p><div class="chips"><a href="' + coursePage(c, '#flashcards') + '">' + I.cards + 'Flashcards for ' + esc(c.title) + '</a></div>');
@@ -429,7 +432,6 @@
       return think(['Looking at your lesson lengths', 'Checking your deadlines', 'Suggesting a routine'], function(){ return { intro:'Here\'s a simple routine that fits your courses. Small, regular sessions are easier to keep than long ones.', plan:buildRoutine() }; });
     if (planWords.test(t) || /\bstudy\b/.test(t))
       return think(['Checking your courses and deadlines', 'Finding the time you need', 'Building your schedule'], function(){ return { intro:'Here\'s a plan for the next 7 days, starting with the courses that are due soonest.', plan:buildWeek() }; });
-    var hits = lookup(t);
     if (hits.length){
       return say('<p>From your course material:</p>' + hits.map(function(k){ return '<div class="answer"><b>' + esc(k[0]) + '</b><span>' + esc(k[1]) + '</span></div>'; }).join('') +
         '<p class="source">Source: “' + esc(hits[0][2]) + '” · Advanced Data Structures</p>' +
